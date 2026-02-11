@@ -14,6 +14,9 @@ abstract final class AppColors {
   static const Color agentError = Color(0xFFE53935);
   static const Color agentWaiting = Color(0xFF9C27B0);
 
+  // Pipeline / CI
+  static const Color scheduled = Color(0xFF009688);
+
   // Sync status
   static const Color syncPending = Color(0xFFFFC107);
   static const Color syncSending = Color(0xFF2196F3);
