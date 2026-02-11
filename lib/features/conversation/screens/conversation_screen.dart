@@ -130,7 +130,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   Widget _buildActiveState(ConversationActive active) {
     final messages = active.messages;
-    final isIdle = active.agentStatus == AgentStatus.AGENT_STATUS_IDLE ||
+    final isIdle =
+        active.agentStatus == AgentStatus.AGENT_STATUS_IDLE ||
         active.agentStatus == AgentStatus.AGENT_STATUS_WAITING_FOR_USER;
 
     // Auto-scroll on new messages.
@@ -155,8 +156,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           if (active.errorMessage != null)
             MaterialBanner(
               content: Text(active.errorMessage!),
-              backgroundColor:
-                  Theme.of(context).colorScheme.errorContainer,
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
               actions: [
                 TextButton(
                   onPressed: () {
@@ -182,8 +182,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: messages.length,
-              itemBuilder: (context, index) =>
-                  _buildMessage(messages[index]),
+              itemBuilder: (context, index) => _buildMessage(messages[index]),
             ),
           ),
 
@@ -210,6 +209,11 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             onSubmit: (text) => ref
                 .read(conversationProvider(widget.sessionId).notifier)
                 .sendMessage(text),
+            onCancel: isIdle
+                ? null
+                : () => ref
+                      .read(conversationProvider(widget.sessionId).notifier)
+                      .cancelTurn(),
           ),
         ],
       ),
@@ -219,14 +223,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   Widget _buildMessage(ChatMessage message) {
     return switch (message) {
       UserChatMessage(:final content) => MessageBubble(
-          content: content,
-          isUser: true,
-        ),
+        content: content,
+        isUser: true,
+      ),
       AgentChatMessage(:final content, :final isComplete) => MessageBubble(
-          content: content,
-          isUser: false,
-          isStreaming: !isComplete,
-        ),
+        content: content,
+        isUser: false,
+        isStreaming: !isComplete,
+      ),
       ToolCallMessage(
         :final toolName,
         :final description,
@@ -269,7 +273,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         child: ListTile(
           leading: Icon(
             decided ? Icons.check_circle : Icons.security,
-            color: decided ? Colors.green : Theme.of(context).colorScheme.primary,
+            color: decided
+                ? Colors.green
+                : Theme.of(context).colorScheme.primary,
           ),
           title: Text(msg.toolName),
           subtitle: Text(decided ? decisionLabel! : msg.description),
@@ -290,8 +296,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   );
                   if (decision != null && mounted) {
                     ref
-                        .read(
-                            conversationProvider(widget.sessionId).notifier)
+                        .read(conversationProvider(widget.sessionId).notifier)
                         .respondToPermission(msg.requestId, decision);
                   }
                 },
@@ -324,12 +329,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               ? null
               : () async {
                   final options = msg.options
-                      .map((o) => QuestionOptionData(
-                            value: o.value,
-                            label: o.label,
-                            description:
-                                o.description.isNotEmpty ? o.description : null,
-                          ))
+                      .map(
+                        (o) => QuestionOptionData(
+                          value: o.value,
+                          label: o.label,
+                          description: o.description.isNotEmpty
+                              ? o.description
+                              : null,
+                        ),
+                      )
                       .toList();
                   final answers = await UserQuestionDialog.show(
                     context,
@@ -339,8 +347,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   );
                   if (answers != null && mounted) {
                     ref
-                        .read(
-                            conversationProvider(widget.sessionId).notifier)
+                        .read(conversationProvider(widget.sessionId).notifier)
                         .respondToQuestion(msg.questionId, answers);
                   }
                 },

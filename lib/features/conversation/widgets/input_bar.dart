@@ -10,11 +10,16 @@ class InputBar extends StatefulWidget {
     required this.onSubmit,
     this.enabled = true,
     this.hintText = 'Type a message...',
+    this.onCancel,
   });
 
   final ValueChanged<String> onSubmit;
   final bool enabled;
   final String hintText;
+
+  /// When non-null and [enabled] is false, a stop button is shown
+  /// instead of the disabled send button.
+  final VoidCallback? onCancel;
 
   @override
   State<InputBar> createState() => _InputBarState();
@@ -89,17 +94,42 @@ class _InputBarState extends State<InputBar> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: widget.enabled && _hasText ? _submit : null,
-              icon: const Icon(Icons.send, size: 20),
-              style: IconButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                foregroundColor: colorScheme.onPrimary,
-                disabledBackgroundColor: colorScheme.onSurface.withAlpha(30),
+            if (!widget.enabled && widget.onCancel != null)
+              _CancelButton(onCancel: widget.onCancel!)
+            else
+              IconButton.filled(
+                onPressed: widget.enabled && _hasText ? _submit : null,
+                icon: const Icon(Icons.send, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  disabledBackgroundColor: colorScheme.onSurface.withAlpha(30),
+                ),
               ),
-            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A stop/cancel button shown when the agent is actively working.
+class _CancelButton extends StatelessWidget {
+  const _CancelButton({required this.onCancel});
+
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return FilledButton.icon(
+      onPressed: onCancel,
+      icon: const Icon(Icons.stop, size: 20),
+      label: const Text('Stop'),
+      style: FilledButton.styleFrom(
+        backgroundColor: colorScheme.error,
+        foregroundColor: colorScheme.onError,
       ),
     );
   }

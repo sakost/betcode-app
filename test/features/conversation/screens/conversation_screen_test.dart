@@ -46,12 +46,8 @@ Widget _buildApp({
 }) {
   final mock = notifier ?? MockConversationNotifier(state);
   return ProviderScope(
-    overrides: [
-      conversationProvider(sessionId).overrideWith(() => mock),
-    ],
-    child: MaterialApp(
-      home: ConversationScreen(sessionId: sessionId),
-    ),
+    overrides: [conversationProvider(sessionId).overrideWith(() => mock)],
+    child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
   );
 }
 
@@ -65,16 +61,17 @@ ConversationActive _activeState({
   String? planContent,
 }) =>
     ConversationState.active(
-      sessionId: _sessionId,
-      messages: messages,
-      agentStatus: agentStatus,
-      lastSequence: 0,
-      usage: usage,
-      errorMessage: errorMessage,
-      todos: todos,
-      planModeActive: planModeActive,
-      planContent: planContent,
-    ) as ConversationActive;
+          sessionId: _sessionId,
+          messages: messages,
+          agentStatus: agentStatus,
+          lastSequence: 0,
+          usage: usage,
+          errorMessage: errorMessage,
+          todos: todos,
+          planModeActive: planModeActive,
+          planContent: planContent,
+        )
+        as ConversationActive;
 
 void main() {
   group('ConversationScreen', () {
@@ -94,12 +91,16 @@ void main() {
       });
 
       testWidgets('start button calls startConversation', (tester) async {
-        final notifier =
-            MockConversationNotifier(const ConversationState.initial());
+        final notifier = MockConversationNotifier(
+          const ConversationState.initial(),
+        );
         when(() => notifier.startConversation()).thenAnswer((_) async {});
 
         await tester.pumpWidget(
-          _buildApp(state: const ConversationState.initial(), notifier: notifier),
+          _buildApp(
+            state: const ConversationState.initial(),
+            notifier: notifier,
+          ),
         );
         await tester.pumpAndSettle();
 
@@ -120,8 +121,9 @@ void main() {
       });
 
       testWidgets('error state shows error and retry button', (tester) async {
-        final notifier =
-            MockConversationNotifier(const ConversationState.error('Network failure'));
+        final notifier = MockConversationNotifier(
+          const ConversationState.error('Network failure'),
+        );
         when(() => notifier.startConversation()).thenAnswer((_) async {});
 
         await tester.pumpWidget(
@@ -141,11 +143,10 @@ void main() {
         verify(() => notifier.startConversation()).called(1);
       });
 
-      testWidgets('active state shows message list and input bar',
-          (tester) async {
-        await tester.pumpWidget(
-          _buildApp(state: _activeState()),
-        );
+      testWidgets('active state shows message list and input bar', (
+        tester,
+      ) async {
+        await tester.pumpWidget(_buildApp(state: _activeState()));
         await tester.pumpAndSettle();
 
         expect(find.byType(InputBar), findsOneWidget);
@@ -158,14 +159,14 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('active state messages', () {
-      testWidgets('user message renders as MessageBubble with isUser=true',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.user(
-            content: 'Hello agent',
-            timestamp: DateTime(2024),
-          ),
-        ]);
+      testWidgets('user message renders as MessageBubble with isUser=true', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.user(content: 'Hello agent', timestamp: DateTime(2024)),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -174,15 +175,18 @@ void main() {
         expect(bubble.isUser, isTrue);
       });
 
-      testWidgets('agent message renders as MessageBubble with isUser=false',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.agent(
-            content: 'I can help with that',
-            timestamp: DateTime(2024),
-            isComplete: true,
-          ),
-        ]);
+      testWidgets('agent message renders as MessageBubble with isUser=false', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.agent(
+              content: 'I can help with that',
+              timestamp: DateTime(2024),
+              isComplete: true,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -192,15 +196,18 @@ void main() {
         expect(bubble.isStreaming, isFalse);
       });
 
-      testWidgets('streaming agent message shows isStreaming=true',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.agent(
-            content: 'Thinking...',
-            timestamp: DateTime(2024),
-            isComplete: false,
-          ),
-        ]);
+      testWidgets('streaming agent message shows isStreaming=true', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.agent(
+              content: 'Thinking...',
+              timestamp: DateTime(2024),
+              isComplete: false,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pump();
 
@@ -209,15 +216,17 @@ void main() {
       });
 
       testWidgets('tool call renders as ToolCallCard', (tester) async {
-        final state = _activeState(messages: [
-          const ChatMessage.toolCall(
-            toolId: 'tool-1',
-            toolName: 'Read',
-            description: 'Reading file.dart',
-            output: 'file contents',
-            isComplete: true,
-          ),
-        ]);
+        final state = _activeState(
+          messages: [
+            const ChatMessage.toolCall(
+              toolId: 'tool-1',
+              toolName: 'Read',
+              description: 'Reading file.dart',
+              output: 'file contents',
+              isComplete: true,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -227,32 +236,39 @@ void main() {
         expect(card.isComplete, isTrue);
       });
 
-      testWidgets('permission request without decision shows tap to respond card',
-          (tester) async {
-        final state = _activeState(messages: [
-          const ChatMessage.permissionRequest(
-            requestId: 'perm-1',
-            toolName: 'Bash',
-            description: 'Run shell command',
-          ),
-        ]);
-        await tester.pumpWidget(_buildApp(state: state));
-        await tester.pumpAndSettle();
+      testWidgets(
+        'permission request without decision shows tap to respond card',
+        (tester) async {
+          final state = _activeState(
+            messages: [
+              const ChatMessage.permissionRequest(
+                requestId: 'perm-1',
+                toolName: 'Bash',
+                description: 'Run shell command',
+              ),
+            ],
+          );
+          await tester.pumpWidget(_buildApp(state: state));
+          await tester.pumpAndSettle();
 
-        expect(find.text('Tap to respond'), findsOneWidget);
-        expect(find.text('Bash'), findsOneWidget);
-      });
+          expect(find.text('Tap to respond'), findsOneWidget);
+          expect(find.text('Bash'), findsOneWidget);
+        },
+      );
 
-      testWidgets('permission request with decision shows decided indicator',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.permissionRequest(
-            requestId: 'perm-1',
-            toolName: 'Bash',
-            description: 'Run shell command',
-            decision: PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
-          ),
-        ]);
+      testWidgets('permission request with decision shows decided indicator', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.permissionRequest(
+              requestId: 'perm-1',
+              toolName: 'Bash',
+              description: 'Run shell command',
+              decision: PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -262,18 +278,19 @@ void main() {
         expect(find.text('Allowed'), findsOneWidget);
       });
 
-      testWidgets('user question without answers shows tap to answer card',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.userQuestion(
-            questionId: 'q-1',
-            question: 'Which option?',
-            options: [
-              QuestionOption(value: 'a', label: 'Option A'),
-            ],
-            multiSelect: false,
-          ),
-        ]);
+      testWidgets('user question without answers shows tap to answer card', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.userQuestion(
+              questionId: 'q-1',
+              question: 'Which option?',
+              options: [QuestionOption(value: 'a', label: 'Option A')],
+              multiSelect: false,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -281,19 +298,20 @@ void main() {
         expect(find.text('Which option?'), findsOneWidget);
       });
 
-      testWidgets('user question with answers shows answered indicator',
-          (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.userQuestion(
-            questionId: 'q-1',
-            question: 'Which option?',
-            options: [
-              QuestionOption(value: 'a', label: 'Option A'),
-            ],
-            multiSelect: false,
-            answers: {'a': 'a'},
-          ),
-        ]);
+      testWidgets('user question with answers shows answered indicator', (
+        tester,
+      ) async {
+        final state = _activeState(
+          messages: [
+            ChatMessage.userQuestion(
+              questionId: 'q-1',
+              question: 'Which option?',
+              options: [QuestionOption(value: 'a', label: 'Option A')],
+              multiSelect: false,
+              answers: {'a': 'a'},
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -302,20 +320,22 @@ void main() {
       });
 
       testWidgets('multiple messages render in order', (tester) async {
-        final state = _activeState(messages: [
-          ChatMessage.user(content: 'First', timestamp: DateTime(2024)),
-          ChatMessage.agent(
-            content: 'Second',
-            timestamp: DateTime(2024),
-            isComplete: true,
-          ),
-          const ChatMessage.toolCall(
-            toolId: 'tool-1',
-            toolName: 'Read',
-            description: 'Third',
-            isComplete: true,
-          ),
-        ]);
+        final state = _activeState(
+          messages: [
+            ChatMessage.user(content: 'First', timestamp: DateTime(2024)),
+            ChatMessage.agent(
+              content: 'Second',
+              timestamp: DateTime(2024),
+              isComplete: true,
+            ),
+            const ChatMessage.toolCall(
+              toolId: 'tool-1',
+              toolName: 'Read',
+              description: 'Third',
+              isComplete: true,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -358,9 +378,7 @@ void main() {
       });
 
       testWidgets('input bar enabled when agent is idle', (tester) async {
-        final state = _activeState(
-          agentStatus: AgentStatus.AGENT_STATUS_IDLE,
-        );
+        final state = _activeState(agentStatus: AgentStatus.AGENT_STATUS_IDLE);
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -368,8 +386,9 @@ void main() {
         expect(inputBar.enabled, isTrue);
       });
 
-      testWidgets('input bar disabled when agent is executing tool',
-          (tester) async {
+      testWidgets('input bar disabled when agent is executing tool', (
+        tester,
+      ) async {
         final state = _activeState(
           agentStatus: AgentStatus.AGENT_STATUS_EXECUTING_TOOL,
         );
@@ -378,6 +397,95 @@ void main() {
 
         final inputBar = tester.widget<InputBar>(find.byType(InputBar));
         expect(inputBar.enabled, isFalse);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Active state: cancel button
+    // -----------------------------------------------------------------------
+
+    group('cancel button', () {
+      testWidgets('cancel button visible when agent is thinking', (
+        tester,
+      ) async {
+        final state = _activeState(
+          agentStatus: AgentStatus.AGENT_STATUS_THINKING,
+        );
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.stop), findsOneWidget);
+        expect(find.text('Stop'), findsOneWidget);
+      });
+
+      testWidgets('cancel button visible when agent is executing tool', (
+        tester,
+      ) async {
+        final state = _activeState(
+          agentStatus: AgentStatus.AGENT_STATUS_EXECUTING_TOOL,
+        );
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.stop), findsOneWidget);
+        expect(find.text('Stop'), findsOneWidget);
+      });
+
+      testWidgets('cancel button visible when agent is compacting', (
+        tester,
+      ) async {
+        final state = _activeState(
+          agentStatus: AgentStatus.AGENT_STATUS_COMPACTING,
+        );
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.stop), findsOneWidget);
+        expect(find.text('Stop'), findsOneWidget);
+      });
+
+      testWidgets('cancel button hidden when agent is idle', (tester) async {
+        final state = _activeState(agentStatus: AgentStatus.AGENT_STATUS_IDLE);
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.stop), findsNothing);
+        expect(find.text('Stop'), findsNothing);
+      });
+
+      testWidgets('cancel button hidden when agent is waiting for user', (
+        tester,
+      ) async {
+        final state = _activeState(
+          agentStatus: AgentStatus.AGENT_STATUS_WAITING_FOR_USER,
+        );
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.stop), findsNothing);
+        expect(find.text('Stop'), findsNothing);
+      });
+
+      testWidgets('tapping cancel button calls cancelTurn on notifier', (
+        tester,
+      ) async {
+        final notifier = MockConversationNotifier(
+          _activeState(agentStatus: AgentStatus.AGENT_STATUS_THINKING),
+        );
+        when(() => notifier.cancelTurn()).thenReturn(null);
+
+        await tester.pumpWidget(
+          _buildApp(
+            state: _activeState(agentStatus: AgentStatus.AGENT_STATUS_THINKING),
+            notifier: notifier,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.stop));
+        await tester.pump();
+
+        verify(() => notifier.cancelTurn()).called(1);
       });
     });
 
@@ -402,8 +510,9 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('usage display', () {
-      testWidgets('shows UsageDisplay when usage info available',
-          (tester) async {
+      testWidgets('shows UsageDisplay when usage info available', (
+        tester,
+      ) async {
         final state = _activeState(
           usage: const UsageInfo(
             inputTokens: 1500,
@@ -431,8 +540,9 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('error message banner', () {
-      testWidgets('shows error banner when errorMessage is set',
-          (tester) async {
+      testWidgets('shows error banner when errorMessage is set', (
+        tester,
+      ) async {
         final state = _activeState(errorMessage: 'Reconnecting...');
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
@@ -440,8 +550,7 @@ void main() {
         expect(find.text('Reconnecting...'), findsOneWidget);
       });
 
-      testWidgets('no error banner when errorMessage is null',
-          (tester) async {
+      testWidgets('no error banner when errorMessage is null', (tester) async {
         final state = _activeState();
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
@@ -471,23 +580,27 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('todo list panel', () {
-      testWidgets('TodoListPanel shown when todos are non-empty',
-          (tester) async {
-        final state = _activeState(todos: [
-          TodoItem(
-            id: '1',
-            subject: 'Fix bug',
-            status: TodoStatus.TODO_STATUS_PENDING,
-          ),
-        ]);
+      testWidgets('TodoListPanel shown when todos are non-empty', (
+        tester,
+      ) async {
+        final state = _activeState(
+          todos: [
+            TodoItem(
+              id: '1',
+              subject: 'Fix bug',
+              status: TodoStatus.TODO_STATUS_PENDING,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
         expect(find.byType(TodoListPanel), findsOneWidget);
       });
 
-      testWidgets('TodoListPanel not shown when todos are empty',
-          (tester) async {
+      testWidgets('TodoListPanel not shown when todos are empty', (
+        tester,
+      ) async {
         final state = _activeState();
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
@@ -497,20 +610,21 @@ void main() {
         expect(find.byType(ExpansionTile), findsNothing);
       });
 
-      testWidgets('TodoListPanel shows correct count badge',
-          (tester) async {
-        final state = _activeState(todos: [
-          TodoItem(
-            id: '1',
-            subject: 'Done',
-            status: TodoStatus.TODO_STATUS_COMPLETED,
-          ),
-          TodoItem(
-            id: '2',
-            subject: 'Pending',
-            status: TodoStatus.TODO_STATUS_PENDING,
-          ),
-        ]);
+      testWidgets('TodoListPanel shows correct count badge', (tester) async {
+        final state = _activeState(
+          todos: [
+            TodoItem(
+              id: '1',
+              subject: 'Done',
+              status: TodoStatus.TODO_STATUS_COMPLETED,
+            ),
+            TodoItem(
+              id: '2',
+              subject: 'Pending',
+              status: TodoStatus.TODO_STATUS_PENDING,
+            ),
+          ],
+        );
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -523,8 +637,9 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('plan mode banner', () {
-      testWidgets('PlanModeBanner shown when planModeActive is true',
-          (tester) async {
+      testWidgets('PlanModeBanner shown when planModeActive is true', (
+        tester,
+      ) async {
         final state = _activeState(planModeActive: true);
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
@@ -533,8 +648,9 @@ void main() {
         expect(find.text('Plan Mode'), findsOneWidget);
       });
 
-      testWidgets('PlanModeBanner hidden when planModeActive is false',
-          (tester) async {
+      testWidgets('PlanModeBanner hidden when planModeActive is false', (
+        tester,
+      ) async {
         final state = _activeState(planModeActive: false);
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
@@ -544,8 +660,9 @@ void main() {
         expect(find.text('Plan Mode'), findsNothing);
       });
 
-      testWidgets('PlanModeBanner shows plan content when provided',
-          (tester) async {
+      testWidgets('PlanModeBanner shows plan content when provided', (
+        tester,
+      ) async {
         final state = _activeState(
           planModeActive: true,
           planContent: 'Step 1: Do things',
