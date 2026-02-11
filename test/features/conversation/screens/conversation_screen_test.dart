@@ -12,6 +12,8 @@ import 'package:betcode_app/features/conversation/screens/conversation_screen.da
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/message_bubble.dart';
 import 'package:betcode_app/features/conversation/widgets/status_indicator.dart';
+import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart';
+import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
@@ -58,6 +60,9 @@ ConversationActive _activeState({
   AgentStatus agentStatus = AgentStatus.AGENT_STATUS_IDLE,
   UsageInfo? usage,
   String? errorMessage,
+  List<TodoItem> todos = const [],
+  bool planModeActive = false,
+  String? planContent,
 }) =>
     ConversationState.active(
       sessionId: _sessionId,
@@ -66,6 +71,9 @@ ConversationActive _activeState({
       lastSequence: 0,
       usage: usage,
       errorMessage: errorMessage,
+      todos: todos,
+      planModeActive: planModeActive,
+      planContent: planContent,
     ) as ConversationActive;
 
 void main() {
@@ -455,6 +463,97 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Conversation'), findsOneWidget);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Active state: todo list panel
+    // -----------------------------------------------------------------------
+
+    group('todo list panel', () {
+      testWidgets('TodoListPanel shown when todos are non-empty',
+          (tester) async {
+        final state = _activeState(todos: [
+          TodoItem(
+            id: '1',
+            subject: 'Fix bug',
+            status: TodoStatus.TODO_STATUS_PENDING,
+          ),
+        ]);
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TodoListPanel), findsOneWidget);
+      });
+
+      testWidgets('TodoListPanel not shown when todos are empty',
+          (tester) async {
+        final state = _activeState();
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        // The widget is present but renders nothing (SizedBox.shrink)
+        expect(find.byType(TodoListPanel), findsOneWidget);
+        expect(find.byType(ExpansionTile), findsNothing);
+      });
+
+      testWidgets('TodoListPanel shows correct count badge',
+          (tester) async {
+        final state = _activeState(todos: [
+          TodoItem(
+            id: '1',
+            subject: 'Done',
+            status: TodoStatus.TODO_STATUS_COMPLETED,
+          ),
+          TodoItem(
+            id: '2',
+            subject: 'Pending',
+            status: TodoStatus.TODO_STATUS_PENDING,
+          ),
+        ]);
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.text('1/2 done'), findsOneWidget);
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Active state: plan mode banner
+    // -----------------------------------------------------------------------
+
+    group('plan mode banner', () {
+      testWidgets('PlanModeBanner shown when planModeActive is true',
+          (tester) async {
+        final state = _activeState(planModeActive: true);
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PlanModeBanner), findsOneWidget);
+        expect(find.text('Plan Mode'), findsOneWidget);
+      });
+
+      testWidgets('PlanModeBanner hidden when planModeActive is false',
+          (tester) async {
+        final state = _activeState(planModeActive: false);
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        // Widget is present but renders nothing
+        expect(find.byType(PlanModeBanner), findsOneWidget);
+        expect(find.text('Plan Mode'), findsNothing);
+      });
+
+      testWidgets('PlanModeBanner shows plan content when provided',
+          (tester) async {
+        final state = _activeState(
+          planModeActive: true,
+          planContent: 'Step 1: Do things',
+        );
+        await tester.pumpWidget(_buildApp(state: state));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Plan Mode'), findsOneWidget);
       });
     });
   });

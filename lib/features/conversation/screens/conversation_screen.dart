@@ -7,7 +7,9 @@ import '../notifiers/conversation_providers.dart';
 import '../widgets/input_bar.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/permission_sheet.dart';
+import '../widgets/plan_mode_banner.dart';
 import '../widgets/status_indicator.dart';
+import '../widgets/todo_list_panel.dart';
 import '../widgets/tool_call_card.dart';
 import '../widgets/usage_display.dart';
 import '../widgets/user_question_dialog.dart';
@@ -164,6 +166,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 ),
               ],
             ),
+
+          // Plan mode banner
+          PlanModeBanner(
+            planModeActive: active.planModeActive,
+            planContent: active.planContent,
+          ),
+
+          // Todo list panel
+          TodoListPanel(todos: active.todos),
 
           // Messages list
           Expanded(
