@@ -109,6 +109,16 @@ class AppShell extends StatelessWidget {
       label: 'Machines',
     ),
     NavigationDestination(
+      icon: Icon(Icons.account_tree_outlined),
+      selectedIcon: Icon(Icons.account_tree),
+      label: 'Worktrees',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.merge_outlined),
+      selectedIcon: Icon(Icons.merge),
+      label: 'GitLab',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.settings_outlined),
       selectedIcon: Icon(Icons.settings),
       label: 'Settings',
@@ -119,6 +129,8 @@ class AppShell extends StatelessWidget {
     '/conversation',
     '/sessions',
     '/machines',
+    '/worktrees',
+    '/gitlab',
     '/settings',
   ];
 
