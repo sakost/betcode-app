@@ -12,10 +12,20 @@ import 'connection_state.dart';
 /// can react to connectivity changes. Reconnection uses exponential backoff
 /// capped at 30 seconds (100ms -> 1s -> 5s -> 30s).
 class GrpcClientManager {
-  GrpcClientManager({List<ClientInterceptor>? interceptors})
-    : _interceptors = interceptors ?? const [];
+  /// Creates a [GrpcClientManager].
+  ///
+  /// An optional [healthCheckFn] callback can be provided to verify
+  /// connectivity after channel creation. It receives the newly created
+  /// [ClientChannel] and should throw if the connection is unhealthy.
+  /// If null, no health check is performed (backward compatible).
+  GrpcClientManager({
+    List<ClientInterceptor>? interceptors,
+    Future<void> Function(ClientChannel channel)? healthCheckFn,
+  })  : _interceptors = interceptors ?? const [],
+        _healthCheckFn = healthCheckFn;
 
   final List<ClientInterceptor> _interceptors;
+  final Future<void> Function(ClientChannel channel)? _healthCheckFn;
 
   final _statusController = StreamController<GrpcConnectionStatus>.broadcast();
   final _connectionInfoController =
@@ -25,6 +35,11 @@ class GrpcClientManager {
   ConnectionInfo _currentInfo = const ConnectionInfo();
   Timer? _reconnectTimer;
   bool _disposed = false;
+
+  // Stored connection parameters for auto-reconnect.
+  String? _host;
+  int? _port;
+  bool _useTls = false;
 
   /// The backoff durations for reconnection attempts, indexed by attempt number.
   /// Capped at 30 seconds.
@@ -68,6 +83,15 @@ class GrpcClientManager {
   /// The interceptors configured for this manager.
   List<ClientInterceptor> get interceptors => List.unmodifiable(_interceptors);
 
+  /// The host from the last [connect] call, or null if never connected.
+  String? get host => _host;
+
+  /// The port from the last [connect] call, or null if never connected.
+  int? get port => _port;
+
+  /// Whether TLS was enabled in the last [connect] call.
+  bool get useTls => _useTls;
+
   /// Establish a gRPC connection to the given [host] and [port].
   ///
   /// If a connection already exists it will be shut down first.
@@ -75,6 +99,10 @@ class GrpcClientManager {
   Future<void> connect(String host, int port, {bool useTls = false}) async {
     _cancelReconnect();
     await _shutdownChannel();
+
+    _host = host;
+    _port = port;
+    _useTls = useTls;
 
     _emitStatus(GrpcConnectionStatus.connecting);
 
@@ -89,6 +117,17 @@ class GrpcClientManager {
           connectionTimeout: const Duration(seconds: 10),
         ),
       );
+
+      if (_healthCheckFn != null) {
+        try {
+          await _healthCheckFn(_channel!);
+        } on Object catch (e) {
+          developer.log(
+            'Health check failed (connecting anyway): $e',
+            name: 'GrpcClientManager',
+          );
+        }
+      }
 
       _emitStatus(GrpcConnectionStatus.connected);
     } on Object catch (e) {
@@ -110,13 +149,26 @@ class GrpcClientManager {
   /// Trigger a reconnection attempt using exponential backoff.
   ///
   /// Call this when an RPC fails with a transient error and you want the
-  /// manager to re-establish the connection automatically. The [host] and
-  /// [port] from the original [connect] call are not stored, so callers
-  /// must supply them again.
-  void reconnect(String host, int port, {bool useTls = false}) {
+  /// manager to re-establish the connection automatically. If [host] and
+  /// [port] are omitted, the values from the last [connect] call are used.
+  /// Throws [StateError] if no stored parameters are available and none
+  /// are supplied.
+  void reconnect({String? host, int? port, bool? useTls}) {
     if (_disposed) return;
+
+    final resolvedHost = host ?? _host;
+    final resolvedPort = port ?? _port;
+    final resolvedUseTls = useTls ?? _useTls;
+
+    if (resolvedHost == null || resolvedPort == null) {
+      throw StateError(
+        'Cannot reconnect: no stored connection parameters. '
+        'Call connect() first or supply host and port explicitly.',
+      );
+    }
+
     _cancelReconnect();
-    _reconnectLoop(host, port, useTls: useTls);
+    _reconnectLoop(resolvedHost, resolvedPort, useTls: resolvedUseTls);
   }
 
   /// Release all resources. The manager cannot be used after this.

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
 
 import 'package:betcode_app/core/grpc/client_manager.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
@@ -126,7 +127,7 @@ void main() {
       final infos = <ConnectionInfo>[];
       manager.connectionInfoStream.listen(infos.add);
 
-      manager.reconnect('localhost', 50051);
+      manager.reconnect(host: 'localhost', port: 50051);
       await Future<void>.delayed(Duration.zero);
 
       expect(
@@ -145,7 +146,7 @@ void main() {
       // Should not throw or emit.
       final manager2 = GrpcClientManager();
       await manager2.dispose();
-      manager2.reconnect('localhost', 50051);
+      manager2.reconnect(host: 'localhost', port: 50051);
       // No assertion needed — just verify no crash.
       // Re-assign manager to avoid double-dispose in tearDown.
       manager = GrpcClientManager();
@@ -190,9 +191,132 @@ void main() {
     });
   });
 
+  group('GrpcClientManager - stored connection parameters', () {
+    test('stores host, port, useTls after connect', () async {
+      await manager.connect('myhost', 9090, useTls: true);
+
+      expect(manager.host, 'myhost');
+      expect(manager.port, 9090);
+      expect(manager.useTls, isTrue);
+    });
+
+    test('host, port, useTls are null/false before connect', () {
+      expect(manager.host, isNull);
+      expect(manager.port, isNull);
+      expect(manager.useTls, isFalse);
+    });
+
+    test('reconnect uses stored parameters when none supplied', () async {
+      await manager.connect('localhost', 50051);
+
+      final infos = <ConnectionInfo>[];
+      manager.connectionInfoStream.listen(infos.add);
+
+      manager.reconnect();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        infos.any(
+          (i) =>
+              i.status == GrpcConnectionStatus.reconnecting &&
+              i.reconnectAttempt == 1,
+        ),
+        isTrue,
+      );
+    });
+
+    test('reconnect throws if no stored params and none supplied', () {
+      expect(
+        () => manager.reconnect(),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('reconnect with explicit args overrides stored params', () async {
+      await manager.connect('localhost', 50051);
+
+      // Reconnect with different params — should not throw
+      manager.reconnect(host: 'otherhost', port: 9999, useTls: true);
+
+      expect(manager.currentInfo.status, GrpcConnectionStatus.reconnecting);
+    });
+  });
+
+  group('GrpcClientManager - health check', () {
+    test('calls healthCheckFn during connect', () async {
+      var healthCheckCalled = false;
+      final mgr = GrpcClientManager(
+        healthCheckFn: (channel) async {
+          healthCheckCalled = true;
+        },
+      );
+      addTearDown(() => mgr.dispose());
+
+      await mgr.connect('localhost', 50051);
+
+      expect(healthCheckCalled, isTrue);
+      expect(mgr.status, GrpcConnectionStatus.connected);
+    });
+
+    test('emits connected after successful health check', () async {
+      final statuses = <GrpcConnectionStatus>[];
+      final mgr = GrpcClientManager(
+        healthCheckFn: (channel) async {
+          // Successful health check.
+        },
+      );
+      addTearDown(() => mgr.dispose());
+      mgr.statusStream.listen(statuses.add);
+
+      await mgr.connect('localhost', 50051);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(statuses, contains(GrpcConnectionStatus.connecting));
+      expect(statuses, contains(GrpcConnectionStatus.connected));
+    });
+
+    test('emits connected even when health check throws (graceful fallback)', () async {
+      final mgr = GrpcClientManager(
+        healthCheckFn: (channel) async {
+          throw GrpcError.unavailable('daemon not ready');
+        },
+      );
+      addTearDown(() => mgr.dispose());
+
+      await mgr.connect('localhost', 50051);
+
+      expect(mgr.status, GrpcConnectionStatus.connected);
+      expect(mgr.channelOrNull, isNotNull);
+    });
+
+    test('connect succeeds without healthCheckFn (backward compat)', () async {
+      final mgr = GrpcClientManager();
+      addTearDown(() => mgr.dispose());
+
+      await mgr.connect('localhost', 50051);
+
+      expect(mgr.status, GrpcConnectionStatus.connected);
+    });
+
+    test('health check receives the created channel', () async {
+      ClientChannel? receivedChannel;
+      final mgr = GrpcClientManager(
+        healthCheckFn: (channel) async {
+          receivedChannel = channel;
+        },
+      );
+      addTearDown(() => mgr.dispose());
+
+      await mgr.connect('localhost', 50051);
+
+      expect(receivedChannel, isNotNull);
+      expect(receivedChannel, same(mgr.channel));
+    });
+  });
+
   group('GrpcClientManager - backoff durations', () {
     test('reconnect sets attempt count on currentInfo synchronously', () {
-      manager.reconnect('localhost', 50051);
+      manager.reconnect(host: 'localhost', port: 50051);
 
       // _reconnectLoop emits synchronously before the timer fires.
       expect(manager.currentInfo.status, GrpcConnectionStatus.reconnecting);

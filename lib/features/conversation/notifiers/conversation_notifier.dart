@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:math' show min;
 
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart';
 
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/agent.pb.dart' as pb;
@@ -15,8 +18,19 @@ import 'conversation_event_handler.dart';
 /// A null session ID means "start new session"; a non-null ID resumes.
 class ConversationNotifier extends AsyncNotifier<ConversationState>
     with ConversationEventHandler {
+  static const _maxReconnectAttempts = 5;
+  static const _backoffDurations = [
+    Duration(milliseconds: 500),
+    Duration(seconds: 1),
+    Duration(seconds: 3),
+    Duration(seconds: 10),
+    Duration(seconds: 30),
+  ];
+
   StreamController<pb.AgentRequest>? _requestController;
   StreamSubscription<pb.AgentEvent>? _eventSubscription;
+  int _reconnectAttempt = 0;
+  Timer? _reconnectTimer;
 
   /// The session ID this notifier was created with.
   /// Set by the family provider factory.
@@ -150,8 +164,86 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   // ---------------------------------------------------------------------------
 
   void _handleStreamError(Object error) {
-    state = AsyncData(ConversationState.error('Stream error: $error'));
-    _cleanup();
+    _eventSubscription?.cancel();
+    _eventSubscription = null;
+
+    // Don't retry fatal errors.
+    if (_isFatalError(error)) {
+      state = AsyncData(ConversationState.error('Stream error: $error'));
+      _requestController?.close();
+      _requestController = null;
+      return;
+    }
+
+    // Attempt reconnection if we have an active session.
+    final current = state.value;
+    if (current is ConversationActive && current.sessionId.isNotEmpty) {
+      _attemptReconnection(current);
+    } else {
+      state = AsyncData(ConversationState.error('Stream error: $error'));
+      _requestController?.close();
+      _requestController = null;
+    }
+  }
+
+  bool _isFatalError(Object error) {
+    if (error is GrpcError) {
+      return error.code == StatusCode.unauthenticated ||
+          error.code == StatusCode.permissionDenied ||
+          error.code == StatusCode.notFound;
+    }
+    return false;
+  }
+
+  void _attemptReconnection(ConversationActive active) {
+    if (_reconnectAttempt >= _maxReconnectAttempts) {
+      state = AsyncData(ConversationState.error(
+        'Connection lost after $_maxReconnectAttempts reconnection attempts',
+      ));
+      _cleanup();
+      return;
+    }
+
+    final delay =
+        _backoffDurations[min(_reconnectAttempt, _backoffDurations.length - 1)];
+    _reconnectAttempt++;
+
+    state = AsyncData(active.copyWith(
+      errorMessage: 'Reconnecting (attempt $_reconnectAttempt)...',
+    ));
+
+    _reconnectTimer = Timer(delay, () {
+      if (state.value is! ConversationActive) return;
+
+      try {
+        final responseStream = _client.resumeSession(
+          pb.ResumeSessionRequest(
+            sessionId: active.sessionId,
+            fromSequence: Int64(active.lastSequence),
+          ),
+        );
+
+        _eventSubscription = responseStream.listen(
+          handleEvent,
+          onError: _handleStreamError,
+          onDone: _handleStreamDone,
+          cancelOnError: false,
+        );
+
+        // Success — reset counter and clear error.
+        _reconnectAttempt = 0;
+        final current = state.value;
+        if (current is ConversationActive) {
+          state = AsyncData(current.copyWith(errorMessage: null));
+        }
+      } catch (e) {
+        // Retry on failure.
+        final current = state.value;
+        if (current is ConversationActive) {
+          _attemptReconnection(current);
+        }
+      }
+    });
   }
 
   void _handleStreamDone() {
@@ -169,5 +261,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     _eventSubscription = null;
     _requestController?.close();
     _requestController = null;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
   }
 }

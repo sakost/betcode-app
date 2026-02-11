@@ -47,3 +47,26 @@ class FailingConverseClient extends Fake implements AgentServiceClient {
     throw error;
   }
 }
+
+/// A [ResponseStream] that immediately emits an error.
+class ErrorResponseStream<T> extends Fake implements ResponseStream<T> {
+  ErrorResponseStream(this.error);
+  final Object error;
+
+  @override
+  StreamSubscription<T> listen(
+    void Function(T)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    final controller = StreamController<T>();
+    controller.addError(error);
+    return controller.stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+}

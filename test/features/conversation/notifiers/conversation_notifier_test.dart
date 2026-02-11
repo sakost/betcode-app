@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +24,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const Stream<pb.AgentRequest>.empty());
+    registerFallbackValue(pb.ResumeSessionRequest());
   });
 
   setUp(() {
@@ -240,16 +242,35 @@ void main() {
   });
 
   group('stream error handling', () {
-    test('stream error transitions to ConversationError', () async {
+    test('transient stream error triggers reconnection on active session',
+        () async {
+      when(() => mockClient.resumeSession(any())).thenAnswer(
+        (_) => FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>()),
+      );
+
       final n = notifier();
       await goActive(n);
 
       eventController.addError(GrpcError.unavailable('lost'));
       await Future<void>.delayed(Duration.zero);
 
+      // Should still be active (attempting reconnection), not error.
+      final s = stateVal();
+      expect(s, isA<ConversationActive>());
+      expect((s as ConversationActive).errorMessage, contains('Reconnecting'));
+    });
+
+    test('fatal stream error transitions to ConversationError', () async {
+      final n = notifier();
+      await goActive(n);
+
+      eventController.addError(GrpcError.unauthenticated('expired'));
+      await Future<void>.delayed(Duration.zero);
+
       final s = stateVal();
       expect(s, isA<ConversationError>());
-      expect((s as ConversationError).message, contains('lost'));
+      expect((s as ConversationError).message, contains('expired'));
     });
 
     test('stream done sets idle status on active state', () async {
@@ -331,6 +352,248 @@ void main() {
       expect(a.messages[0], isA<UserChatMessage>());
       expect((a.messages[1] as AgentChatMessage).content, '4');
       expect((a.messages[1] as AgentChatMessage).isComplete, true);
+    });
+  });
+
+  group('reconnection', () {
+    test('attempts reconnection on transient stream error', () {
+      fakeAsync((async) {
+        final resumeController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer(
+          (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
+        );
+
+        final n = notifier();
+        // Manually drive the futures in fakeAsync.
+        n.startConversation();
+        async.flushMicrotasks();
+
+        // Transition to active state.
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+        ));
+        async.flushMicrotasks();
+
+        // Simulate transient stream error.
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        // Advance past the first backoff delay (500ms).
+        async.elapse(const Duration(milliseconds: 600));
+
+        verify(() => mockClient.resumeSession(any())).called(1);
+
+        resumeController.close();
+      });
+    });
+
+    test('sends ResumeSessionRequest with correct session ID and sequence',
+        () {
+      fakeAsync((async) {
+        pb.ResumeSessionRequest? capturedRequest;
+        final resumeController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer((inv) {
+          capturedRequest =
+              inv.positionalArguments[0] as pb.ResumeSessionRequest;
+          return FakeResponseStream<pb.AgentEvent>(resumeController);
+        });
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(7),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-42'),
+        ));
+        async.flushMicrotasks();
+
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(milliseconds: 600));
+
+        expect(capturedRequest, isNotNull);
+        expect(capturedRequest!.sessionId, 'sess-42');
+        expect(capturedRequest!.fromSequence, Int64(7));
+
+        resumeController.close();
+      });
+    });
+
+    test('does not attempt reconnection when no session ID available', () {
+      fakeAsync((async) {
+        when(() => mockClient.resumeSession(any())).thenAnswer(
+          (_) =>
+              FakeResponseStream<pb.AgentEvent>(StreamController<pb.AgentEvent>()),
+        );
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        // Error before SessionInfo — state is ConversationConnecting, not active.
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(seconds: 60));
+
+        verifyNever(() => mockClient.resumeSession(any()));
+
+        final s = stateVal();
+        expect(s, isA<ConversationError>());
+      });
+    });
+
+    test('does not attempt reconnection on fatal error (unauthenticated)', () {
+      fakeAsync((async) {
+        when(() => mockClient.resumeSession(any())).thenAnswer(
+          (_) =>
+              FakeResponseStream<pb.AgentEvent>(StreamController<pb.AgentEvent>()),
+        );
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+        ));
+        async.flushMicrotasks();
+
+        eventController.addError(GrpcError.unauthenticated('expired'));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(seconds: 60));
+
+        verifyNever(() => mockClient.resumeSession(any()));
+
+        final s = stateVal();
+        expect(s, isA<ConversationError>());
+      });
+    });
+
+    test('transitions to error state after max reconnection attempts', () {
+      fakeAsync((async) {
+        // Make resumeSession always throw to trigger repeated retries.
+        when(() => mockClient.resumeSession(any()))
+            .thenThrow(GrpcError.unavailable('still down'));
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+        ));
+        async.flushMicrotasks();
+
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        // Advance well past all backoff durations (500ms + 1s + 3s + 10s + 30s = 44.5s).
+        async.elapse(const Duration(minutes: 2));
+
+        final s = stateVal();
+        expect(s, isA<ConversationError>());
+        expect(
+          (s as ConversationError).message,
+          contains('5'),
+        );
+      });
+    });
+
+    test('successful reconnection resumes event processing', () {
+      fakeAsync((async) {
+        final resumeController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer(
+          (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
+        );
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+        ));
+        async.flushMicrotasks();
+
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(milliseconds: 600));
+
+        // Send events through the resumed stream.
+        resumeController.add(pb.AgentEvent(
+          sequence: Int64(2),
+          textDelta: pb.TextDelta(text: 'Hello again'),
+        ));
+        async.flushMicrotasks();
+
+        final a = stateVal() as ConversationActive;
+        expect(a.messages, hasLength(1));
+        expect((a.messages.first as AgentChatMessage).content, 'Hello again');
+        expect(a.errorMessage, isNull);
+
+        resumeController.close();
+      });
+    });
+
+    test('resets reconnect counter on successful reconnection', () {
+      fakeAsync((async) {
+        var resumeCallCount = 0;
+        StreamController<pb.AgentEvent>? activeResumeController;
+
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          resumeCallCount++;
+          activeResumeController = StreamController<pb.AgentEvent>();
+          return FakeResponseStream<pb.AgentEvent>(activeResumeController!);
+        });
+
+        final n = notifier();
+        n.startConversation();
+        async.flushMicrotasks();
+
+        eventController.add(pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+        ));
+        async.flushMicrotasks();
+
+        // First disconnect.
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 600));
+        expect(resumeCallCount, 1);
+
+        // Send an event on the resumed stream so reconnect is considered successful.
+        activeResumeController!.add(pb.AgentEvent(
+          sequence: Int64(2),
+          statusChange:
+              pb.StatusChange(status: AgentStatus.AGENT_STATUS_IDLE),
+        ));
+        async.flushMicrotasks();
+
+        // Second disconnect on the resumed stream.
+        activeResumeController!.addError(GrpcError.unavailable('lost again'));
+        async.flushMicrotasks();
+
+        // The second reconnection should use the first backoff delay (500ms),
+        // proving the counter was reset.
+        async.elapse(const Duration(milliseconds: 600));
+        expect(resumeCallCount, 2);
+
+        // State should still be active (not error), confirming counter reset.
+        final s = stateVal();
+        expect(s, isA<ConversationActive>());
+
+        activeResumeController?.close();
+      });
     });
   });
 }

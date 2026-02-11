@@ -1,51 +1,44 @@
 import 'package:flutter/material.dart';
 
+import '../../../generated/betcode/v1/common.pb.dart';
 import '../../../shared/theme/app_colors.dart';
 
 /// Displays the current agent status as a colored dot with label.
 ///
-/// Maps agent status strings to visual indicators.
+/// Maps [AgentStatus] proto enum values to visual indicators.
 class StatusIndicator extends StatelessWidget {
   const StatusIndicator({super.key, required this.status});
 
-  /// Agent status string matching AgentStatus proto enum values:
-  /// thinking, executing_tool, waiting_for_user, idle, compacting, error
-  final String status;
+  final AgentStatus status;
 
   Color _color() {
-    return switch (status) {
-      'thinking' => AppColors.agentThinking,
-      'executing_tool' => AppColors.agentExecuting,
-      'waiting_for_user' => AppColors.agentWaiting,
-      'idle' => AppColors.agentIdle,
-      'compacting' => AppColors.agentThinking,
-      'error' => AppColors.agentError,
-      _ => AppColors.agentIdle,
-    };
+    if (status == AgentStatus.AGENT_STATUS_THINKING) return AppColors.agentThinking;
+    if (status == AgentStatus.AGENT_STATUS_EXECUTING_TOOL) return AppColors.agentExecuting;
+    if (status == AgentStatus.AGENT_STATUS_WAITING_FOR_USER) return AppColors.agentWaiting;
+    if (status == AgentStatus.AGENT_STATUS_IDLE) return AppColors.agentIdle;
+    if (status == AgentStatus.AGENT_STATUS_COMPACTING) return AppColors.agentThinking;
+    if (status == AgentStatus.AGENT_STATUS_ERROR) return AppColors.agentError;
+    return AppColors.agentIdle;
   }
 
   String _label() {
-    return switch (status) {
-      'thinking' => 'Thinking...',
-      'executing_tool' => 'Executing tool...',
-      'waiting_for_user' => 'Waiting for you',
-      'idle' => 'Idle',
-      'compacting' => 'Compacting...',
-      'error' => 'Error',
-      _ => 'Unknown',
-    };
+    if (status == AgentStatus.AGENT_STATUS_THINKING) return 'Thinking...';
+    if (status == AgentStatus.AGENT_STATUS_EXECUTING_TOOL) return 'Executing tool...';
+    if (status == AgentStatus.AGENT_STATUS_WAITING_FOR_USER) return 'Waiting for you';
+    if (status == AgentStatus.AGENT_STATUS_IDLE) return 'Idle';
+    if (status == AgentStatus.AGENT_STATUS_COMPACTING) return 'Compacting...';
+    if (status == AgentStatus.AGENT_STATUS_ERROR) return 'Error';
+    return 'Unknown';
   }
 
   IconData _icon() {
-    return switch (status) {
-      'thinking' => Icons.psychology,
-      'executing_tool' => Icons.construction,
-      'waiting_for_user' => Icons.person,
-      'idle' => Icons.check_circle_outline,
-      'compacting' => Icons.compress,
-      'error' => Icons.error_outline,
-      _ => Icons.help_outline,
-    };
+    if (status == AgentStatus.AGENT_STATUS_THINKING) return Icons.psychology;
+    if (status == AgentStatus.AGENT_STATUS_EXECUTING_TOOL) return Icons.construction;
+    if (status == AgentStatus.AGENT_STATUS_WAITING_FOR_USER) return Icons.person;
+    if (status == AgentStatus.AGENT_STATUS_IDLE) return Icons.check_circle_outline;
+    if (status == AgentStatus.AGENT_STATUS_COMPACTING) return Icons.compress;
+    if (status == AgentStatus.AGENT_STATUS_ERROR) return Icons.error_outline;
+    return Icons.help_outline;
   }
 
   @override

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/message_bubble.dart';
@@ -8,6 +8,7 @@ import 'package:betcode_app/features/conversation/widgets/status_indicator.dart'
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
 import 'package:betcode_app/features/conversation/widgets/user_question_dialog.dart';
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:betcode_app/shared/theme/app_colors.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
@@ -97,12 +98,12 @@ void main() {
   // -- StatusIndicator --
   group('StatusIndicator', () {
     final cases = {
-      'thinking': ('Thinking...', AppColors.agentThinking),
-      'executing_tool': ('Executing tool...', AppColors.agentExecuting),
-      'waiting_for_user': ('Waiting for you', AppColors.agentWaiting),
-      'idle': ('Idle', AppColors.agentIdle),
-      'compacting': ('Compacting...', AppColors.agentThinking),
-      'error': ('Error', AppColors.agentError),
+      AgentStatus.AGENT_STATUS_THINKING: ('Thinking...', AppColors.agentThinking),
+      AgentStatus.AGENT_STATUS_EXECUTING_TOOL: ('Executing tool...', AppColors.agentExecuting),
+      AgentStatus.AGENT_STATUS_WAITING_FOR_USER: ('Waiting for you', AppColors.agentWaiting),
+      AgentStatus.AGENT_STATUS_IDLE: ('Idle', AppColors.agentIdle),
+      AgentStatus.AGENT_STATUS_COMPACTING: ('Compacting...', AppColors.agentThinking),
+      AgentStatus.AGENT_STATUS_ERROR: ('Error', AppColors.agentError),
     };
     for (final e in cases.entries) {
       testWidgets('status "${e.key}" -> label "${e.value.$1}" with correct color', (t) async {
@@ -112,7 +113,7 @@ void main() {
       });
     }
     testWidgets('unknown status shows "Unknown"', (t) async {
-      await t.pumpWidget(_app(const StatusIndicator(status: 'xyz')));
+      await t.pumpWidget(_app(StatusIndicator(status: AgentStatus.AGENT_STATUS_UNSPECIFIED)));
       expect(find.text('Unknown'), findsOneWidget);
     });
   });
@@ -274,12 +275,12 @@ void main() {
     });
 
     for (final entry in {
-      'Allow Once': PermissionChoice.allowOnce,
-      'Allow Session': PermissionChoice.allowSession,
-      'Deny': PermissionChoice.deny,
+      'Allow Once': PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+      'Allow Session': PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION,
+      'Deny': PermissionDecision.PERMISSION_DECISION_DENY,
     }.entries) {
       testWidgets('${entry.key} returns ${entry.value}', (t) async {
-        PermissionChoice? result;
+        PermissionDecision? result;
         await t.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (ctx) => ElevatedButton(
           onPressed: () async { result = await PermissionSheet.show(ctx, toolName: 'B', description: 'd'); },
           child: const Text('Open'),

@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:grpc/grpc.dart';
+
+import '../../generated/betcode/v1/auth.pbgrpc.dart';
+import '../auth/auth_notifier.dart';
 
 /// A function that returns the current JWT token, or null if unauthenticated.
 typedef TokenProvider = Future<String?> Function();
@@ -103,5 +107,76 @@ class LoggingInterceptor extends ClientInterceptor {
   ) {
     developer.log('-> ${method.path} (stream)', name: _logName);
     return invoker(method, requests, options);
+  }
+}
+
+/// Checks token expiry before each RPC and triggers a refresh if needed.
+///
+/// Uses a [Completer] to coalesce concurrent refresh attempts so only one
+/// refresh RPC is in flight at a time.
+class TokenRefreshInterceptor extends ClientInterceptor {
+  TokenRefreshInterceptor({
+    required this.authNotifier,
+    required this.authClientFactory,
+  });
+
+  final AuthNotifier authNotifier;
+  final AuthServiceClient Function() authClientFactory;
+  Completer<void>? _refreshing;
+
+  Future<void> _ensureValidToken() async {
+    if (!authNotifier.isTokenExpiringSoon) return;
+    if (_refreshing != null) {
+      await _refreshing!.future;
+      return;
+    }
+    _refreshing = Completer<void>();
+    try {
+      await authNotifier.refreshTokens(authClientFactory());
+    } finally {
+      _refreshing!.complete();
+      _refreshing = null;
+    }
+  }
+
+  @override
+  ResponseFuture<R> interceptUnary<Q, R>(
+    ClientMethod<Q, R> method,
+    Q request,
+    CallOptions options,
+    ClientUnaryInvoker<Q, R> invoker,
+  ) {
+    // Kick off the refresh check, then delegate to the invoker.
+    // We schedule via metadata provider so the refresh completes before
+    // the call actually goes out.
+    final opts = options.mergedWith(
+      CallOptions(
+        providers: [
+          (metadata, uri) async {
+            await _ensureValidToken();
+          },
+        ],
+      ),
+    );
+    return invoker(method, request, opts);
+  }
+
+  @override
+  ResponseStream<R> interceptStreaming<Q, R>(
+    ClientMethod<Q, R> method,
+    Stream<Q> requests,
+    CallOptions options,
+    ClientStreamingInvoker<Q, R> invoker,
+  ) {
+    final opts = options.mergedWith(
+      CallOptions(
+        providers: [
+          (metadata, uri) async {
+            await _ensureValidToken();
+          },
+        ],
+      ),
+    );
+    return invoker(method, requests, opts);
   }
 }

@@ -1,6 +1,6 @@
 # BetCode App
 
-Flutter mobile/web client for the BetCode system. Connects to betcode-daemon via gRPC to provide a mobile interface for Claude Code agent sessions.
+Flutter mobile client for the BetCode system. Connects to betcode-daemon via gRPC to provide a mobile interface for Claude Code agent sessions.
 
 ## What This App Does
 
@@ -49,7 +49,7 @@ betcode_app/
 ├── test/
 ├── android/
 ├── ios/
-├── web/
+├── macos/
 └── pubspec.yaml
 ```
 
@@ -165,9 +165,6 @@ All user-initiated actions include idempotency keys (UUIDv7) to handle duplicate
 |----------|-----------|---------------|-----------------|------|
 | Android (SDK 24+) | OkHttp | Keystore | WorkManager | FCM |
 | iOS (15+) | URLSession | Keychain | BGTaskScheduler | APNs |
-| Web | gRPC-Web | Encrypted localStorage | None | None |
-
-Web has no offline sync and no push notifications.
 
 ## Coding Conventions
 
@@ -191,9 +188,6 @@ dart run build_runner build --delete-conflicting-outputs
 
 # Run on connected device
 flutter run
-
-# Run on web (requires gRPC-Web proxy for daemon connection)
-flutter run -d chrome
 
 # Run tests
 flutter test

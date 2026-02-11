@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// The three possible decisions for a permission request.
-enum PermissionChoice { allowOnce, allowSession, deny }
+import '../../../generated/betcode/v1/common.pb.dart';
 
 /// A bottom sheet that presents a tool permission request to the user.
 ///
-/// Returns a [PermissionChoice] when the user makes a decision, or null
+/// Returns a [PermissionDecision] when the user makes a decision, or null
 /// if dismissed.
 class PermissionSheet extends StatelessWidget {
   const PermissionSheet({
@@ -20,13 +19,13 @@ class PermissionSheet extends StatelessWidget {
   final String? input;
 
   /// Shows the permission sheet and returns the user's decision.
-  static Future<PermissionChoice?> show(
+  static Future<PermissionDecision?> show(
     BuildContext context, {
     required String toolName,
     required String description,
     String? input,
   }) {
-    return showModalBottomSheet<PermissionChoice>(
+    return showModalBottomSheet<PermissionDecision>(
       context: context,
       isScrollControlled: true,
       builder: (_) => PermissionSheet(
@@ -119,7 +118,7 @@ class PermissionSheet extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () =>
-                        Navigator.pop(context, PermissionChoice.deny),
+                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_DENY),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colorScheme.error,
                     ),
@@ -130,7 +129,7 @@ class PermissionSheet extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () =>
-                        Navigator.pop(context, PermissionChoice.allowOnce),
+                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE),
                     child: const Text('Allow Once'),
                   ),
                 ),
@@ -138,7 +137,7 @@ class PermissionSheet extends StatelessWidget {
                 Expanded(
                   child: FilledButton(
                     onPressed: () =>
-                        Navigator.pop(context, PermissionChoice.allowSession),
+                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION),
                     child: const Text('Allow Session'),
                   ),
                 ),
