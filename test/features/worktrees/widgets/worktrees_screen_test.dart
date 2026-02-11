@@ -1,0 +1,420 @@
+import 'dart:async';
+
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
+
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
+import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
+import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
+import 'package:betcode_app/shared/theme/app_theme.dart';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+Widget _app(Widget child) =>
+    MaterialApp(theme: AppTheme.lightTheme, home: child);
+
+WorktreeDetail _makeWorktree({
+  String id = 'wt-1',
+  String name = 'feat-login',
+  String branch = 'feat/login',
+  String path = '/home/user/worktrees/feat-login',
+  String repoPath = '/home/user/repo',
+  bool existsOnDisk = true,
+  int sessionCount = 2,
+  int? lastActiveSeconds,
+}) {
+  final wt = WorktreeDetail(
+    id: id,
+    name: name,
+    branch: branch,
+    path: path,
+    repoPath: repoPath,
+    existsOnDisk: existsOnDisk,
+    sessionCount: sessionCount,
+  );
+  if (lastActiveSeconds != null) {
+    wt.lastActive = Timestamp(seconds: Int64(lastActiveSeconds));
+  }
+  return wt;
+}
+
+/// A notifier that returns a canned async value without gRPC calls.
+class _FakeWorktreesNotifier extends WorktreesNotifier {
+  _FakeWorktreesNotifier(this._value);
+
+  final AsyncValue<List<WorktreeDetail>> _value;
+
+  @override
+  Future<List<WorktreeDetail>> build() {
+    return _value.when(
+      data: (d) => Future.value(d),
+      loading: () =>
+          Completer<List<WorktreeDetail>>().future, // never completes
+      error: (e, st) => Future.error(e, st),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// WorktreesScreen tests
+// ---------------------------------------------------------------------------
+
+void main() {
+  group('WorktreesScreen', () {
+    testWidgets('shows loading indicator while fetching', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(
+              () => _FakeWorktreesNotifier(const AsyncLoading()),
+            ),
+          ],
+          child: _app(const WorktreesScreen()),
+        ),
+      );
+      await t.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Worktrees'), findsOneWidget);
+    });
+
+    testWidgets('displays list of WorktreeCard widgets when data arrives',
+        (t) async {
+      final worktrees = [
+        _makeWorktree(id: 'wt-1', name: 'feat-login'),
+        _makeWorktree(id: 'wt-2', name: 'feat-auth'),
+        _makeWorktree(id: 'wt-3', name: 'fix-bug'),
+      ];
+
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(
+              () => _FakeWorktreesNotifier(AsyncData(worktrees)),
+            ),
+          ],
+          child: _app(const WorktreesScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byType(WorktreeCard), findsNWidgets(3));
+      expect(find.text('feat-login'), findsOneWidget);
+      expect(find.text('feat-auth'), findsOneWidget);
+      expect(find.text('fix-bug'), findsOneWidget);
+    });
+
+    testWidgets('shows empty state when no worktrees exist', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(
+              () => _FakeWorktreesNotifier(const AsyncData([])),
+            ),
+          ],
+          child: _app(const WorktreesScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('No worktrees'), findsOneWidget);
+      expect(find.byIcon(Icons.account_tree_outlined), findsOneWidget);
+      expect(find.byType(WorktreeCard), findsNothing);
+    });
+
+    testWidgets('shows error state on failure', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(
+              () => _FakeWorktreesNotifier(
+                AsyncError(
+                    Exception('connection refused'), StackTrace.empty),
+              ),
+            ),
+          ],
+          child: _app(const WorktreesScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.textContaining('connection refused'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('has a FloatingActionButton for creating worktrees',
+        (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(
+              () => _FakeWorktreesNotifier(const AsyncData([])),
+            ),
+          ],
+          child: _app(const WorktreesScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // WorktreeCard tests
+  // ---------------------------------------------------------------------------
+
+  group('WorktreeCard', () {
+    testWidgets('displays worktree name', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(name: 'feat-payments'),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('feat-payments'), findsOneWidget);
+    });
+
+    testWidgets('displays branch name with git branch icon', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(branch: 'feat/payments'),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('feat/payments'), findsOneWidget);
+    });
+
+    testWidgets('displays path', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(path: '/home/user/worktrees/feat-pay'),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('/home/user/worktrees/feat-pay'), findsOneWidget);
+    });
+
+    testWidgets('shows green check when existsOnDisk is true', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(existsOnDisk: true),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    testWidgets('shows red X when existsOnDisk is false', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(existsOnDisk: false),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.cancel), findsOneWidget);
+    });
+
+    testWidgets('displays session count', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(sessionCount: 7),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('7'), findsOneWidget);
+    });
+
+    testWidgets('has a delete icon button', (t) async {
+      var deleted = false;
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(),
+          onDelete: () => deleted = true,
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+
+      await t.tap(find.byIcon(Icons.delete_outline));
+      await t.pumpAndSettle();
+
+      expect(deleted, isTrue);
+    });
+
+    testWidgets('renders card widget', (t) async {
+      await t.pumpWidget(
+        _app(WorktreeCard(
+          worktree: _makeWorktree(),
+          onDelete: () {},
+        )),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byType(Card), findsOneWidget);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // CreateWorktreeDialog tests
+  // ---------------------------------------------------------------------------
+
+  group('CreateWorktreeDialog', () {
+    testWidgets('has required form fields', (t) async {
+      await t.pumpWidget(_app(const Scaffold(body: CreateWorktreeDialog())));
+      await t.pumpAndSettle();
+
+      expect(find.text('Name'), findsOneWidget);
+      expect(find.text('Repository Path'), findsOneWidget);
+      expect(find.text('Branch'), findsOneWidget);
+      expect(find.text('Setup Script'), findsOneWidget);
+    });
+
+    testWidgets('has Cancel and Create buttons', (t) async {
+      await t.pumpWidget(_app(const Scaffold(body: CreateWorktreeDialog())));
+      await t.pumpAndSettle();
+
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Create'), findsOneWidget);
+    });
+
+    testWidgets('returns null when Cancel is pressed', (t) async {
+      Object? result = 'sentinel';
+
+      await t.pumpWidget(
+        _app(
+          Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  result = await showDialog<CreateWorktreeResult>(
+                    context: context,
+                    builder: (_) => const CreateWorktreeDialog(),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      await t.tap(find.text('Open'));
+      await t.pumpAndSettle();
+
+      await t.tap(find.text('Cancel'));
+      await t.pumpAndSettle();
+
+      expect(result, isNull);
+    });
+
+    testWidgets('returns form values when Create is pressed', (t) async {
+      CreateWorktreeResult? result;
+
+      await t.pumpWidget(
+        _app(
+          Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  result = await showDialog<CreateWorktreeResult>(
+                    context: context,
+                    builder: (_) => const CreateWorktreeDialog(),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      await t.tap(find.text('Open'));
+      await t.pumpAndSettle();
+
+      await t.enterText(
+          find.widgetWithText(TextFormField, 'Name'), 'feat-login');
+      await t.enterText(
+          find.widgetWithText(TextFormField, 'Repository Path'), '/repo');
+      await t.enterText(
+          find.widgetWithText(TextFormField, 'Branch'), 'feat/login');
+      await t.enterText(
+          find.widgetWithText(TextFormField, 'Setup Script'), 'npm install');
+
+      await t.tap(find.text('Create'));
+      await t.pumpAndSettle();
+
+      expect(result, isNotNull);
+      expect(result!.name, 'feat-login');
+      expect(result!.repoPath, '/repo');
+      expect(result!.branch, 'feat/login');
+      expect(result!.setupScript, 'npm install');
+    });
+
+    testWidgets('does not submit if required fields are empty', (t) async {
+      CreateWorktreeResult? result = const CreateWorktreeResult(
+        name: 'sentinel',
+        repoPath: '',
+        branch: '',
+        setupScript: '',
+      );
+
+      await t.pumpWidget(
+        _app(
+          Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  final r = await showDialog<CreateWorktreeResult>(
+                    context: context,
+                    builder: (_) => const CreateWorktreeDialog(),
+                  );
+                  if (r != null) result = r;
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      await t.tap(find.text('Open'));
+      await t.pumpAndSettle();
+
+      // Press Create without filling in fields
+      await t.tap(find.text('Create'));
+      await t.pumpAndSettle();
+
+      // Dialog should still be visible (validation failed)
+      expect(find.text('Create'), findsOneWidget);
+      // result should not have been updated
+      expect(result!.name, 'sentinel');
+    });
+  });
+}
