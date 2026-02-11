@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/mcp_servers_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
@@ -12,6 +16,7 @@ import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pbenum.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:betcode_app/shared/widgets/connection_indicator.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -29,21 +34,20 @@ Settings _makeSettings({
   int disconnectedTimeoutSecs = 120,
   bool enableAutoApprove = false,
   bool activityRefreshEnabled = true,
-}) =>
-    Settings(
-      sessions: SessionSettings(
-        defaultModel: defaultModel,
-        autoCompact: autoCompact,
-        autoCompactThreshold: autoCompactThreshold,
-        maxMessagesPerSession: maxMessagesPerSession,
-      ),
-      permissions: PermissionSettings(
-        connectedTimeoutSecs: connectedTimeoutSecs,
-        disconnectedTimeoutSecs: disconnectedTimeoutSecs,
-        enableAutoApprove: enableAutoApprove,
-        activityRefreshEnabled: activityRefreshEnabled,
-      ),
-    );
+}) => Settings(
+  sessions: SessionSettings(
+    defaultModel: defaultModel,
+    autoCompact: autoCompact,
+    autoCompactThreshold: autoCompactThreshold,
+    maxMessagesPerSession: maxMessagesPerSession,
+  ),
+  permissions: PermissionSettings(
+    connectedTimeoutSecs: connectedTimeoutSecs,
+    disconnectedTimeoutSecs: disconnectedTimeoutSecs,
+    enableAutoApprove: enableAutoApprove,
+    activityRefreshEnabled: activityRefreshEnabled,
+  ),
+);
 
 McpServerInfo _makeServer({
   String name = 'context7',
@@ -52,15 +56,14 @@ McpServerInfo _makeServer({
   McpServerStatus status = McpServerStatus.MCP_SERVER_STATUS_RUNNING,
   List<String> tools = const ['query-docs'],
   String errorMessage = '',
-}) =>
-    McpServerInfo(
-      name: name,
-      serverType: serverType,
-      endpoint: endpoint,
-      status: status,
-      tools: tools,
-      errorMessage: errorMessage,
-    );
+}) => McpServerInfo(
+  name: name,
+  serverType: serverType,
+  endpoint: endpoint,
+  status: status,
+  tools: tools,
+  errorMessage: errorMessage,
+);
 
 /// A notifier that returns a canned async value without gRPC calls.
 class _FakeSettingsNotifier extends SettingsNotifier {
@@ -88,6 +91,23 @@ class _FakeMcpServersNotifier extends McpServersNotifier {
       loading: () => Completer<List<McpServerInfo>>().future,
       error: (e, st) => Future.error(e, st),
     );
+  }
+}
+
+/// Relay notifier that returns a canned config.
+class _FakeRelayNotifier extends RelayConfigNotifier {
+  _FakeRelayNotifier(this._config);
+  final RelayConfig? _config;
+
+  bool disconnectCalled = false;
+
+  @override
+  RelayConfig? build() => _config;
+
+  @override
+  Future<void> disconnect() async {
+    disconnectCalled = true;
+    state = null;
   }
 }
 
@@ -145,12 +165,16 @@ void main() {
         ProviderScope(
           overrides: [
             settingsProvider.overrideWith(
-              () => _FakeSettingsNotifier(AsyncData(_makeSettings(
-                defaultModel: 'claude-opus-4',
-                autoCompact: true,
-                autoCompactThreshold: 150,
-                maxMessagesPerSession: 1000,
-              ))),
+              () => _FakeSettingsNotifier(
+                AsyncData(
+                  _makeSettings(
+                    defaultModel: 'claude-opus-4',
+                    autoCompact: true,
+                    autoCompactThreshold: 150,
+                    maxMessagesPerSession: 1000,
+                  ),
+                ),
+              ),
             ),
             mcpServersProvider.overrideWith(
               () => _FakeMcpServersNotifier(const AsyncData([])),
@@ -173,12 +197,16 @@ void main() {
         ProviderScope(
           overrides: [
             settingsProvider.overrideWith(
-              () => _FakeSettingsNotifier(AsyncData(_makeSettings(
-                connectedTimeoutSecs: 45,
-                disconnectedTimeoutSecs: 180,
-                enableAutoApprove: true,
-                activityRefreshEnabled: false,
-              ))),
+              () => _FakeSettingsNotifier(
+                AsyncData(
+                  _makeSettings(
+                    connectedTimeoutSecs: 45,
+                    disconnectedTimeoutSecs: 180,
+                    enableAutoApprove: true,
+                    activityRefreshEnabled: false,
+                  ),
+                ),
+              ),
             ),
             mcpServersProvider.overrideWith(
               () => _FakeMcpServersNotifier(const AsyncData([])),
@@ -264,9 +292,9 @@ void main() {
         ProviderScope(
           overrides: [
             settingsProvider.overrideWith(
-              () => _FakeSettingsNotifier(AsyncData(_makeSettings(
-                autoCompact: false,
-              ))),
+              () => _FakeSettingsNotifier(
+                AsyncData(_makeSettings(autoCompact: false)),
+              ),
             ),
             mcpServersProvider.overrideWith(
               () => _FakeMcpServersNotifier(const AsyncData([])),
@@ -288,11 +316,15 @@ void main() {
   group('McpServerCard', () {
     testWidgets('displays server name and type', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          name: 'my-server',
-          serverType: 'stdio',
-          endpoint: '/usr/bin/mcp',
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              name: 'my-server',
+              serverType: 'stdio',
+              endpoint: '/usr/bin/mcp',
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -302,9 +334,11 @@ void main() {
 
     testWidgets('displays tools count', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          tools: ['tool-a', 'tool-b', 'tool-c'],
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(tools: ['tool-a', 'tool-b', 'tool-c']),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -313,9 +347,7 @@ void main() {
 
     testWidgets('displays 1 tool (singular)', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          tools: ['only-tool'],
-        ))),
+        _app(McpServerCard(server: _makeServer(tools: ['only-tool']))),
       );
       await t.pumpAndSettle();
 
@@ -324,9 +356,13 @@ void main() {
 
     testWidgets('shows Running status with green color', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -335,9 +371,13 @@ void main() {
 
     testWidgets('shows Stopped status with grey color', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_STOPPED,
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              status: McpServerStatus.MCP_SERVER_STATUS_STOPPED,
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -346,21 +386,31 @@ void main() {
 
     testWidgets('shows Starting status with amber color', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_STARTING,
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              status: McpServerStatus.MCP_SERVER_STATUS_STARTING,
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
       expect(find.text('Starting'), findsOneWidget);
     });
 
-    testWidgets('shows Error status with red color and error message', (t) async {
+    testWidgets('shows Error status with red color and error message', (
+      t,
+    ) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_ERROR,
-          errorMessage: 'Failed to connect to server',
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              status: McpServerStatus.MCP_SERVER_STATUS_ERROR,
+              errorMessage: 'Failed to connect to server',
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -370,10 +420,14 @@ void main() {
 
     testWidgets('hides error message when not in error state', (t) async {
       await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
-          errorMessage: '',
-        ))),
+        _app(
+          McpServerCard(
+            server: _makeServer(
+              status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
+              errorMessage: '',
+            ),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -383,12 +437,130 @@ void main() {
     });
 
     testWidgets('shows 0 tools when none configured', (t) async {
-      await t.pumpWidget(
-        _app(McpServerCard(server: _makeServer(tools: []))),
-      );
+      await t.pumpWidget(_app(McpServerCard(server: _makeServer(tools: []))));
       await t.pumpAndSettle();
 
       expect(find.text('0 tools'), findsOneWidget);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Relay connection section tests
+  // ---------------------------------------------------------------------------
+
+  group('Relay connection section', () {
+    testWidgets('shows relay connection section', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(
+              () => _FakeSettingsNotifier(AsyncData(_makeSettings())),
+            ),
+            mcpServersProvider.overrideWith(
+              () => _FakeMcpServersNotifier(const AsyncData([])),
+            ),
+            relayConfigNotifierProvider.overrideWith(
+              () => _FakeRelayNotifier(
+                const RelayConfig(host: 'relay.example.com', port: 443),
+              ),
+            ),
+            connectionStatusProvider.overrideWith(
+              (ref) => Stream.value(GrpcConnectionStatus.connected),
+            ),
+          ],
+          child: _app(const SettingsScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('Relay Connection'), findsOneWidget);
+    });
+
+    testWidgets('shows host:port', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(
+              () => _FakeSettingsNotifier(AsyncData(_makeSettings())),
+            ),
+            mcpServersProvider.overrideWith(
+              () => _FakeMcpServersNotifier(const AsyncData([])),
+            ),
+            relayConfigNotifierProvider.overrideWith(
+              () => _FakeRelayNotifier(
+                const RelayConfig(host: 'my-relay.io', port: 8443),
+              ),
+            ),
+            connectionStatusProvider.overrideWith(
+              (ref) => Stream.value(GrpcConnectionStatus.connected),
+            ),
+          ],
+          child: _app(const SettingsScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('my-relay.io:8443'), findsOneWidget);
+      expect(find.byType(ConnectionIndicator), findsOneWidget);
+    });
+
+    testWidgets('shows Not configured when relay is null', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(
+              () => _FakeSettingsNotifier(AsyncData(_makeSettings())),
+            ),
+            mcpServersProvider.overrideWith(
+              () => _FakeMcpServersNotifier(const AsyncData([])),
+            ),
+            relayConfigNotifierProvider.overrideWith(
+              () => _FakeRelayNotifier(null),
+            ),
+            connectionStatusProvider.overrideWith(
+              (ref) => Stream.value(GrpcConnectionStatus.disconnected),
+            ),
+          ],
+          child: _app(const SettingsScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('Not configured'), findsOneWidget);
+    });
+
+    testWidgets('disconnect button calls disconnect then logout', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith(
+              () => _FakeSettingsNotifier(AsyncData(_makeSettings())),
+            ),
+            mcpServersProvider.overrideWith(
+              () => _FakeMcpServersNotifier(const AsyncData([])),
+            ),
+            relayConfigNotifierProvider.overrideWith(
+              () => _FakeRelayNotifier(
+                const RelayConfig(host: 'relay.example.com', port: 443),
+              ),
+            ),
+            connectionStatusProvider.overrideWith(
+              (ref) => Stream.value(GrpcConnectionStatus.connected),
+            ),
+          ],
+          child: _app(const SettingsScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('Disconnect'), findsOneWidget);
+
+      await t.tap(find.text('Disconnect'));
+      await t.pumpAndSettle();
+
+      // After disconnect, the relay config should be null
+      // (the fake notifier sets state = null in disconnect)
+      expect(find.text('Not configured'), findsOneWidget);
     });
   });
 }

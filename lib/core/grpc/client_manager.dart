@@ -21,8 +21,8 @@ class GrpcClientManager {
   GrpcClientManager({
     List<ClientInterceptor>? interceptors,
     Future<void> Function(ClientChannel channel)? healthCheckFn,
-  })  : _interceptors = interceptors ?? const [],
-        _healthCheckFn = healthCheckFn;
+  }) : _interceptors = interceptors ?? const [],
+       _healthCheckFn = healthCheckFn;
 
   final List<ClientInterceptor> _interceptors;
   final Future<void> Function(ClientChannel channel)? _healthCheckFn;

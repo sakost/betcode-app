@@ -97,9 +97,7 @@ Widget _scopedScreen({
       mergeRequestsProvider.overrideWith(
         () => _FakeMergeRequestsNotifier(mergeRequestsState),
       ),
-      issuesProvider.overrideWith(
-        () => _FakeIssuesNotifier(issuesState),
-      ),
+      issuesProvider.overrideWith(() => _FakeIssuesNotifier(issuesState)),
     ],
     child: _app(const GitLabScreen()),
   );
@@ -115,8 +113,7 @@ void main() {
   // -----------------------------------------------------------------------
 
   group('GitLabScreen - structure', () {
-    testWidgets('has three tabs: Pipelines, Merge Requests, Issues',
-        (t) async {
+    testWidgets('has three tabs: Pipelines, Merge Requests, Issues', (t) async {
       await t.pumpWidget(_scopedScreen());
       await t.pump();
 
@@ -146,18 +143,21 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
-    testWidgets('displays list of PipelineCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of PipelineCard widgets when data arrives', (
+      t,
+    ) async {
       final pipelines = [
         PipelineInfo(id: Int64(1), refName: 'main', sha: 'abc12345'),
         PipelineInfo(id: Int64(2), refName: 'develop', sha: 'def67890'),
       ];
 
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: AsyncData(pipelines),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: const AsyncData([]),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: AsyncData(pipelines),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: const AsyncData([]),
+        ),
+      );
       await t.pumpAndSettle();
 
       expect(find.byType(PipelineCard), findsNWidgets(2));
@@ -166,11 +166,13 @@ void main() {
     });
 
     testWidgets('shows empty state when no pipelines exist', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: const AsyncData([]),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: const AsyncData([]),
+        ),
+      );
       await t.pumpAndSettle();
 
       expect(find.text('No pipelines'), findsOneWidget);
@@ -178,14 +180,16 @@ void main() {
     });
 
     testWidgets('shows error state on failure', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: AsyncError(
-          Exception('connection refused'),
-          StackTrace.empty,
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: AsyncError(
+            Exception('connection refused'),
+            StackTrace.empty,
+          ),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: const AsyncData([]),
         ),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: const AsyncData([]),
-      ));
+      );
       await t.pumpAndSettle();
 
       expect(find.textContaining('connection refused'), findsOneWidget);
@@ -199,8 +203,9 @@ void main() {
   // -----------------------------------------------------------------------
 
   group('GitLabScreen - Merge Requests tab', () {
-    testWidgets('displays list of MergeRequestCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of MergeRequestCard widgets when data arrives', (
+      t,
+    ) async {
       final mrs = [
         MergeRequestInfo(
           id: Int64(1),
@@ -220,11 +225,13 @@ void main() {
         ),
       ];
 
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: AsyncData(mrs),
-        issuesState: const AsyncData([]),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: AsyncData(mrs),
+          issuesState: const AsyncData([]),
+        ),
+      );
       await t.pumpAndSettle();
 
       // Switch to Merge Requests tab
@@ -237,11 +244,13 @@ void main() {
     });
 
     testWidgets('shows empty state when no merge requests exist', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: const AsyncData([]),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: const AsyncData([]),
+        ),
+      );
       await t.pumpAndSettle();
 
       // Switch to Merge Requests tab
@@ -253,14 +262,16 @@ void main() {
     });
 
     testWidgets('shows error state on failure', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: AsyncError(
-          Exception('network error'),
-          StackTrace.empty,
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: AsyncError(
+            Exception('network error'),
+            StackTrace.empty,
+          ),
+          issuesState: const AsyncData([]),
         ),
-        issuesState: const AsyncData([]),
-      ));
+      );
       await t.pumpAndSettle();
 
       // Switch to Merge Requests tab
@@ -278,8 +289,9 @@ void main() {
   // -----------------------------------------------------------------------
 
   group('GitLabScreen - Issues tab', () {
-    testWidgets('displays list of IssueCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of IssueCard widgets when data arrives', (
+      t,
+    ) async {
       final issues = [
         IssueInfo(
           id: Int64(1),
@@ -295,11 +307,13 @@ void main() {
         ),
       ];
 
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: AsyncData(issues),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: AsyncData(issues),
+        ),
+      );
       await t.pumpAndSettle();
 
       // Switch to Issues tab
@@ -312,11 +326,13 @@ void main() {
     });
 
     testWidgets('shows empty state when no issues exist', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: const AsyncData([]),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: const AsyncData([]),
+        ),
+      );
       await t.pumpAndSettle();
 
       // Switch to Issues tab
@@ -328,14 +344,13 @@ void main() {
     });
 
     testWidgets('shows error state on failure', (t) async {
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: const AsyncData([]),
-        mergeRequestsState: const AsyncData([]),
-        issuesState: AsyncError(
-          Exception('server error'),
-          StackTrace.empty,
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: const AsyncData([]),
+          mergeRequestsState: const AsyncData([]),
+          issuesState: AsyncError(Exception('server error'), StackTrace.empty),
         ),
-      ));
+      );
       await t.pumpAndSettle();
 
       // Switch to Issues tab
@@ -374,11 +389,13 @@ void main() {
         ),
       ];
 
-      await t.pumpWidget(_scopedScreen(
-        pipelinesState: AsyncData(pipelines),
-        mergeRequestsState: AsyncData(mrs),
-        issuesState: AsyncData(issues),
-      ));
+      await t.pumpWidget(
+        _scopedScreen(
+          pipelinesState: AsyncData(pipelines),
+          mergeRequestsState: AsyncData(mrs),
+          issuesState: AsyncData(issues),
+        ),
+      );
       await t.pumpAndSettle();
 
       // Pipelines tab (default)
@@ -411,13 +428,15 @@ void main() {
   group('PipelineCard', () {
     testWidgets('displays ref name', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            refName: 'feature/auth',
-            sha: 'deadbeef12345678',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              refName: 'feature/auth',
+              sha: 'deadbeef12345678',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -426,13 +445,15 @@ void main() {
 
     testWidgets('displays truncated SHA in monospace', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            sha: 'deadbeef12345678',
-            refName: 'main',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              sha: 'deadbeef12345678',
+              refName: 'main',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -441,13 +462,11 @@ void main() {
 
     testWidgets('displays full SHA when shorter than 8 chars', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            sha: 'abc',
-            refName: 'main',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(id: Int64(1), sha: 'abc', refName: 'main'),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -456,13 +475,15 @@ void main() {
 
     testWidgets('displays Success status badge', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            status: PipelineStatus.PIPELINE_STATUS_SUCCESS,
-            refName: 'main',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              status: PipelineStatus.PIPELINE_STATUS_SUCCESS,
+              refName: 'main',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -471,13 +492,15 @@ void main() {
 
     testWidgets('displays Failed status badge', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            status: PipelineStatus.PIPELINE_STATUS_FAILED,
-            refName: 'main',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              status: PipelineStatus.PIPELINE_STATUS_FAILED,
+              refName: 'main',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -486,13 +509,15 @@ void main() {
 
     testWidgets('displays Running status badge', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            status: PipelineStatus.PIPELINE_STATUS_RUNNING,
-            refName: 'main',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              status: PipelineStatus.PIPELINE_STATUS_RUNNING,
+              refName: 'main',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -501,13 +526,15 @@ void main() {
 
     testWidgets('displays source when present', (t) async {
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(
-            id: Int64(1),
-            refName: 'main',
-            source: 'push',
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(
+              id: Int64(1),
+              refName: 'main',
+              source: 'push',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -517,10 +544,12 @@ void main() {
     testWidgets('calls onTap when tapped', (t) async {
       var tapped = false;
       await t.pumpWidget(
-        _app(PipelineCard(
-          pipeline: PipelineInfo(id: Int64(1), refName: 'main'),
-          onTap: () => tapped = true,
-        )),
+        _app(
+          PipelineCard(
+            pipeline: PipelineInfo(id: Int64(1), refName: 'main'),
+            onTap: () => tapped = true,
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -536,14 +565,16 @@ void main() {
   group('MergeRequestCard', () {
     testWidgets('displays title', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Fix authentication',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Fix authentication',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -552,14 +583,16 @@ void main() {
 
     testWidgets('displays IID in !123 format', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(123),
-            title: 'Test MR',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(123),
+              title: 'Test MR',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -568,14 +601,16 @@ void main() {
 
     testWidgets('displays Opened state badge', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -584,14 +619,16 @@ void main() {
 
     testWidgets('displays Closed state badge', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_CLOSED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_CLOSED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -600,14 +637,16 @@ void main() {
 
     testWidgets('displays Merged state badge', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_MERGED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_MERGED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -616,16 +655,18 @@ void main() {
 
     testWidgets('displays source and target branches', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
-            sourceBranch: 'feature/auth',
-            targetBranch: 'main',
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+              sourceBranch: 'feature/auth',
+              targetBranch: 'main',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -635,15 +676,17 @@ void main() {
 
     testWidgets('displays author', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
-            author: 'alice',
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+              author: 'alice',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -652,15 +695,17 @@ void main() {
 
     testWidgets('displays Draft chip when draft is true', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
-            draft: true,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+              draft: true,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -669,15 +714,17 @@ void main() {
 
     testWidgets('displays labels as chips', (t) async {
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
-            labels: ['backend', 'urgent'],
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+              labels: ['backend', 'urgent'],
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -688,15 +735,17 @@ void main() {
     testWidgets('calls onTap when tapped', (t) async {
       var tapped = false;
       await t.pumpWidget(
-        _app(MergeRequestCard(
-          mergeRequest: MergeRequestInfo(
-            id: Int64(1),
-            iid: Int64(10),
-            title: 'Test',
-            state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+        _app(
+          MergeRequestCard(
+            mergeRequest: MergeRequestInfo(
+              id: Int64(1),
+              iid: Int64(10),
+              title: 'Test',
+              state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+            ),
+            onTap: () => tapped = true,
           ),
-          onTap: () => tapped = true,
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -712,14 +761,16 @@ void main() {
   group('IssueCard', () {
     testWidgets('displays title', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Fix login bug',
-            state: IssueState.ISSUE_STATE_OPENED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Fix login bug',
+              state: IssueState.ISSUE_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -728,14 +779,16 @@ void main() {
 
     testWidgets('displays IID in #123 format', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(99),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_OPENED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(99),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -744,14 +797,16 @@ void main() {
 
     testWidgets('displays Opened state badge', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_OPENED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -760,14 +815,16 @@ void main() {
 
     testWidgets('displays Closed state badge', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_CLOSED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_CLOSED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -776,15 +833,17 @@ void main() {
 
     testWidgets('displays author', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_OPENED,
-            author: 'bob',
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_OPENED,
+              author: 'bob',
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -793,15 +852,17 @@ void main() {
 
     testWidgets('displays labels as chips', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_OPENED,
-            labels: ['security', 'critical'],
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_OPENED,
+              labels: ['security', 'critical'],
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -811,15 +872,17 @@ void main() {
 
     testWidgets('displays lock icon when confidential', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Secret issue',
-            state: IssueState.ISSUE_STATE_OPENED,
-            confidential: true,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Secret issue',
+              state: IssueState.ISSUE_STATE_OPENED,
+              confidential: true,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -828,14 +891,16 @@ void main() {
 
     testWidgets('does not display lock icon when not confidential', (t) async {
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Public issue',
-            state: IssueState.ISSUE_STATE_OPENED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Public issue',
+              state: IssueState.ISSUE_STATE_OPENED,
+            ),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -845,15 +910,17 @@ void main() {
     testWidgets('calls onTap when tapped', (t) async {
       var tapped = false;
       await t.pumpWidget(
-        _app(IssueCard(
-          issue: IssueInfo(
-            id: Int64(1),
-            iid: Int64(5),
-            title: 'Test',
-            state: IssueState.ISSUE_STATE_OPENED,
+        _app(
+          IssueCard(
+            issue: IssueInfo(
+              id: Int64(1),
+              iid: Int64(5),
+              title: 'Test',
+              state: IssueState.ISSUE_STATE_OPENED,
+            ),
+            onTap: () => tapped = true,
           ),
-          onTap: () => tapped = true,
-        )),
+        ),
       );
       await t.pumpAndSettle();
 

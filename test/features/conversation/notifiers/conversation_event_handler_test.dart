@@ -16,8 +16,9 @@ class _TestNotifier extends AsyncNotifier<ConversationState>
   FutureOr<ConversationState> build() => const ConversationState.initial();
 }
 
-final _testProvider =
-    AsyncNotifierProvider<_TestNotifier, ConversationState>(_TestNotifier.new);
+final _testProvider = AsyncNotifierProvider<_TestNotifier, ConversationState>(
+  _TestNotifier.new,
+);
 
 void main() {
   late ProviderContainer container;
@@ -95,14 +96,18 @@ void main() {
     test('appends to existing incomplete agent message', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        textDelta: pb.TextDelta(text: 'Hello '),
-      ));
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(2),
-        textDelta: pb.TextDelta(text: 'world', isComplete: true),
-      ));
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          textDelta: pb.TextDelta(text: 'Hello '),
+        ),
+      );
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          textDelta: pb.TextDelta(text: 'world', isComplete: true),
+        ),
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.messages, hasLength(1));
@@ -136,23 +141,27 @@ void main() {
     test('completes tool call on result', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        toolCallStart: pb.ToolCallStart(
-          toolId: 't-1',
-          toolName: 'Read',
-          description: 'Read a file',
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 't-1',
+            toolName: 'Read',
+            description: 'Read a file',
+          ),
         ),
-      ));
+      );
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(2),
-        toolCallResult: pb.ToolCallResult(
-          toolId: 't-1',
-          output: 'file contents here',
-          isError: false,
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          toolCallResult: pb.ToolCallResult(
+            toolId: 't-1',
+            output: 'file contents here',
+            isError: false,
+          ),
         ),
-      ));
+      );
 
       final active = notifier.state.value as ConversationActive;
       final msg = active.messages.first as ToolCallMessage;
@@ -166,12 +175,14 @@ void main() {
     test('updates agent status', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        statusChange: pb.StatusChange(
-          status: AgentStatus.AGENT_STATUS_THINKING,
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          statusChange: pb.StatusChange(
+            status: AgentStatus.AGENT_STATUS_THINKING,
+          ),
         ),
-      ));
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.agentStatus, AgentStatus.AGENT_STATUS_THINKING);
@@ -183,16 +194,20 @@ void main() {
       seedActive();
 
       // Add an incomplete agent message
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        textDelta: pb.TextDelta(text: 'partial'),
-      ));
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          textDelta: pb.TextDelta(text: 'partial'),
+        ),
+      );
 
       // Turn complete
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(2),
-        turnComplete: pb.TurnComplete(stopReason: 'end_turn'),
-      ));
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          turnComplete: pb.TurnComplete(stopReason: 'end_turn'),
+        ),
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.agentStatus, AgentStatus.AGENT_STATUS_IDLE);
@@ -205,16 +220,18 @@ void main() {
     test('updates usage info', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        usage: pb.UsageReport(
-          inputTokens: 500,
-          outputTokens: 200,
-          model: 'opus-4',
-          costUsd: 0.015,
-          durationMs: 3200,
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          usage: pb.UsageReport(
+            inputTokens: 500,
+            outputTokens: 200,
+            model: 'opus-4',
+            costUsd: 0.015,
+            durationMs: 3200,
+          ),
         ),
-      ));
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.usage, isNotNull);
@@ -228,34 +245,35 @@ void main() {
     test('fatal error transitions to ConversationError', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        error: pb.ErrorEvent(
-          code: 'FATAL',
-          message: 'session expired',
-          isFatal: true,
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          error: pb.ErrorEvent(
+            code: 'FATAL',
+            message: 'session expired',
+            isFatal: true,
+          ),
         ),
-      ));
+      );
 
       final state = notifier.state.value;
       expect(state, isA<ConversationError>());
-      expect(
-        (state as ConversationError).message,
-        '[FATAL] session expired',
-      );
+      expect((state as ConversationError).message, '[FATAL] session expired');
     });
 
     test('non-fatal error sets errorMessage on active state', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        error: pb.ErrorEvent(
-          code: 'WARN',
-          message: 'rate limited',
-          isFatal: false,
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          error: pb.ErrorEvent(
+            code: 'WARN',
+            message: 'rate limited',
+            isFatal: false,
+          ),
         ),
-      ));
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.errorMessage, '[WARN] rate limited');
@@ -266,10 +284,12 @@ void main() {
     test('skips events with sequence <= lastSequence', () {
       seedActive(lastSequence: 5);
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(3),
-        textDelta: pb.TextDelta(text: 'old'),
-      ));
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(3),
+          textDelta: pb.TextDelta(text: 'old'),
+        ),
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.messages, isEmpty);
@@ -279,10 +299,12 @@ void main() {
     test('processes events with sequence > lastSequence', () {
       seedActive(lastSequence: 5);
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(6),
-        textDelta: pb.TextDelta(text: 'new'),
-      ));
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(6),
+          textDelta: pb.TextDelta(text: 'new'),
+        ),
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.messages, hasLength(1));
@@ -294,22 +316,21 @@ void main() {
     test('adds permission message and sets waiting status', () {
       seedActive();
 
-      notifier.handleEvent(pb.AgentEvent(
-        sequence: Int64(1),
-        permissionRequest: pb.PermissionRequest(
-          requestId: 'perm-1',
-          toolName: 'Bash',
-          description: 'Run ls',
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          permissionRequest: pb.PermissionRequest(
+            requestId: 'perm-1',
+            toolName: 'Bash',
+            description: 'Run ls',
+          ),
         ),
-      ));
+      );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.messages, hasLength(1));
       expect(active.messages.first, isA<PermissionRequestMessage>());
-      expect(
-        active.agentStatus,
-        AgentStatus.AGENT_STATUS_WAITING_FOR_USER,
-      );
+      expect(active.agentStatus, AgentStatus.AGENT_STATUS_WAITING_FOR_USER);
     });
   });
 }

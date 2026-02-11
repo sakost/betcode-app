@@ -33,14 +33,12 @@ class TodoListPanel extends StatelessWidget {
             Text(
               '$completed/${todos.length} done',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
-        children: [
-          for (final item in todos) _TodoItemTile(item: item),
-        ],
+        children: [for (final item in todos) _TodoItemTile(item: item)],
       ),
     );
   }

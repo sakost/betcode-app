@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/grpc/relay_reconnect_provider.dart';
 import 'core/router.dart';
 import 'shared/theme/theme.dart';
 
@@ -9,6 +10,7 @@ class BetCodeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(relayAutoReconnectProvider);
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(

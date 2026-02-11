@@ -26,11 +26,7 @@ class GitLabScreen extends ConsumerWidget {
           ),
         ),
         body: const TabBarView(
-          children: [
-            _PipelinesTab(),
-            _MergeRequestsTab(),
-            _IssuesTab(),
-          ],
+          children: [_PipelinesTab(), _MergeRequestsTab(), _IssuesTab()],
         ),
       ),
     );
@@ -136,8 +132,7 @@ class _IssuesTab extends ConsumerWidget {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: issues.length,
-            itemBuilder: (context, index) =>
-                IssueCard(issue: issues[index]),
+            itemBuilder: (context, index) => IssueCard(issue: issues[index]),
           ),
         );
       },

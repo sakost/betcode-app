@@ -43,12 +43,14 @@ void main() {
     });
 
     test('active copyWith updates fields correctly', () {
-      final original = ConversationState.active(
-        sessionId: 'sess-1',
-        messages: [],
-        agentStatus: AgentStatus.AGENT_STATUS_IDLE,
-        lastSequence: 0,
-      ) as ConversationActive;
+      final original =
+          ConversationState.active(
+                sessionId: 'sess-1',
+                messages: [],
+                agentStatus: AgentStatus.AGENT_STATUS_IDLE,
+                lastSequence: 0,
+              )
+              as ConversationActive;
 
       final updated = original.copyWith(
         sessionId: 'sess-2',
@@ -79,10 +81,7 @@ void main() {
 
   group('ChatMessage', () {
     test('user creates UserChatMessage', () {
-      final msg = ChatMessage.user(
-        content: 'hello',
-        timestamp: DateTime(2026),
-      );
+      final msg = ChatMessage.user(content: 'hello', timestamp: DateTime(2026));
       expect(msg, isA<UserChatMessage>());
       expect((msg as UserChatMessage).content, 'hello');
     });

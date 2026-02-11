@@ -15,8 +15,7 @@ class MergeRequestsNotifier extends AsyncNotifier<List<MergeRequestInfo>> {
 
   Future<List<MergeRequestInfo>> _fetchMergeRequests() async {
     final client = ref.read(gitlabServiceProvider);
-    final response =
-        await client.listMergeRequests(ListMergeRequestsRequest());
+    final response = await client.listMergeRequests(ListMergeRequestsRequest());
     return response.mergeRequests.toList();
   }
 

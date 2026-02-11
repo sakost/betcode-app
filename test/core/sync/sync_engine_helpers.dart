@@ -48,7 +48,7 @@ class FakeInsertable extends Fake implements Insertable<SyncQueueData> {}
 /// a [StreamController] so tests can push [NetworkStatus] events at will.
 class FakeConnectivityMonitor extends ConnectivityMonitor {
   FakeConnectivityMonitor({this.initialStatus = NetworkStatus.online})
-      : _controller = StreamController<NetworkStatus>.broadcast();
+    : _controller = StreamController<NetworkStatus>.broadcast();
 
   final StreamController<NetworkStatus> _controller;
   NetworkStatus _currentStatus = NetworkStatus.online;
@@ -111,9 +111,7 @@ MockSelectStatement wireUpSelectChain({
   final mockSelect = MockSelectStatement();
   when(() => mockDb.select(mockTable)).thenReturn(mockSelect);
   when(() => mockSelect.where(any())).thenReturn(mockSelect);
-  when(
-    () => mockSelect.orderBy(any()),
-  ).thenReturn(mockSelect);
+  when(() => mockSelect.orderBy(any())).thenReturn(mockSelect);
   when(() => mockSelect.get()).thenAnswer((_) async => results);
   return mockSelect;
 }
@@ -127,9 +125,7 @@ MockUpdateStatement wireUpUpdateChain({
   final mockUpdate = MockUpdateStatement();
   when(() => mockDb.update(mockTable)).thenReturn(mockUpdate);
   when(() => mockUpdate.where(any())).thenReturn(mockUpdate);
-  when(
-    () => mockUpdate.write(any()),
-  ).thenAnswer((_) async => 0);
+  when(() => mockUpdate.write(any())).thenAnswer((_) async => 0);
   return mockUpdate;
 }
 
@@ -140,9 +136,7 @@ MockInsertStatement wireUpInsertChain({
 }) {
   final mockInsert = MockInsertStatement();
   when(() => mockDb.into(mockTable)).thenReturn(mockInsert);
-  when(
-    () => mockInsert.insert(any()),
-  ).thenAnswer((_) async => 1);
+  when(() => mockInsert.insert(any())).thenAnswer((_) async => 1);
   return mockInsert;
 }
 
@@ -154,7 +148,8 @@ MockInsertStatement wireUpInsertChain({
   MockSelectStatement select_,
   MockUpdateStatement update_,
   MockInsertStatement insert_,
-}) wireUpAllChains({
+})
+wireUpAllChains({
   required MockAppDatabase mockDb,
   required MockSyncQueueTable mockTable,
   required MockDeleteStatement mockDelete,

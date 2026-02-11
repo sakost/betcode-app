@@ -33,8 +33,7 @@ void main() {
     capturedRequests = [];
 
     when(() => mockClient.converse(any())).thenAnswer((inv) {
-      final reqStream =
-          inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+      final reqStream = inv.positionalArguments[0] as Stream<pb.AgentRequest>;
       reqStream.listen(capturedRequests.add);
       return FakeResponseStream<pb.AgentEvent>(eventController);
     });
@@ -58,13 +57,17 @@ void main() {
       container.read(conversationProvider(id)).value;
 
   /// Seeds the notifier into active state via SessionInfo event.
-  Future<void> goActive(ConversationNotifier n,
-      {String sessionId = 'sess-1'}) async {
+  Future<void> goActive(
+    ConversationNotifier n, {
+    String sessionId = 'sess-1',
+  }) async {
     await n.startConversation();
-    eventController.add(pb.AgentEvent(
-      sequence: Int64(1),
-      sessionInfo: pb.SessionInfo(sessionId: sessionId),
-    ));
+    eventController.add(
+      pb.AgentEvent(
+        sequence: Int64(1),
+        sessionInfo: pb.SessionInfo(sessionId: sessionId),
+      ),
+    );
     await Future<void>.delayed(Duration.zero);
   }
 
@@ -111,11 +114,13 @@ void main() {
     });
 
     test('catches error if converse() throws', () async {
-      final fc = ProviderContainer(overrides: [
-        agentServiceProvider.overrideWithValue(
-          FailingConverseClient(GrpcError.unavailable('no conn')),
-        ),
-      ]);
+      final fc = ProviderContainer(
+        overrides: [
+          agentServiceProvider.overrideWithValue(
+            FailingConverseClient(GrpcError.unavailable('no conn')),
+          ),
+        ],
+      );
       addTearDown(fc.dispose);
 
       fc.read(conversationProvider(null));
@@ -139,8 +144,7 @@ void main() {
       final active = stateVal() as ConversationActive;
       expect(active.messages, hasLength(1));
       expect(active.messages.first, isA<UserChatMessage>());
-      expect(
-          (active.messages.first as UserChatMessage).content, 'Hello agent');
+      expect((active.messages.first as UserChatMessage).content, 'Hello agent');
       expect(capturedRequests.last.hasMessage(), isTrue);
       expect(capturedRequests.last.message.content, 'Hello agent');
     });
@@ -157,18 +161,22 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.add(pb.AgentEvent(
-        sequence: Int64(2),
-        permissionRequest: pb.PermissionRequest(
-          requestId: 'perm-1',
-          toolName: 'Bash',
-          description: 'Run ls',
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          permissionRequest: pb.PermissionRequest(
+            requestId: 'perm-1',
+            toolName: 'Bash',
+            description: 'Run ls',
+          ),
         ),
-      ));
+      );
       await Future<void>.delayed(Duration.zero);
 
       n.respondToPermission(
-          'perm-1', PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE);
+        'perm-1',
+        PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+      );
       await Future<void>.delayed(Duration.zero);
 
       final active = stateVal() as ConversationActive;
@@ -182,7 +190,9 @@ void main() {
 
     test('no-ops when state is not active', () {
       notifier().respondToPermission(
-          'x', PermissionDecision.PERMISSION_DECISION_DENY);
+        'x',
+        PermissionDecision.PERMISSION_DECISION_DENY,
+      );
       expect(stateVal(), isA<ConversationInitial>());
     });
   });
@@ -192,24 +202,24 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.add(pb.AgentEvent(
-        sequence: Int64(2),
-        userQuestion: pb.UserQuestion(
-          questionId: 'q-1',
-          question: 'Which?',
-          multiSelect: false,
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          userQuestion: pb.UserQuestion(
+            questionId: 'q-1',
+            question: 'Which?',
+            multiSelect: false,
+          ),
         ),
-      ));
+      );
       await Future<void>.delayed(Duration.zero);
 
       n.respondToQuestion('q-1', {'choice': 'A'});
       await Future<void>.delayed(Duration.zero);
 
-      final qm =
-          (stateVal() as ConversationActive)
-              .messages
-              .whereType<UserQuestionMessage>()
-              .first;
+      final qm = (stateVal() as ConversationActive).messages
+          .whereType<UserQuestionMessage>()
+          .first;
       expect(qm.answers, {'choice': 'A'});
 
       final req = capturedRequests.last;
@@ -242,24 +252,30 @@ void main() {
   });
 
   group('stream error handling', () {
-    test('transient stream error triggers reconnection on active session',
-        () async {
-      when(() => mockClient.resumeSession(any())).thenAnswer(
-        (_) => FakeResponseStream<pb.AgentEvent>(
-            StreamController<pb.AgentEvent>()),
-      );
+    test(
+      'transient stream error triggers reconnection on active session',
+      () async {
+        when(() => mockClient.resumeSession(any())).thenAnswer(
+          (_) => FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>(),
+          ),
+        );
 
-      final n = notifier();
-      await goActive(n);
+        final n = notifier();
+        await goActive(n);
 
-      eventController.addError(GrpcError.unavailable('lost'));
-      await Future<void>.delayed(Duration.zero);
+        eventController.addError(GrpcError.unavailable('lost'));
+        await Future<void>.delayed(Duration.zero);
 
-      // Should still be active (attempting reconnection), not error.
-      final s = stateVal();
-      expect(s, isA<ConversationActive>());
-      expect((s as ConversationActive).errorMessage, contains('Reconnecting'));
-    });
+        // Should still be active (attempting reconnection), not error.
+        final s = stateVal();
+        expect(s, isA<ConversationActive>());
+        expect(
+          (s as ConversationActive).errorMessage,
+          contains('Reconnecting'),
+        );
+      },
+    );
 
     test('fatal stream error transitions to ConversationError', () async {
       final n = notifier();
@@ -277,11 +293,14 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.add(pb.AgentEvent(
-        sequence: Int64(2),
-        statusChange:
-            pb.StatusChange(status: AgentStatus.AGENT_STATUS_THINKING),
-      ));
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          statusChange: pb.StatusChange(
+            status: AgentStatus.AGENT_STATUS_THINKING,
+          ),
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
 
       await eventController.close();
@@ -297,8 +316,7 @@ void main() {
       final lc = StreamController<pb.AgentEvent>();
       final lm = MockAgentServiceClient();
       when(() => lm.converse(any())).thenAnswer((inv) {
-        (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
-            .listen((_) {});
+        (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen((_) {});
         return FakeResponseStream<pb.AgentEvent>(lc);
       });
 
@@ -312,10 +330,12 @@ void main() {
       lCont.dispose();
 
       // Adding events after dispose should not throw.
-      lc.add(pb.AgentEvent(
-        sequence: Int64(99),
-        sessionInfo: pb.SessionInfo(sessionId: 'ghost'),
-      ));
+      lc.add(
+        pb.AgentEvent(
+          sequence: Int64(99),
+          sessionInfo: pb.SessionInfo(sessionId: 'ghost'),
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
       await lc.close();
     });
@@ -330,19 +350,26 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       eventController
-        ..add(pb.AgentEvent(
-          sequence: Int64(2),
-          statusChange:
-              pb.StatusChange(status: AgentStatus.AGENT_STATUS_THINKING),
-        ))
-        ..add(pb.AgentEvent(
-          sequence: Int64(3),
-          textDelta: pb.TextDelta(text: '4'),
-        ))
-        ..add(pb.AgentEvent(
-          sequence: Int64(4),
-          turnComplete: pb.TurnComplete(stopReason: 'end_turn'),
-        ));
+        ..add(
+          pb.AgentEvent(
+            sequence: Int64(2),
+            statusChange: pb.StatusChange(
+              status: AgentStatus.AGENT_STATUS_THINKING,
+            ),
+          ),
+        )
+        ..add(
+          pb.AgentEvent(
+            sequence: Int64(3),
+            textDelta: pb.TextDelta(text: '4'),
+          ),
+        )
+        ..add(
+          pb.AgentEvent(
+            sequence: Int64(4),
+            turnComplete: pb.TurnComplete(stopReason: 'end_turn'),
+          ),
+        );
       await Future<void>.delayed(Duration.zero);
 
       final a = stateVal() as ConversationActive;
@@ -369,10 +396,12 @@ void main() {
         async.flushMicrotasks();
 
         // Transition to active state.
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(1),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
         async.flushMicrotasks();
 
         // Simulate transient stream error.
@@ -388,8 +417,7 @@ void main() {
       });
     });
 
-    test('sends ResumeSessionRequest with correct session ID and sequence',
-        () {
+    test('sends ResumeSessionRequest with correct session ID and sequence', () {
       fakeAsync((async) {
         pb.ResumeSessionRequest? capturedRequest;
         final resumeController = StreamController<pb.AgentEvent>();
@@ -403,10 +431,12 @@ void main() {
         n.startConversation();
         async.flushMicrotasks();
 
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(7),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-42'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(7),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-42'),
+          ),
+        );
         async.flushMicrotasks();
 
         eventController.addError(GrpcError.unavailable('lost'));
@@ -425,8 +455,9 @@ void main() {
     test('does not attempt reconnection when no session ID available', () {
       fakeAsync((async) {
         when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) =>
-              FakeResponseStream<pb.AgentEvent>(StreamController<pb.AgentEvent>()),
+          (_) => FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>(),
+          ),
         );
 
         final n = notifier();
@@ -449,18 +480,21 @@ void main() {
     test('does not attempt reconnection on fatal error (unauthenticated)', () {
       fakeAsync((async) {
         when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) =>
-              FakeResponseStream<pb.AgentEvent>(StreamController<pb.AgentEvent>()),
+          (_) => FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>(),
+          ),
         );
 
         final n = notifier();
         n.startConversation();
         async.flushMicrotasks();
 
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(1),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
         async.flushMicrotasks();
 
         eventController.addError(GrpcError.unauthenticated('expired'));
@@ -478,17 +512,20 @@ void main() {
     test('transitions to error state after max reconnection attempts', () {
       fakeAsync((async) {
         // Make resumeSession always throw to trigger repeated retries.
-        when(() => mockClient.resumeSession(any()))
-            .thenThrow(GrpcError.unavailable('still down'));
+        when(
+          () => mockClient.resumeSession(any()),
+        ).thenThrow(GrpcError.unavailable('still down'));
 
         final n = notifier();
         n.startConversation();
         async.flushMicrotasks();
 
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(1),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
         async.flushMicrotasks();
 
         eventController.addError(GrpcError.unavailable('lost'));
@@ -499,10 +536,7 @@ void main() {
 
         final s = stateVal();
         expect(s, isA<ConversationError>());
-        expect(
-          (s as ConversationError).message,
-          contains('5'),
-        );
+        expect((s as ConversationError).message, contains('5'));
       });
     });
 
@@ -517,10 +551,12 @@ void main() {
         n.startConversation();
         async.flushMicrotasks();
 
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(1),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
         async.flushMicrotasks();
 
         eventController.addError(GrpcError.unavailable('lost'));
@@ -529,10 +565,12 @@ void main() {
         async.elapse(const Duration(milliseconds: 600));
 
         // Send events through the resumed stream.
-        resumeController.add(pb.AgentEvent(
-          sequence: Int64(2),
-          textDelta: pb.TextDelta(text: 'Hello again'),
-        ));
+        resumeController.add(
+          pb.AgentEvent(
+            sequence: Int64(2),
+            textDelta: pb.TextDelta(text: 'Hello again'),
+          ),
+        );
         async.flushMicrotasks();
 
         final a = stateVal() as ConversationActive;
@@ -559,10 +597,12 @@ void main() {
         n.startConversation();
         async.flushMicrotasks();
 
-        eventController.add(pb.AgentEvent(
-          sequence: Int64(1),
-          sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-        ));
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
         async.flushMicrotasks();
 
         // First disconnect.
@@ -572,11 +612,14 @@ void main() {
         expect(resumeCallCount, 1);
 
         // Send an event on the resumed stream so reconnect is considered successful.
-        activeResumeController!.add(pb.AgentEvent(
-          sequence: Int64(2),
-          statusChange:
-              pb.StatusChange(status: AgentStatus.AGENT_STATUS_IDLE),
-        ));
+        activeResumeController!.add(
+          pb.AgentEvent(
+            sequence: Int64(2),
+            statusChange: pb.StatusChange(
+              status: AgentStatus.AGENT_STATUS_IDLE,
+            ),
+          ),
+        );
         async.flushMicrotasks();
 
         // Second disconnect on the resumed stream.

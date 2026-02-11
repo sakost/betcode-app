@@ -105,10 +105,7 @@ void main() {
       test('copyWith can replace multiple fields', () {
         final auth = state as AuthAuthenticated;
         final newExpiry = DateTime(2026, 6, 1);
-        final copied = auth.copyWith(
-          userId: 'new-user',
-          expiresAt: newExpiry,
-        );
+        final copied = auth.copyWith(userId: 'new-user', expiresAt: newExpiry);
         expect(copied.accessToken, 'access-123');
         expect(copied.refreshToken, 'refresh-456');
         expect(copied.userId, 'new-user');

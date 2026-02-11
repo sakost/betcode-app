@@ -57,16 +57,12 @@ void main() {
     });
 
     test('auto-increment id', () async {
-      await db.into(db.syncQueue).insert(_entry(
-        machineId: 'm-1',
-        idempotencyKey: 'k-1',
-        sequence: 1,
-      ));
-      await db.into(db.syncQueue).insert(_entry(
-        machineId: 'm-2',
-        idempotencyKey: 'k-2',
-        sequence: 2,
-      ));
+      await db
+          .into(db.syncQueue)
+          .insert(_entry(machineId: 'm-1', idempotencyKey: 'k-1', sequence: 1));
+      await db
+          .into(db.syncQueue)
+          .insert(_entry(machineId: 'm-2', idempotencyKey: 'k-2', sequence: 2));
 
       final rows = await db.select(db.syncQueue).get();
       expect(rows, hasLength(2));
@@ -77,13 +73,13 @@ void main() {
       await db.into(db.syncQueue).insert(_entry(machineId: 'm-1'));
       final row = (await db.select(db.syncQueue).get()).first;
 
-      await (db.update(db.syncQueue)
-            ..where((t) => t.id.equals(row.id)))
-          .write(const SyncQueueCompanion(status: Value('sending')));
+      await (db.update(db.syncQueue)..where((t) => t.id.equals(row.id))).write(
+        const SyncQueueCompanion(status: Value('sending')),
+      );
 
-      final updated = await (db.select(db.syncQueue)
-            ..where((t) => t.id.equals(row.id)))
-          .getSingle();
+      final updated = await (db.select(
+        db.syncQueue,
+      )..where((t) => t.id.equals(row.id))).getSingle();
       expect(updated.status, 'sending');
     });
 
@@ -91,35 +87,35 @@ void main() {
       await db.into(db.syncQueue).insert(_entry(machineId: 'm-1'));
       expect(await db.select(db.syncQueue).get(), hasLength(1));
 
-      await (db.delete(db.syncQueue)
-            ..where((t) => t.machineId.equals('m-1')))
-          .go();
+      await (db.delete(
+        db.syncQueue,
+      )..where((t) => t.machineId.equals('m-1'))).go();
       expect(await db.select(db.syncQueue).get(), isEmpty);
     });
 
     test('priority ordering query', () async {
       // Insert with explicit priority via update after insert.
-      await db.into(db.syncQueue).insert(_entry(
-        machineId: 'm-1',
-        idempotencyKey: 'k-low',
-        sequence: 1,
-      ));
+      await db
+          .into(db.syncQueue)
+          .insert(
+            _entry(machineId: 'm-1', idempotencyKey: 'k-low', sequence: 1),
+          );
       await (db.update(db.syncQueue)
             ..where((t) => t.idempotencyKey.equals('k-low')))
           .write(const SyncQueueCompanion(priority: Value(5)));
 
-      await db.into(db.syncQueue).insert(_entry(
-        machineId: 'm-1',
-        idempotencyKey: 'k-high',
-        sequence: 2,
-      ));
+      await db
+          .into(db.syncQueue)
+          .insert(
+            _entry(machineId: 'm-1', idempotencyKey: 'k-high', sequence: 2),
+          );
       await (db.update(db.syncQueue)
             ..where((t) => t.idempotencyKey.equals('k-high')))
           .write(const SyncQueueCompanion(priority: Value(1)));
 
-      final rows = await (db.select(db.syncQueue)
-            ..orderBy([(t) => OrderingTerm.asc(t.priority)]))
-          .get();
+      final rows = await (db.select(
+        db.syncQueue,
+      )..orderBy([(t) => OrderingTerm.asc(t.priority)])).get();
       expect(rows.first.priority, 1);
       expect(rows.last.priority, 5);
     });
@@ -149,19 +145,21 @@ void main() {
     });
 
     test('insert with optional fields', () async {
-      await db.into(db.cachedSessions).insert(
-        CachedSessionsCompanion.insert(
-          id: 's-2',
-          machineId: 'machine-1',
-          model: const Value('opus'),
-          workingDirectory: const Value('/home/user'),
-          status: const Value('active'),
-          messageCount: const Value(10),
-          totalCostUsd: const Value(0.05),
-          lastMessagePreview: const Value('Hello world'),
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
+      await db
+          .into(db.cachedSessions)
+          .insert(
+            CachedSessionsCompanion.insert(
+              id: 's-2',
+              machineId: 'machine-1',
+              model: const Value('opus'),
+              workingDirectory: const Value('/home/user'),
+              status: const Value('active'),
+              messageCount: const Value(10),
+              totalCostUsd: const Value(0.05),
+              lastMessagePreview: const Value('Hello world'),
+              updatedAt: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
 
       final row = (await db.select(db.cachedSessions).get()).first;
       expect(row.model, 'opus');
@@ -175,16 +173,18 @@ void main() {
     test('update session', () async {
       await db.into(db.cachedSessions).insert(_session(id: 's-1'));
 
-      await (db.update(db.cachedSessions)
-            ..where((t) => t.id.equals('s-1')))
-          .write(const CachedSessionsCompanion(
-            messageCount: Value(42),
-            status: Value('idle'),
-          ));
+      await (db.update(
+        db.cachedSessions,
+      )..where((t) => t.id.equals('s-1'))).write(
+        const CachedSessionsCompanion(
+          messageCount: Value(42),
+          status: Value('idle'),
+        ),
+      );
 
-      final row = await (db.select(db.cachedSessions)
-            ..where((t) => t.id.equals('s-1')))
-          .getSingle();
+      final row = await (db.select(
+        db.cachedSessions,
+      )..where((t) => t.id.equals('s-1'))).getSingle();
       expect(row.messageCount, 42);
       expect(row.status, 'idle');
     });
@@ -193,9 +193,9 @@ void main() {
       await db.into(db.cachedSessions).insert(_session(id: 's-1'));
       await db.into(db.cachedSessions).insert(_session(id: 's-2'));
 
-      await (db.delete(db.cachedSessions)
-            ..where((t) => t.id.equals('s-1')))
-          .go();
+      await (db.delete(
+        db.cachedSessions,
+      )..where((t) => t.id.equals('s-1'))).go();
 
       final rows = await db.select(db.cachedSessions).get();
       expect(rows, hasLength(1));
@@ -231,11 +231,7 @@ void main() {
       String name = 'My Machine',
       String relayUrl = 'wss://relay.example.com',
     }) {
-      return MachinesCompanion.insert(
-        id: id,
-        name: name,
-        relayUrl: relayUrl,
-      );
+      return MachinesCompanion.insert(id: id, name: name, relayUrl: relayUrl);
     }
 
     test('insert and retrieve with defaults', () async {
@@ -253,12 +249,13 @@ void main() {
     test('update favorite status', () async {
       await db.into(db.machines).insert(_machine(id: 'm-1'));
 
-      await (db.update(db.machines)..where((t) => t.id.equals('m-1')))
-          .write(const MachinesCompanion(isFavorite: Value(true)));
+      await (db.update(db.machines)..where((t) => t.id.equals('m-1'))).write(
+        const MachinesCompanion(isFavorite: Value(true)),
+      );
 
-      final row = await (db.select(db.machines)
-            ..where((t) => t.id.equals('m-1')))
-          .getSingle();
+      final row = await (db.select(
+        db.machines,
+      )..where((t) => t.id.equals('m-1'))).getSingle();
       expect(row.isFavorite, true);
     });
 
@@ -266,12 +263,13 @@ void main() {
       await db.into(db.machines).insert(_machine(id: 'm-1'));
       await db.into(db.machines).insert(_machine(id: 'm-2'));
 
-      await (db.update(db.machines)..where((t) => t.id.equals('m-2')))
-          .write(const MachinesCompanion(status: Value('online')));
+      await (db.update(db.machines)..where((t) => t.id.equals('m-2'))).write(
+        const MachinesCompanion(status: Value('online')),
+      );
 
-      final online = await (db.select(db.machines)
-            ..where((t) => t.status.equals('online')))
-          .get();
+      final online = await (db.select(
+        db.machines,
+      )..where((t) => t.status.equals('online'))).get();
       expect(online, hasLength(1));
       expect(online.first.id, 'm-2');
     });
@@ -279,9 +277,9 @@ void main() {
 
   group('Settings CRUD', () {
     test('insert and retrieve key-value pair', () async {
-      await db.into(db.settings).insert(
-        SettingsCompanion.insert(key: 'theme', value: 'dark'),
-      );
+      await db
+          .into(db.settings)
+          .insert(SettingsCompanion.insert(key: 'theme', value: 'dark'));
 
       final rows = await db.select(db.settings).get();
       expect(rows, hasLength(1));
@@ -290,28 +288,29 @@ void main() {
     });
 
     test('update value by key', () async {
-      await db.into(db.settings).insert(
-        SettingsCompanion.insert(key: 'theme', value: 'dark'),
+      await db
+          .into(db.settings)
+          .insert(SettingsCompanion.insert(key: 'theme', value: 'dark'));
+
+      await (db.update(db.settings)..where((t) => t.key.equals('theme'))).write(
+        const SettingsCompanion(value: Value('light')),
       );
 
-      await (db.update(db.settings)..where((t) => t.key.equals('theme')))
-          .write(const SettingsCompanion(value: Value('light')));
-
-      final row = await (db.select(db.settings)
-            ..where((t) => t.key.equals('theme')))
-          .getSingle();
+      final row = await (db.select(
+        db.settings,
+      )..where((t) => t.key.equals('theme'))).getSingle();
       expect(row.value, 'light');
     });
 
     test('primary key prevents duplicate keys', () async {
-      await db.into(db.settings).insert(
-        SettingsCompanion.insert(key: 'k', value: 'v1'),
-      );
+      await db
+          .into(db.settings)
+          .insert(SettingsCompanion.insert(key: 'k', value: 'v1'));
 
       expect(
-        () => db.into(db.settings).insert(
-          SettingsCompanion.insert(key: 'k', value: 'v2'),
-        ),
+        () => db
+            .into(db.settings)
+            .insert(SettingsCompanion.insert(key: 'k', value: 'v2')),
         throwsA(anything),
       );
     });
@@ -319,12 +318,14 @@ void main() {
 
   group('NotificationCache CRUD', () {
     test('insert and retrieve', () async {
-      await db.into(db.notificationCache).insert(
-        NotificationCacheCompanion.insert(
-          notificationId: 'n-1',
-          receivedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
+      await db
+          .into(db.notificationCache)
+          .insert(
+            NotificationCacheCompanion.insert(
+              notificationId: 'n-1',
+              receivedAt: DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
 
       final rows = await db.select(db.notificationCache).get();
       expect(rows, hasLength(1));
@@ -333,20 +334,24 @@ void main() {
 
     test('deduplication by primary key', () async {
       final now = DateTime.now().millisecondsSinceEpoch;
-      await db.into(db.notificationCache).insert(
-        NotificationCacheCompanion.insert(
-          notificationId: 'n-1',
-          receivedAt: now,
-        ),
-      );
+      await db
+          .into(db.notificationCache)
+          .insert(
+            NotificationCacheCompanion.insert(
+              notificationId: 'n-1',
+              receivedAt: now,
+            ),
+          );
 
       expect(
-        () => db.into(db.notificationCache).insert(
-          NotificationCacheCompanion.insert(
-            notificationId: 'n-1',
-            receivedAt: now + 1000,
-          ),
-        ),
+        () => db
+            .into(db.notificationCache)
+            .insert(
+              NotificationCacheCompanion.insert(
+                notificationId: 'n-1',
+                receivedAt: now + 1000,
+              ),
+            ),
         throwsA(anything),
       );
     });

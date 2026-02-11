@@ -36,8 +36,7 @@ class AuthNotifier extends Notifier<AuthState> {
       final refreshToken = await _storage.readRefreshToken();
       if (accessToken != null && refreshToken != null) {
         final claims = _decodeJwtPayload(accessToken);
-        final userId =
-            (claims != null ? claims['sub'] as String? : null) ?? '';
+        final userId = (claims != null ? claims['sub'] as String? : null) ?? '';
         final exp = claims != null ? claims['exp'] as int? : null;
         final expiresAt = exp != null
             ? DateTime.fromMillisecondsSinceEpoch(exp * 1000)

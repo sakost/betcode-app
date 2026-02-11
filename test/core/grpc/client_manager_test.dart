@@ -33,10 +33,7 @@ void main() {
     });
 
     test('channel throws StateError before connect', () {
-      expect(
-        () => manager.channel,
-        throwsA(isA<StateError>()),
-      );
+      expect(() => manager.channel, throwsA(isA<StateError>()));
     });
 
     test('interceptors defaults to empty list', () {
@@ -77,8 +74,14 @@ void main() {
       await manager.connect('localhost', 50051);
       await Future<void>.delayed(Duration.zero);
 
-      expect(infos.any((i) => i.status == GrpcConnectionStatus.connecting), isTrue);
-      expect(infos.any((i) => i.status == GrpcConnectionStatus.connected), isTrue);
+      expect(
+        infos.any((i) => i.status == GrpcConnectionStatus.connecting),
+        isTrue,
+      );
+      expect(
+        infos.any((i) => i.status == GrpcConnectionStatus.connected),
+        isTrue,
+      );
     });
   });
 
@@ -159,10 +162,7 @@ void main() {
 
       // After dispose, adding listeners should get done event.
       final completer = Completer<void>();
-      manager.statusStream.listen(
-        (_) {},
-        onDone: () => completer.complete(),
-      );
+      manager.statusStream.listen((_) {}, onDone: () => completer.complete());
       await completer.future.timeout(const Duration(seconds: 1));
 
       // Re-create to avoid double-dispose in tearDown.
@@ -226,10 +226,7 @@ void main() {
     });
 
     test('reconnect throws if no stored params and none supplied', () {
-      expect(
-        () => manager.reconnect(),
-        throwsA(isA<StateError>()),
-      );
+      expect(() => manager.reconnect(), throwsA(isA<StateError>()));
     });
 
     test('reconnect with explicit args overrides stored params', () async {
@@ -275,19 +272,22 @@ void main() {
       expect(statuses, contains(GrpcConnectionStatus.connected));
     });
 
-    test('emits connected even when health check throws (graceful fallback)', () async {
-      final mgr = GrpcClientManager(
-        healthCheckFn: (channel) async {
-          throw GrpcError.unavailable('daemon not ready');
-        },
-      );
-      addTearDown(() => mgr.dispose());
+    test(
+      'emits connected even when health check throws (graceful fallback)',
+      () async {
+        final mgr = GrpcClientManager(
+          healthCheckFn: (channel) async {
+            throw GrpcError.unavailable('daemon not ready');
+          },
+        );
+        addTearDown(() => mgr.dispose());
 
-      await mgr.connect('localhost', 50051);
+        await mgr.connect('localhost', 50051);
 
-      expect(mgr.status, GrpcConnectionStatus.connected);
-      expect(mgr.channelOrNull, isNotNull);
-    });
+        expect(mgr.status, GrpcConnectionStatus.connected);
+        expect(mgr.channelOrNull, isNotNull);
+      },
+    );
 
     test('connect succeeds without healthCheckFn (backward compat)', () async {
       final mgr = GrpcClientManager();
@@ -356,9 +356,7 @@ void main() {
         status: GrpcConnectionStatus.connecting,
         reconnectAttempt: 2,
       );
-      final updated = info.copyWith(
-        status: GrpcConnectionStatus.connected,
-      );
+      final updated = info.copyWith(status: GrpcConnectionStatus.connected);
       expect(updated.status, GrpcConnectionStatus.connected);
       expect(updated.reconnectAttempt, 2); // unchanged
     });
@@ -366,13 +364,16 @@ void main() {
 
   group('GrpcConnectionStatus', () {
     test('has all expected values', () {
-      expect(GrpcConnectionStatus.values, containsAll([
-        GrpcConnectionStatus.disconnected,
-        GrpcConnectionStatus.connecting,
-        GrpcConnectionStatus.authenticating,
-        GrpcConnectionStatus.connected,
-        GrpcConnectionStatus.reconnecting,
-      ]));
+      expect(
+        GrpcConnectionStatus.values,
+        containsAll([
+          GrpcConnectionStatus.disconnected,
+          GrpcConnectionStatus.connecting,
+          GrpcConnectionStatus.authenticating,
+          GrpcConnectionStatus.connected,
+          GrpcConnectionStatus.reconnecting,
+        ]),
+      );
     });
   });
 }

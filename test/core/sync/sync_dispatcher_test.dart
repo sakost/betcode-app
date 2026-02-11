@@ -68,8 +68,7 @@ SyncQueueData makeQueueItem({
 /// We avoid mocking ResponseFuture (which extends Future) because it
 /// corrupts mocktail's global state. Instead, this fake captures calls
 /// and returns real completed Futures wrapped in a Completer.
-class FakeWorktreeServiceClient extends Fake
-    implements WorktreeServiceClient {
+class FakeWorktreeServiceClient extends Fake implements WorktreeServiceClient {
   CreateWorktreeRequest? lastCreateRequest;
   CallOptions? lastCreateOptions;
   RemoveWorktreeRequest? lastRemoveRequest;
@@ -109,8 +108,10 @@ class _FakeResponseFuture<T> implements ResponseFuture<T> {
   final T _value;
 
   @override
-  Future<S> then<S>(FutureOr<S> Function(T value) onValue,
-      {Function? onError}) {
+  Future<S> then<S>(
+    FutureOr<S> Function(T value) onValue, {
+    Function? onError,
+  }) {
     return Future.value(_value).then(onValue, onError: onError);
   }
 
@@ -162,10 +163,9 @@ void main() {
     mockResponseStream = _MockResponseStream();
 
     // Set up converse mock and response stream cancel.
-    when(() => mockAgentClient.converse(
-          any(),
-          options: any(named: 'options'),
-        )).thenAnswer((_) => mockResponseStream);
+    when(
+      () => mockAgentClient.converse(any(), options: any(named: 'options')),
+    ).thenAnswer((_) => mockResponseStream);
     when(() => mockResponseStream.cancel()).thenAnswer((_) async {});
 
     dispatcher = SyncDispatcher(
@@ -241,32 +241,34 @@ void main() {
   });
 
   group('dispatch question_response', () {
-    test('calls converse() with AgentRequest containing questionResponse',
-        () async {
-      final qr = UserQuestionResponse(questionId: 'q-7');
-      final payload = qr.writeToBuffer();
+    test(
+      'calls converse() with AgentRequest containing questionResponse',
+      () async {
+        final qr = UserQuestionResponse(questionId: 'q-7');
+        final payload = qr.writeToBuffer();
 
-      final item = makeQueueItem(
-        requestType: 'question_response',
-        payload: Uint8List.fromList(payload),
-        idempotencyKey: 'key-question',
-      );
+        final item = makeQueueItem(
+          requestType: 'question_response',
+          payload: Uint8List.fromList(payload),
+          idempotencyKey: 'key-question',
+        );
 
-      await dispatcher.dispatch(item);
+        await dispatcher.dispatch(item);
 
-      final captured = verify(
-        () => mockAgentClient.converse(
-          captureAny(),
-          options: captureAny(named: 'options'),
-        ),
-      ).captured;
+        final captured = verify(
+          () => mockAgentClient.converse(
+            captureAny(),
+            options: captureAny(named: 'options'),
+          ),
+        ).captured;
 
-      final stream = captured[0] as Stream<AgentRequest>;
-      final requests = await stream.toList();
-      expect(requests, hasLength(1));
-      expect(requests[0].hasQuestionResponse(), isTrue);
-      expect(requests[0].questionResponse.questionId, 'q-7');
-    });
+        final stream = captured[0] as Stream<AgentRequest>;
+        final requests = await stream.toList();
+        expect(requests, hasLength(1));
+        expect(requests[0].hasQuestionResponse(), isTrue);
+        expect(requests[0].questionResponse.questionId, 'q-7');
+      },
+    );
   });
 
   group('dispatch cancel_request', () {
@@ -361,10 +363,7 @@ void main() {
     test('throws ArgumentError on unknown requestType', () async {
       final item = makeQueueItem(requestType: 'totally_unknown');
 
-      expect(
-        () => dispatcher.dispatch(item),
-        throwsA(isA<ArgumentError>()),
-      );
+      expect(() => dispatcher.dispatch(item), throwsA(isA<ArgumentError>()));
     });
   });
 
@@ -399,23 +398,25 @@ void main() {
       );
     });
 
-    test('includes x-idempotency-key in metadata for worktree requests',
-        () async {
-      final req = CreateWorktreeRequest(name: 'test');
-      final payload = req.writeToBuffer();
+    test(
+      'includes x-idempotency-key in metadata for worktree requests',
+      () async {
+        final req = CreateWorktreeRequest(name: 'test');
+        final payload = req.writeToBuffer();
 
-      final item = makeQueueItem(
-        requestType: 'create_worktree',
-        payload: Uint8List.fromList(payload),
-        idempotencyKey: 'wt-idem-key-99',
-      );
+        final item = makeQueueItem(
+          requestType: 'create_worktree',
+          payload: Uint8List.fromList(payload),
+          idempotencyKey: 'wt-idem-key-99',
+        );
 
-      await dispatcher.dispatch(item);
+        await dispatcher.dispatch(item);
 
-      expect(
-        fakeWorktreeClient.lastCreateOptions?.metadata,
-        containsPair('x-idempotency-key', 'wt-idem-key-99'),
-      );
-    });
+        expect(
+          fakeWorktreeClient.lastCreateOptions?.metadata,
+          containsPair('x-idempotency-key', 'wt-idem-key-99'),
+        );
+      },
+    );
   });
 }

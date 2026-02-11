@@ -10,24 +10,27 @@ import '../features/sessions/sessions.dart';
 import '../features/settings/settings.dart';
 import '../features/worktrees/worktrees.dart';
 import 'auth/auth.dart';
+import 'grpc/grpc_providers.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authNotifierProvider);
+  final relayConfig = ref.watch(relayConfigNotifierProvider);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/conversation',
     redirect: (context, state) {
       final isAuth = authState is AuthAuthenticated;
+      final hasRelay = relayConfig != null;
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
-      if (!isAuth && !isAuthRoute) return '/login';
-      if (isAuth && isAuthRoute) return '/conversation';
+      if ((!isAuth || !hasRelay) && !isAuthRoute) return '/login';
+      if (isAuth && hasRelay && isAuthRoute) return '/conversation';
       return null;
     },
     routes: [

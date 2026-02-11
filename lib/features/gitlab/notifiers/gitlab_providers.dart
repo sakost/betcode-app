@@ -27,7 +27,6 @@ final mergeRequestsProvider =
 ///
 /// Use `ref.watch(issuesProvider)` in widgets to reactively rebuild on
 /// loading / data / error transitions.
-final issuesProvider =
-    AsyncNotifierProvider<IssuesNotifier, List<IssueInfo>>(
-      IssuesNotifier.new,
-    );
+final issuesProvider = AsyncNotifierProvider<IssuesNotifier, List<IssueInfo>>(
+  IssuesNotifier.new,
+);

@@ -86,8 +86,9 @@ void main() {
       expect(find.text('Worktrees'), findsOneWidget);
     });
 
-    testWidgets('displays list of WorktreeCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of WorktreeCard widgets when data arrives', (
+      t,
+    ) async {
       final worktrees = [
         _makeWorktree(id: 'wt-1', name: 'feat-login'),
         _makeWorktree(id: 'wt-2', name: 'feat-auth'),
@@ -136,8 +137,7 @@ void main() {
           overrides: [
             worktreesProvider.overrideWith(
               () => _FakeWorktreesNotifier(
-                AsyncError(
-                    Exception('connection refused'), StackTrace.empty),
+                AsyncError(Exception('connection refused'), StackTrace.empty),
               ),
             ),
           ],
@@ -151,8 +151,7 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
     });
 
-    testWidgets('has a FloatingActionButton for creating worktrees',
-        (t) async {
+    testWidgets('has a FloatingActionButton for creating worktrees', (t) async {
       await t.pumpWidget(
         ProviderScope(
           overrides: [
@@ -177,10 +176,12 @@ void main() {
   group('WorktreeCard', () {
     testWidgets('displays worktree name', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(name: 'feat-payments'),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(name: 'feat-payments'),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -189,10 +190,12 @@ void main() {
 
     testWidgets('displays branch name with git branch icon', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(branch: 'feat/payments'),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(branch: 'feat/payments'),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -201,10 +204,12 @@ void main() {
 
     testWidgets('displays path', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(path: '/home/user/worktrees/feat-pay'),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(path: '/home/user/worktrees/feat-pay'),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -213,10 +218,12 @@ void main() {
 
     testWidgets('shows green check when existsOnDisk is true', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(existsOnDisk: true),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(existsOnDisk: true),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -225,10 +232,12 @@ void main() {
 
     testWidgets('shows red X when existsOnDisk is false', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(existsOnDisk: false),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(existsOnDisk: false),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -237,10 +246,12 @@ void main() {
 
     testWidgets('displays session count', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(sessionCount: 7),
-          onDelete: () {},
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(sessionCount: 7),
+            onDelete: () {},
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -250,10 +261,12 @@ void main() {
     testWidgets('has a delete icon button', (t) async {
       var deleted = false;
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(),
-          onDelete: () => deleted = true,
-        )),
+        _app(
+          WorktreeCard(
+            worktree: _makeWorktree(),
+            onDelete: () => deleted = true,
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -267,10 +280,7 @@ void main() {
 
     testWidgets('renders card widget', (t) async {
       await t.pumpWidget(
-        _app(WorktreeCard(
-          worktree: _makeWorktree(),
-          onDelete: () {},
-        )),
+        _app(WorktreeCard(worktree: _makeWorktree(), onDelete: () {})),
       );
       await t.pumpAndSettle();
 
@@ -358,13 +368,21 @@ void main() {
       await t.pumpAndSettle();
 
       await t.enterText(
-          find.widgetWithText(TextFormField, 'Name'), 'feat-login');
+        find.widgetWithText(TextFormField, 'Name'),
+        'feat-login',
+      );
       await t.enterText(
-          find.widgetWithText(TextFormField, 'Repository Path'), '/repo');
+        find.widgetWithText(TextFormField, 'Repository Path'),
+        '/repo',
+      );
       await t.enterText(
-          find.widgetWithText(TextFormField, 'Branch'), 'feat/login');
+        find.widgetWithText(TextFormField, 'Branch'),
+        'feat/login',
+      );
       await t.enterText(
-          find.widgetWithText(TextFormField, 'Setup Script'), 'npm install');
+        find.widgetWithText(TextFormField, 'Setup Script'),
+        'npm install',
+      );
 
       await t.tap(find.text('Create'));
       await t.pumpAndSettle();

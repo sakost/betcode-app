@@ -9,9 +9,7 @@ Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 void main() {
   group('PlanModeBanner', () {
     testWidgets('renders nothing when planModeActive is false', (t) async {
-      await t.pumpWidget(
-        _app(const PlanModeBanner(planModeActive: false)),
-      );
+      await t.pumpWidget(_app(const PlanModeBanner(planModeActive: false)));
 
       expect(find.byType(PlanModeBanner), findsOneWidget);
       // No card or banner should be visible
@@ -20,9 +18,7 @@ void main() {
     });
 
     testWidgets('shows banner when planModeActive is true', (t) async {
-      await t.pumpWidget(
-        _app(const PlanModeBanner(planModeActive: true)),
-      );
+      await t.pumpWidget(_app(const PlanModeBanner(planModeActive: true)));
 
       expect(find.text('Plan Mode'), findsOneWidget);
       expect(find.byIcon(Icons.map), findsOneWidget);
@@ -30,10 +26,12 @@ void main() {
 
     testWidgets('shows plan content as markdown when provided', (t) async {
       await t.pumpWidget(
-        _app(const PlanModeBanner(
-          planModeActive: true,
-          planContent: '## Step 1\n\nDo the thing',
-        )),
+        _app(
+          const PlanModeBanner(
+            planModeActive: true,
+            planContent: '## Step 1\n\nDo the thing',
+          ),
+        ),
       );
 
       expect(find.text('Plan Mode'), findsOneWidget);
@@ -41,9 +39,7 @@ void main() {
     });
 
     testWidgets('no markdown body when planContent is null', (t) async {
-      await t.pumpWidget(
-        _app(const PlanModeBanner(planModeActive: true)),
-      );
+      await t.pumpWidget(_app(const PlanModeBanner(planModeActive: true)));
 
       expect(find.text('Plan Mode'), findsOneWidget);
       expect(find.byType(MarkdownBody), findsNothing);
@@ -61,10 +57,7 @@ void main() {
     testWidgets('plan content is scrollable', (t) async {
       final longContent = List.generate(50, (i) => '- Item $i').join('\n');
       await t.pumpWidget(
-        _app(PlanModeBanner(
-          planModeActive: true,
-          planContent: longContent,
-        )),
+        _app(PlanModeBanner(planModeActive: true, planContent: longContent)),
       );
 
       // The plan content area should be within a constrained scrollable container
@@ -73,10 +66,9 @@ void main() {
 
     testWidgets('hidden when inactive even with plan content', (t) async {
       await t.pumpWidget(
-        _app(const PlanModeBanner(
-          planModeActive: false,
-          planContent: 'Some plan',
-        )),
+        _app(
+          const PlanModeBanner(planModeActive: false, planContent: 'Some plan'),
+        ),
       );
 
       expect(find.text('Plan Mode'), findsNothing);

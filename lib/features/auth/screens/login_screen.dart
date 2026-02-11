@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth.dart';
+import '../../../core/grpc/grpc_providers.dart';
+import '../../../core/grpc/relay_config.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/auth.pb.dart';
 
@@ -17,13 +19,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _relayHostController = TextEditingController();
+  final _relayPortController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _useTls = true;
+  bool _relayInitialized = false;
+
+  void _initRelayFields() {
+    if (_relayInitialized) return;
+    _relayInitialized = true;
+
+    final current = ref.read(relayConfigNotifierProvider);
+    if (current != null) {
+      _relayHostController.text = current.host;
+      _relayPortController.text = current.port.toString();
+      _useTls = current.useTls;
+    } else {
+      final defaults = ref.read(relayDefaultsProvider);
+      if (defaults.host.isNotEmpty) {
+        _relayHostController.text = defaults.host;
+      }
+      _relayPortController.text = defaults.port.toString();
+      _useTls = defaults.useTls;
+    }
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _relayHostController.dispose();
+    _relayPortController.dispose();
     super.dispose();
   }
 
@@ -33,6 +60,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Build relay config from form values
+      final relayConfig = RelayConfig(
+        host: _relayHostController.text.trim(),
+        port: int.tryParse(_relayPortController.text.trim()) ?? 0,
+        useTls: _useTls,
+      );
+
+      // Connect to relay if not already connected with same config
+      final currentRelay = ref.read(relayConfigNotifierProvider);
+      if (currentRelay == null || currentRelay != relayConfig) {
+        try {
+          await ref
+              .read(relayConfigNotifierProvider.notifier)
+              .connectTo(relayConfig);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Relay connection failed: $e')),
+            );
+          }
+          return;
+        }
+      }
+
       final authClient = ref.read(authServiceProvider);
       final response = await authClient.login(
         LoginRequest(
@@ -64,6 +115,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _initRelayFields();
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -96,6 +148,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
+                  ExpansionTile(
+                    leading: const Icon(Icons.dns_outlined),
+                    title: const Text('Relay Server'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
+                        child: TextFormField(
+                          controller: _relayHostController,
+                          decoration: const InputDecoration(
+                            labelText: 'Host',
+                            prefixIcon: Icon(Icons.language),
+                            border: OutlineInputBorder(),
+                          ),
+                          textInputAction: TextInputAction.next,
+                          autocorrect: false,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Relay host is required';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 8.0,
+                        ),
+                        child: TextFormField(
+                          controller: _relayPortController,
+                          decoration: const InputDecoration(
+                            labelText: 'Port',
+                            prefixIcon: Icon(Icons.numbers),
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.next,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Port is required';
+                            }
+                            final port = int.tryParse(value.trim());
+                            if (port == null || port < 1 || port > 65535) {
+                              return 'Port must be between 1 and 65535';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Use TLS'),
+                        value: _useTls,
+                        onChanged: (value) {
+                          setState(() => _useTls = value);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _usernameController,
                     decoration: const InputDecoration(

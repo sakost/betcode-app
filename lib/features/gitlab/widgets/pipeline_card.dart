@@ -130,24 +130,42 @@ class _PipelineStatusBadge extends StatelessWidget {
     return switch (status) {
       PipelineStatus.PIPELINE_STATUS_SUCCESS => (AppColors.online, 'Success'),
       PipelineStatus.PIPELINE_STATUS_FAILED => (AppColors.offline, 'Failed'),
-      PipelineStatus.PIPELINE_STATUS_RUNNING =>
-        (AppColors.agentThinking, 'Running'),
-      PipelineStatus.PIPELINE_STATUS_PENDING =>
-        (AppColors.syncPending, 'Pending'),
-      PipelineStatus.PIPELINE_STATUS_CANCELED =>
-        (AppColors.agentIdle, 'Canceled'),
-      PipelineStatus.PIPELINE_STATUS_CREATED =>
-        (AppColors.agentIdle, 'Created'),
-      PipelineStatus.PIPELINE_STATUS_SKIPPED =>
-        (AppColors.agentIdle, 'Skipped'),
-      PipelineStatus.PIPELINE_STATUS_MANUAL =>
-        (AppColors.agentWaiting, 'Manual'),
-      PipelineStatus.PIPELINE_STATUS_SCHEDULED =>
-        (AppColors.scheduled, 'Scheduled'),
-      PipelineStatus.PIPELINE_STATUS_PREPARING =>
-        (AppColors.syncPending, 'Preparing'),
-      PipelineStatus.PIPELINE_STATUS_WAITING_FOR_RESOURCE =>
-        (AppColors.syncPending, 'Waiting'),
+      PipelineStatus.PIPELINE_STATUS_RUNNING => (
+        AppColors.agentThinking,
+        'Running',
+      ),
+      PipelineStatus.PIPELINE_STATUS_PENDING => (
+        AppColors.syncPending,
+        'Pending',
+      ),
+      PipelineStatus.PIPELINE_STATUS_CANCELED => (
+        AppColors.agentIdle,
+        'Canceled',
+      ),
+      PipelineStatus.PIPELINE_STATUS_CREATED => (
+        AppColors.agentIdle,
+        'Created',
+      ),
+      PipelineStatus.PIPELINE_STATUS_SKIPPED => (
+        AppColors.agentIdle,
+        'Skipped',
+      ),
+      PipelineStatus.PIPELINE_STATUS_MANUAL => (
+        AppColors.agentWaiting,
+        'Manual',
+      ),
+      PipelineStatus.PIPELINE_STATUS_SCHEDULED => (
+        AppColors.scheduled,
+        'Scheduled',
+      ),
+      PipelineStatus.PIPELINE_STATUS_PREPARING => (
+        AppColors.syncPending,
+        'Preparing',
+      ),
+      PipelineStatus.PIPELINE_STATUS_WAITING_FOR_RESOURCE => (
+        AppColors.syncPending,
+        'Waiting',
+      ),
       _ => (AppColors.agentIdle, 'Unknown'),
     };
   }

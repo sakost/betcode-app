@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/auth.dart';
+import '../../../core/grpc/connection_state.dart';
+import '../../../core/grpc/grpc_providers.dart';
 import '../../../generated/betcode/v1/config.pb.dart';
+import '../../../shared/widgets/connection_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/settings_providers.dart';
 import '../widgets/mcp_server_card.dart';
@@ -29,6 +33,7 @@ class SettingsScreen extends ConsumerWidget {
           },
           child: ListView(
             children: [
+              const _RelayConnectionSection(),
               _SessionSettingsSection(settings: settings),
               _PermissionSettingsSection(settings: settings),
               _McpServersSection(),
@@ -37,6 +42,59 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RelayConnectionSection extends ConsumerWidget {
+  const _RelayConnectionSection();
+
+  ConnectionStatus _mapStatus(GrpcConnectionStatus grpcStatus) {
+    return switch (grpcStatus) {
+      GrpcConnectionStatus.connected => ConnectionStatus.connected,
+      GrpcConnectionStatus.connecting => ConnectionStatus.connecting,
+      GrpcConnectionStatus.reconnecting => ConnectionStatus.reconnecting,
+      GrpcConnectionStatus.disconnected => ConnectionStatus.disconnected,
+      GrpcConnectionStatus.authenticating => ConnectionStatus.disconnected,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final relayConfig = ref.watch(relayConfigNotifierProvider);
+    final connectionStatusAsync = ref.watch(connectionStatusProvider);
+
+    final serverText = relayConfig != null
+        ? '${relayConfig.host}:${relayConfig.port}'
+        : 'Not configured';
+
+    final connectionStatus = connectionStatusAsync.when(
+      data: _mapStatus,
+      loading: () => ConnectionStatus.disconnected,
+      error: (_, _) => ConnectionStatus.disconnected,
+    );
+
+    return ExpansionTile(
+      title: const Text('Relay Connection'),
+      leading: const Icon(Icons.dns),
+      initiallyExpanded: true,
+      children: [
+        ListTile(title: const Text('Server'), trailing: Text(serverText)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ConnectionIndicator(status: connectionStatus),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: OutlinedButton(
+            onPressed: () async {
+              await ref.read(relayConfigNotifierProvider.notifier).disconnect();
+              await ref.read(authNotifierProvider.notifier).logout();
+            },
+            child: const Text('Disconnect'),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -164,10 +222,7 @@ class _AboutSection extends StatelessWidget {
       title: Text('About'),
       leading: Icon(Icons.info),
       children: [
-        ListTile(
-          title: Text('App Version'),
-          trailing: Text('1.0.0-dev'),
-        ),
+        ListTile(title: Text('App Version'), trailing: Text('1.0.0-dev')),
       ],
     );
   }

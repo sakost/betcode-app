@@ -11,7 +11,10 @@ import 'package:betcode_app/core/grpc/interceptors.dart';
 
 ClientMethod<String, String> _method([String path = '/test/M']) =>
     ClientMethod<String, String>(
-      path, (s) => s.codeUnits, (b) => String.fromCharCodes(b));
+      path,
+      (s) => s.codeUnits,
+      (b) => String.fromCharCodes(b),
+    );
 
 class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
   FakeResponseFuture.value(T v) : _f = Future.value(v);
@@ -43,10 +46,17 @@ class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
   final Stream<T> _s;
 
   @override
-  StreamSubscription<T> listen(void Function(T)? onData,
-          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      _s.listen(onData,
-          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<T> listen(
+    void Function(T)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => _s.listen(
+    onData,
+    onError: onError,
+    onDone: onDone,
+    cancelOnError: cancelOnError,
+  );
 }
 
 Future<Map<String, String>> _resolveMetadata(CallOptions options) async {
@@ -64,13 +74,16 @@ Future<Map<String, String>> _resolveMetadata(CallOptions options) async {
 void main() {
   group('AuthInterceptor - unary', () {
     test('adds Bearer token when token is available', () async {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'my-jwt',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'my-jwt');
       late CallOptions captured;
       interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(),
-        (m, r, o) { captured = o; return FakeResponseFuture.value('ok'); },
+        _method(),
+        'req',
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
       );
       final md = await _resolveMetadata(captured);
       expect(md['authorization'], 'Bearer my-jwt');
@@ -80,21 +93,29 @@ void main() {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
       late CallOptions captured;
       interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(),
-        (m, r, o) { captured = o; return FakeResponseFuture.value('ok'); },
+        _method(),
+        'req',
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
       );
       final md = await _resolveMetadata(captured);
       expect(md.containsKey('authorization'), isFalse);
     });
 
     test('preserves existing metadata', () async {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'tok',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       late CallOptions captured;
       interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(metadata: {'x-custom': 'v'}),
-        (m, r, o) { captured = o; return FakeResponseFuture.value('ok'); },
+        _method(),
+        'req',
+        CallOptions(metadata: {'x-custom': 'v'}),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
       );
       final md = await _resolveMetadata(captured);
       expect(md['authorization'], 'Bearer tok');
@@ -102,15 +123,16 @@ void main() {
     });
 
     test('forwards method and request to invoker', () {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'tok',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       late String capturedPath;
       late String capturedReq;
       interceptor.interceptUnary<String, String>(
-        _method('/svc/Do'), 'hello', CallOptions(),
+        _method('/svc/Do'),
+        'hello',
+        CallOptions(),
         (m, r, o) {
-          capturedPath = m.path; capturedReq = r;
+          capturedPath = m.path;
+          capturedReq = r;
           return FakeResponseFuture.value('ok');
         },
       );
@@ -119,11 +141,11 @@ void main() {
     });
 
     test('returns invoker response', () async {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'tok',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       final resp = interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(),
+        _method(),
+        'req',
+        CallOptions(),
         (m, r, o) => FakeResponseFuture.value('result'),
       );
       expect(await resp, 'result');
@@ -136,12 +158,22 @@ void main() {
       );
       late CallOptions o1, o2;
       interceptor.interceptUnary<String, String>(
-        _method(), 'r', CallOptions(),
-        (m, r, o) { o1 = o; return FakeResponseFuture.value(''); },
+        _method(),
+        'r',
+        CallOptions(),
+        (m, r, o) {
+          o1 = o;
+          return FakeResponseFuture.value('');
+        },
       );
       interceptor.interceptUnary<String, String>(
-        _method(), 'r', CallOptions(),
-        (m, r, o) { o2 = o; return FakeResponseFuture.value(''); },
+        _method(),
+        'r',
+        CallOptions(),
+        (m, r, o) {
+          o2 = o;
+          return FakeResponseFuture.value('');
+        },
       );
       expect((await _resolveMetadata(o1))['authorization'], 'Bearer tok-1');
       expect((await _resolveMetadata(o2))['authorization'], 'Bearer tok-2');
@@ -155,8 +187,13 @@ void main() {
       );
       late CallOptions captured;
       interceptor.interceptStreaming<String, String>(
-        _method(), const Stream.empty(), CallOptions(),
-        (m, r, o) { captured = o; return FakeResponseStream(const Stream.empty()); },
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseStream(const Stream.empty());
+        },
       );
       final md = await _resolveMetadata(captured);
       expect(md['authorization'], 'Bearer stream-tok');
@@ -166,33 +203,43 @@ void main() {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
       late CallOptions captured;
       interceptor.interceptStreaming<String, String>(
-        _method(), const Stream.empty(), CallOptions(),
-        (m, r, o) { captured = o; return FakeResponseStream(const Stream.empty()); },
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseStream(const Stream.empty());
+        },
       );
-      expect((await _resolveMetadata(captured)).containsKey('authorization'),
-          isFalse);
+      expect(
+        (await _resolveMetadata(captured)).containsKey('authorization'),
+        isFalse,
+      );
     });
 
     test('forwards request stream unchanged', () {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'tok',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       final input = Stream<String>.fromIterable(['a']);
       late Stream<String> captured;
       interceptor.interceptStreaming<String, String>(
-        _method(), input, CallOptions(),
-        (m, r, o) { captured = r; return FakeResponseStream(const Stream.empty()); },
+        _method(),
+        input,
+        CallOptions(),
+        (m, r, o) {
+          captured = r;
+          return FakeResponseStream(const Stream.empty());
+        },
       );
       expect(captured, same(input));
     });
 
     test('returns invoker response stream', () {
-      final interceptor = AuthInterceptor(
-        tokenProvider: () async => 'tok',
-      );
+      final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       final expected = FakeResponseStream(Stream<String>.fromIterable(['x']));
       final result = interceptor.interceptStreaming<String, String>(
-        _method(), const Stream.empty(), CallOptions(),
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
         (m, r, o) => expected,
       );
       expect(result, same(expected));
@@ -204,17 +251,23 @@ void main() {
       final interceptor = LoggingInterceptor();
       final opts = CallOptions(metadata: {'k': 'v'});
       late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(), 'req', opts,
-        (m, r, o) { captured = o; return FakeResponseFuture.value('ok'); },
-      );
+      interceptor.interceptUnary<String, String>(_method(), 'req', opts, (
+        m,
+        r,
+        o,
+      ) {
+        captured = o;
+        return FakeResponseFuture.value('ok');
+      });
       expect(captured, same(opts));
     });
 
     test('returns invoker response', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(),
+        _method(),
+        'req',
+        CallOptions(),
         (m, r, o) => FakeResponseFuture.value('result'),
       );
       expect(await resp, 'result');
@@ -223,7 +276,9 @@ void main() {
     test('does not swallow errors from invoker', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method(), 'req', CallOptions(),
+        _method(),
+        'req',
+        CallOptions(),
         (m, r, o) => FakeResponseFuture.error(GrpcError.unavailable('down')),
       );
       await expectLater(resp, throwsA(isA<GrpcError>()));
@@ -232,7 +287,9 @@ void main() {
     test('successful response completes without error', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method('/svc/Ok'), 'req', CallOptions(),
+        _method('/svc/Ok'),
+        'req',
+        CallOptions(),
         (m, r, o) => FakeResponseFuture.value('ok'),
       );
       expect(await resp, 'ok');
@@ -245,8 +302,13 @@ void main() {
       final opts = CallOptions(metadata: {'k': 'v'});
       late CallOptions captured;
       interceptor.interceptStreaming<String, String>(
-        _method(), const Stream.empty(), opts,
-        (m, r, o) { captured = o; return FakeResponseStream(const Stream.empty()); },
+        _method(),
+        const Stream.empty(),
+        opts,
+        (m, r, o) {
+          captured = o;
+          return FakeResponseStream(const Stream.empty());
+        },
       );
       expect(captured, same(opts));
     });
@@ -255,7 +317,9 @@ void main() {
       final interceptor = LoggingInterceptor();
       final expected = FakeResponseStream(Stream<String>.fromIterable(['d']));
       final result = interceptor.interceptStreaming<String, String>(
-        _method(), const Stream.empty(), CallOptions(),
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
         (m, r, o) => expected,
       );
       expect(result, same(expected));

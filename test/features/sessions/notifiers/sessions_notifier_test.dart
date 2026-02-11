@@ -120,26 +120,24 @@ void main() {
     });
 
     test('passes correct page size to gRPC', () async {
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(ListSessionsResponse()),
-      );
+      when(
+        () => mockClient.listSessions(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
 
       await container.read(sessionsProvider.future);
 
-      final captured = verify(
-        () => mockClient.listSessions(captureAny()),
-      ).captured.single as ListSessionsRequest;
+      final captured =
+          verify(() => mockClient.listSessions(captureAny())).captured.single
+              as ListSessionsRequest;
 
       expect(captured.limit, 20);
       expect(captured.offset, 0);
     });
 
     test('returns empty list when no sessions exist', () async {
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(ListSessionsResponse()),
-      );
+      when(
+        () => mockClient.listSessions(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
 
       final result = await container.read(sessionsProvider.future);
       expect(result, isEmpty);
@@ -147,8 +145,7 @@ void main() {
 
     test('caches sessions to the local database', () async {
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(sessions: [makeSession('s-1')]),
         ),
       );
@@ -160,8 +157,7 @@ void main() {
 
     test('preserves session fields from the response', () async {
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(
             sessions: [
               SessionSummary(
@@ -239,8 +235,7 @@ void main() {
     test('re-fetches and updates state', () async {
       // Initial fetch
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(sessions: [makeSession('s-1')]),
         ),
       );
@@ -248,8 +243,7 @@ void main() {
 
       // Refresh with updated data
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(
             sessions: [makeSession('s-1'), makeSession('s-new')],
           ),
@@ -268,8 +262,7 @@ void main() {
       final states = <AsyncValue<List<SessionSummary>>>[];
 
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(sessions: [makeSession('s-1')]),
         ),
       );
@@ -280,8 +273,7 @@ void main() {
       });
 
       when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(
+        (_) => FakeResponseFuture.value(
           ListSessionsResponse(sessions: [makeSession('s-2')]),
         ),
       );
@@ -297,9 +289,9 @@ void main() {
     test('recovers from error state on refresh', () async {
       // Use a mock that we can re-stub after the initial error.
       final errClient = MockAgentServiceClient();
-      when(() => errClient.listSessions(any())).thenThrow(
-        GrpcError.unavailable(),
-      );
+      when(
+        () => errClient.listSessions(any()),
+      ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
         overrides: [
@@ -329,18 +321,16 @@ void main() {
     });
 
     test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(ListSessionsResponse()),
-      );
+      when(
+        () => mockClient.listSessions(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
       await container.read(sessionsProvider.future);
 
       // Reset call count
       reset(mockClient);
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) =>
-        FakeResponseFuture.value(ListSessionsResponse()),
-      );
+      when(
+        () => mockClient.listSessions(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
 
       final notifier = container.read(sessionsProvider.notifier);
       await notifier.refresh();

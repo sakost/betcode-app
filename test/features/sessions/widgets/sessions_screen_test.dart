@@ -17,7 +17,8 @@ import 'package:betcode_app/shared/theme/app_theme.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _app(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: child);
+Widget _app(Widget child) =>
+    MaterialApp(theme: AppTheme.lightTheme, home: child);
 
 SessionSummary _makeSession({
   String id = 'sess-1',
@@ -56,7 +57,8 @@ class _FakeSessionsNotifier extends SessionsNotifier {
   Future<List<SessionSummary>> build() {
     return _value.when(
       data: (d) => Future.value(d),
-      loading: () => Completer<List<SessionSummary>>().future, // never completes
+      loading: () =>
+          Completer<List<SessionSummary>>().future, // never completes
       error: (e, st) => Future.error(e, st),
     );
   }
@@ -86,8 +88,9 @@ void main() {
       expect(find.text('Sessions'), findsOneWidget);
     });
 
-    testWidgets('displays list of SessionCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of SessionCard widgets when data arrives', (
+      t,
+    ) async {
       final sessions = [
         _makeSession(id: 's-1', model: 'opus'),
         _makeSession(id: 's-2', model: 'sonnet'),
@@ -172,9 +175,11 @@ void main() {
 
     testWidgets('displays last message preview', (t) async {
       await t.pumpWidget(
-        _app(SessionCard(
-          session: _makeSession(lastMessagePreview: 'Fix the auth bug'),
-        )),
+        _app(
+          SessionCard(
+            session: _makeSession(lastMessagePreview: 'Fix the auth bug'),
+          ),
+        ),
       );
       await t.pumpAndSettle();
 
@@ -209,9 +214,7 @@ void main() {
     });
 
     testWidgets('shows "Unknown" when model is empty', (t) async {
-      await t.pumpWidget(
-        _app(SessionCard(session: _makeSession(model: ''))),
-      );
+      await t.pumpWidget(_app(SessionCard(session: _makeSession(model: ''))));
       await t.pumpAndSettle();
 
       expect(find.text('Unknown'), findsOneWidget);
@@ -254,9 +257,7 @@ void main() {
     });
 
     testWidgets('renders card with InkWell for tap target', (t) async {
-      await t.pumpWidget(
-        _app(SessionCard(session: _makeSession())),
-      );
+      await t.pumpWidget(_app(SessionCard(session: _makeSession())));
       await t.pumpAndSettle();
 
       expect(find.byType(Card), findsOneWidget);

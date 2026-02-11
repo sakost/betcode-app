@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/router.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
@@ -27,6 +30,14 @@ class _AuthenticatedNotifier extends AuthNotifier {
   }
 }
 
+/// Relay notifier that returns a non-null config for testing.
+class _ConnectedRelayNotifier extends RelayConfigNotifier {
+  @override
+  RelayConfig? build() {
+    return const RelayConfig(host: 'test-relay', port: 443);
+  }
+}
+
 void main() {
   late MockSecureStorageService mockStorage;
 
@@ -39,6 +50,7 @@ void main() {
       overrides: [
         secureStorageProvider.overrideWithValue(mockStorage),
         authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
+        relayConfigNotifierProvider.overrideWith(_ConnectedRelayNotifier.new),
       ],
       child: Consumer(
         builder: (context, ref, _) {
@@ -57,9 +69,7 @@ void main() {
 
   Widget buildUnauthApp({String? initialLocation}) {
     return ProviderScope(
-      overrides: [
-        secureStorageProvider.overrideWithValue(mockStorage),
-      ],
+      overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
       child: Consumer(
         builder: (context, ref, _) {
           final router = ref.watch(routerProvider);
@@ -76,37 +86,42 @@ void main() {
   }
 
   group('Router - redirect logic', () {
-    testWidgets('unauthenticated user accessing /sessions -> /login',
-        (tester) async {
+    testWidgets('unauthenticated user accessing /sessions -> /login', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildUnauthApp(initialLocation: '/sessions'));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('unauthenticated user accessing /machines -> /login',
-        (tester) async {
+    testWidgets('unauthenticated user accessing /machines -> /login', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildUnauthApp(initialLocation: '/machines'));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('unauthenticated user accessing /settings -> /login',
-        (tester) async {
+    testWidgets('unauthenticated user accessing /settings -> /login', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildUnauthApp(initialLocation: '/settings'));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('authenticated user accessing /register -> /conversation',
-        (tester) async {
+    testWidgets('authenticated user accessing /register -> /conversation', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildAuthApp(initialLocation: '/register'));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
       expect(find.text('Register'), findsNothing);
     });
 
-    testWidgets('authenticated user on /login -> /conversation',
-        (tester) async {
+    testWidgets('authenticated user on /login -> /conversation', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildAuthApp(initialLocation: '/login'));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
@@ -126,8 +141,9 @@ void main() {
 
   group('Router - deep linking', () {
     testWidgets('conversation with sessionId parameter', (tester) async {
-      await tester
-          .pumpWidget(buildAuthApp(initialLocation: '/conversation/sess-42'));
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/conversation/sess-42'),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
@@ -136,8 +152,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester
-          .pumpWidget(buildAuthApp(initialLocation: '/machines/m-1'));
+      await tester.pumpWidget(buildAuthApp(initialLocation: '/machines/m-1'));
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
@@ -157,8 +172,7 @@ void main() {
       await tester.pumpWidget(buildAuthApp());
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.destinations, hasLength(6));
     });
 
@@ -172,8 +186,7 @@ void main() {
       await tester.tap(find.text('Sessions'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 1);
     });
 
@@ -187,8 +200,7 @@ void main() {
       await tester.tap(find.text('Machines'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 2);
     });
 
@@ -202,8 +214,7 @@ void main() {
       await tester.tap(find.text('Worktrees'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 3);
     });
 
@@ -217,8 +228,7 @@ void main() {
       await tester.tap(find.text('GitLab'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 4);
     });
 
@@ -232,8 +242,7 @@ void main() {
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 5);
     });
 
@@ -250,8 +259,7 @@ void main() {
       await tester.tap(find.text('Chat'));
       await tester.pumpAndSettle();
 
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 0);
     });
   });

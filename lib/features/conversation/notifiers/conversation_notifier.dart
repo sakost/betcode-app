@@ -197,9 +197,11 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   void _attemptReconnection(ConversationActive active) {
     if (_reconnectAttempt >= _maxReconnectAttempts) {
-      state = AsyncData(ConversationState.error(
-        'Connection lost after $_maxReconnectAttempts reconnection attempts',
-      ));
+      state = AsyncData(
+        ConversationState.error(
+          'Connection lost after $_maxReconnectAttempts reconnection attempts',
+        ),
+      );
       _cleanup();
       return;
     }
@@ -208,9 +210,11 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         _backoffDurations[min(_reconnectAttempt, _backoffDurations.length - 1)];
     _reconnectAttempt++;
 
-    state = AsyncData(active.copyWith(
-      errorMessage: 'Reconnecting (attempt $_reconnectAttempt)...',
-    ));
+    state = AsyncData(
+      active.copyWith(
+        errorMessage: 'Reconnecting (attempt $_reconnectAttempt)...',
+      ),
+    );
 
     _reconnectTimer = Timer(delay, () {
       if (state.value is! ConversationActive) return;

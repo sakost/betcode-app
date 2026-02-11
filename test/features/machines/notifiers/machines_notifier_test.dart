@@ -80,20 +80,21 @@ void main() {
     mockClient = MockMachineServiceClient();
 
     container = ProviderContainer(
-      overrides: [
-        machineServiceProvider.overrideWithValue(mockClient),
-      ],
+      overrides: [machineServiceProvider.overrideWithValue(mockClient)],
     );
   });
 
   tearDown(() => container.dispose());
 
-  MachineInfo makeMachine(String id, {String name = 'dev-box', MachineStatus? status}) =>
-      MachineInfo(
-        machineId: id,
-        name: name,
-        status: status ?? MachineStatus.MACHINE_STATUS_ONLINE,
-      );
+  MachineInfo makeMachine(
+    String id, {
+    String name = 'dev-box',
+    MachineStatus? status,
+  }) => MachineInfo(
+    machineId: id,
+    name: name,
+    status: status ?? MachineStatus.MACHINE_STATUS_ONLINE,
+  );
 
   group('MachinesNotifier - build', () {
     test('fetches machines from gRPC', () async {
@@ -112,9 +113,9 @@ void main() {
     });
 
     test('returns empty list when no machines exist', () async {
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
-      );
+      when(
+        () => mockClient.listMachines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
 
       final result = await container.read(machinesProvider.future);
       expect(result, isEmpty);
@@ -243,14 +244,12 @@ void main() {
 
     test('recovers from error state on refresh', () async {
       final errClient = MockMachineServiceClient();
-      when(() => errClient.listMachines(any())).thenThrow(
-        GrpcError.unavailable(),
-      );
+      when(
+        () => errClient.listMachines(any()),
+      ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [
-          machineServiceProvider.overrideWithValue(errClient),
-        ],
+        overrides: [machineServiceProvider.overrideWithValue(errClient)],
       );
       addTearDown(errContainer.dispose);
 
@@ -274,16 +273,16 @@ void main() {
     });
 
     test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
-      );
+      when(
+        () => mockClient.listMachines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
       await container.read(machinesProvider.future);
 
       // Reset call count
       reset(mockClient);
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
-      );
+      when(
+        () => mockClient.listMachines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
 
       final notifier = container.read(machinesProvider.notifier);
       await notifier.refresh();

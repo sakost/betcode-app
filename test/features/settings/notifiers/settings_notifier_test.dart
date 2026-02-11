@@ -104,21 +104,20 @@ void main() {
     int disconnectedTimeoutSecs = 120,
     bool enableAutoApprove = false,
     bool activityRefreshEnabled = true,
-  }) =>
-      Settings(
-        sessions: SessionSettings(
-          defaultModel: defaultModel,
-          autoCompact: autoCompact,
-          autoCompactThreshold: autoCompactThreshold,
-          maxMessagesPerSession: maxMessagesPerSession,
-        ),
-        permissions: PermissionSettings(
-          connectedTimeoutSecs: connectedTimeoutSecs,
-          disconnectedTimeoutSecs: disconnectedTimeoutSecs,
-          enableAutoApprove: enableAutoApprove,
-          activityRefreshEnabled: activityRefreshEnabled,
-        ),
-      );
+  }) => Settings(
+    sessions: SessionSettings(
+      defaultModel: defaultModel,
+      autoCompact: autoCompact,
+      autoCompactThreshold: autoCompactThreshold,
+      maxMessagesPerSession: maxMessagesPerSession,
+    ),
+    permissions: PermissionSettings(
+      connectedTimeoutSecs: connectedTimeoutSecs,
+      disconnectedTimeoutSecs: disconnectedTimeoutSecs,
+      enableAutoApprove: enableAutoApprove,
+      activityRefreshEnabled: activityRefreshEnabled,
+    ),
+  );
 
   // ---------------------------------------------------------------------------
   // SettingsNotifier
@@ -127,8 +126,9 @@ void main() {
   group('SettingsNotifier - build', () {
     test('fetches settings from gRPC', () async {
       final settings = makeSettings();
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(settings));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(settings));
 
       final result = await container.read(settingsProvider.future);
 
@@ -138,8 +138,9 @@ void main() {
     });
 
     test('calls getSettings exactly once on build', () async {
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
 
       await container.read(settingsProvider.future);
 
@@ -148,12 +149,14 @@ void main() {
 
     test('preserves all session settings fields', () async {
       when(() => mockClient.getSettings(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeSettings(
-          defaultModel: 'sonnet',
-          autoCompact: false,
-          autoCompactThreshold: 200,
-          maxMessagesPerSession: 1000,
-        )),
+        (_) => FakeResponseFuture.value(
+          makeSettings(
+            defaultModel: 'sonnet',
+            autoCompact: false,
+            autoCompactThreshold: 200,
+            maxMessagesPerSession: 1000,
+          ),
+        ),
       );
 
       final result = await container.read(settingsProvider.future);
@@ -166,12 +169,14 @@ void main() {
 
     test('preserves all permission settings fields', () async {
       when(() => mockClient.getSettings(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeSettings(
-          connectedTimeoutSecs: 60,
-          disconnectedTimeoutSecs: 300,
-          enableAutoApprove: true,
-          activityRefreshEnabled: false,
-        )),
+        (_) => FakeResponseFuture.value(
+          makeSettings(
+            connectedTimeoutSecs: 60,
+            disconnectedTimeoutSecs: 300,
+            enableAutoApprove: true,
+            activityRefreshEnabled: false,
+          ),
+        ),
       );
 
       final result = await container.read(settingsProvider.future);
@@ -223,8 +228,9 @@ void main() {
 
   group('SettingsNotifier - refresh', () {
     test('re-fetches and updates state', () async {
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
       await container.read(settingsProvider.future);
 
       when(() => mockClient.getSettings(any())).thenAnswer(
@@ -241,8 +247,9 @@ void main() {
     test('transitions through loading state during refresh', () async {
       final states = <AsyncValue<Settings>>[];
 
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
       await container.read(settingsProvider.future);
 
       container.listen(settingsProvider, (prev, next) {
@@ -261,13 +268,15 @@ void main() {
     });
 
     test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
       await container.read(settingsProvider.future);
 
       reset(mockClient);
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
 
       final notifier = container.read(settingsProvider.notifier);
       await notifier.refresh();
@@ -278,13 +287,15 @@ void main() {
 
   group('SettingsNotifier - updateSettings', () {
     test('sends updated settings to gRPC and updates state', () async {
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
       await container.read(settingsProvider.future);
 
       final updated = makeSettings(defaultModel: 'haiku');
-      when(() => mockClient.updateSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(updated));
+      when(
+        () => mockClient.updateSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(updated));
 
       final notifier = container.read(settingsProvider.notifier);
       await notifier.updateSettings(updated);
@@ -294,20 +305,22 @@ void main() {
     });
 
     test('passes settings in UpdateSettingsRequest', () async {
-      when(() => mockClient.getSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      when(
+        () => mockClient.getSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
       await container.read(settingsProvider.future);
 
       final updated = makeSettings(defaultModel: 'sonnet');
-      when(() => mockClient.updateSettings(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(updated));
+      when(
+        () => mockClient.updateSettings(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(updated));
 
       final notifier = container.read(settingsProvider.notifier);
       await notifier.updateSettings(updated);
 
-      final captured = verify(
-        () => mockClient.updateSettings(captureAny()),
-      ).captured.single as UpdateSettingsRequest;
+      final captured =
+          verify(() => mockClient.updateSettings(captureAny())).captured.single
+              as UpdateSettingsRequest;
 
       expect(captured.settings.sessions.defaultModel, 'sonnet');
     });
@@ -320,17 +333,19 @@ void main() {
   group('McpServersNotifier - build', () {
     test('fetches MCP servers list from gRPC', () async {
       when(() => mockClient.listMcpServers(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMcpServersResponse(
-          servers: [
-            McpServerInfo(
-              name: 'context7',
-              serverType: 'stdio',
-              endpoint: '/usr/bin/context7',
-              status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
-              tools: ['query-docs', 'resolve-library-id'],
-            ),
-          ],
-        )),
+        (_) => FakeResponseFuture.value(
+          ListMcpServersResponse(
+            servers: [
+              McpServerInfo(
+                name: 'context7',
+                serverType: 'stdio',
+                endpoint: '/usr/bin/context7',
+                status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
+                tools: ['query-docs', 'resolve-library-id'],
+              ),
+            ],
+          ),
+        ),
       );
 
       final result = await container.read(mcpServersProvider.future);
@@ -342,8 +357,9 @@ void main() {
     });
 
     test('returns empty list when no servers configured', () async {
-      when(() => mockClient.listMcpServers(any()))
-          .thenAnswer((_) => FakeResponseFuture.value(ListMcpServersResponse()));
+      when(
+        () => mockClient.listMcpServers(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListMcpServersResponse()));
 
       final result = await container.read(mcpServersProvider.future);
       expect(result, isEmpty);
@@ -351,13 +367,15 @@ void main() {
 
     test('returns multiple servers', () async {
       when(() => mockClient.listMcpServers(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMcpServersResponse(
-          servers: [
-            McpServerInfo(name: 'server-a'),
-            McpServerInfo(name: 'server-b'),
-            McpServerInfo(name: 'server-c'),
-          ],
-        )),
+        (_) => FakeResponseFuture.value(
+          ListMcpServersResponse(
+            servers: [
+              McpServerInfo(name: 'server-a'),
+              McpServerInfo(name: 'server-b'),
+              McpServerInfo(name: 'server-c'),
+            ],
+          ),
+        ),
       );
 
       final result = await container.read(mcpServersProvider.future);
@@ -388,16 +406,21 @@ void main() {
   group('McpServersNotifier - refresh', () {
     test('re-fetches and updates state', () async {
       when(() => mockClient.listMcpServers(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMcpServersResponse(
-          servers: [McpServerInfo(name: 'server-a')],
-        )),
+        (_) => FakeResponseFuture.value(
+          ListMcpServersResponse(servers: [McpServerInfo(name: 'server-a')]),
+        ),
       );
       await container.read(mcpServersProvider.future);
 
       when(() => mockClient.listMcpServers(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMcpServersResponse(
-          servers: [McpServerInfo(name: 'server-a'), McpServerInfo(name: 'server-b')],
-        )),
+        (_) => FakeResponseFuture.value(
+          ListMcpServersResponse(
+            servers: [
+              McpServerInfo(name: 'server-a'),
+              McpServerInfo(name: 'server-b'),
+            ],
+          ),
+        ),
       );
 
       final notifier = container.read(mcpServersProvider.notifier);

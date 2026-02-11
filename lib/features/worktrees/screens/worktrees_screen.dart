@@ -59,7 +59,9 @@ class WorktreesScreen extends ConsumerWidget {
     );
     if (result == null) return;
 
-    await ref.read(worktreesProvider.notifier).createWorktree(
+    await ref
+        .read(worktreesProvider.notifier)
+        .createWorktree(
           name: result.name,
           repoPath: result.repoPath,
           branch: result.branch,

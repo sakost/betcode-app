@@ -46,15 +46,25 @@ class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
   final Stream<T> _s;
 
   @override
-  StreamSubscription<T> listen(void Function(T)? onData,
-          {Function? onError, void Function()? onDone, bool? cancelOnError}) =>
-      _s.listen(onData,
-          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<T> listen(
+    void Function(T)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) => _s.listen(
+    onData,
+    onError: onError,
+    onDone: onDone,
+    cancelOnError: cancelOnError,
+  );
 }
 
 ClientMethod<String, String> _method([String path = '/test/M']) =>
     ClientMethod<String, String>(
-        path, (s) => s.codeUnits, (b) => String.fromCharCodes(b));
+      path,
+      (s) => s.codeUnits,
+      (b) => String.fromCharCodes(b),
+    );
 
 /// Resolves all metadata providers on a [CallOptions], simulating what the
 /// real gRPC transport does before sending the request.
@@ -78,9 +88,7 @@ void main() {
   setUp(() {
     mockStorage = MockSecureStorageService();
     container = ProviderContainer(
-      overrides: [
-        secureStorageProvider.overrideWithValue(mockStorage),
-      ],
+      overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
     );
     mockAuthClient = MockAuthServiceClient();
   });
@@ -89,13 +97,11 @@ void main() {
     container.dispose();
   });
 
-  AuthNotifier readNotifier() =>
-      container.read(authNotifierProvider.notifier);
+  AuthNotifier readNotifier() => container.read(authNotifierProvider.notifier);
 
   Future<void> authenticateWithExpiry(int expiresInSecs) async {
     when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-    when(() => mockStorage.writeRefreshToken(any()))
-        .thenAnswer((_) async {});
+    when(() => mockStorage.writeRefreshToken(any())).thenAnswer((_) async {});
     await readNotifier().setTokens(
       accessToken: 'access-tok',
       refreshToken: 'refresh-tok',
@@ -141,11 +147,13 @@ void main() {
       await authenticateWithExpiry(30); // 30 seconds - expiring soon
 
       when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(RefreshTokenResponse(
-          accessToken: 'new-access',
-          refreshToken: 'new-refresh',
-          expiresInSecs: Int64(7200),
-        )),
+        (_) => FakeResponseFuture.value(
+          RefreshTokenResponse(
+            accessToken: 'new-access',
+            refreshToken: 'new-refresh',
+            expiresInSecs: Int64(7200),
+          ),
+        ),
       );
 
       interceptor = TokenRefreshInterceptor(
@@ -180,11 +188,13 @@ void main() {
 
       when(() => mockAuthClient.refreshToken(any())).thenAnswer((_) {
         refreshCallCount++;
-        return FakeResponseFuture.value(RefreshTokenResponse(
-          accessToken: 'new-access',
-          refreshToken: 'new-refresh',
-          expiresInSecs: Int64(7200),
-        ));
+        return FakeResponseFuture.value(
+          RefreshTokenResponse(
+            accessToken: 'new-access',
+            refreshToken: 'new-refresh',
+            expiresInSecs: Int64(7200),
+          ),
+        );
       });
 
       interceptor = TokenRefreshInterceptor(
@@ -198,13 +208,19 @@ void main() {
         _method(),
         'req1',
         CallOptions(),
-        (m, r, o) { opts1 = o; return FakeResponseFuture.value('ok1'); },
+        (m, r, o) {
+          opts1 = o;
+          return FakeResponseFuture.value('ok1');
+        },
       );
       interceptor.interceptUnary<String, String>(
         _method(),
         'req2',
         CallOptions(),
-        (m, r, o) { opts2 = o; return FakeResponseFuture.value('ok2'); },
+        (m, r, o) {
+          opts2 = o;
+          return FakeResponseFuture.value('ok2');
+        },
       );
 
       // Resolve both metadata providers concurrently
@@ -218,8 +234,9 @@ void main() {
       await authenticateWithExpiry(30); // expiring soon
       when(() => mockStorage.clearAll()).thenAnswer((_) async {});
 
-      when(() => mockAuthClient.refreshToken(any()))
-          .thenThrow(GrpcError.internal('refresh failed'));
+      when(
+        () => mockAuthClient.refreshToken(any()),
+      ).thenThrow(GrpcError.internal('refresh failed'));
 
       interceptor = TokenRefreshInterceptor(
         authNotifier: readNotifier(),
@@ -250,11 +267,13 @@ void main() {
       await authenticateWithExpiry(30); // expiring soon
 
       when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(RefreshTokenResponse(
-          accessToken: 'new-access',
-          refreshToken: 'new-refresh',
-          expiresInSecs: Int64(7200),
-        )),
+        (_) => FakeResponseFuture.value(
+          RefreshTokenResponse(
+            accessToken: 'new-access',
+            refreshToken: 'new-refresh',
+            expiresInSecs: Int64(7200),
+          ),
+        ),
       );
 
       interceptor = TokenRefreshInterceptor(

@@ -45,12 +45,14 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      Navigator.of(context).pop(CreateWorktreeResult(
-        name: _nameController.text.trim(),
-        repoPath: _repoPathController.text.trim(),
-        branch: _branchController.text.trim(),
-        setupScript: _setupScriptController.text.trim(),
-      ));
+      Navigator.of(context).pop(
+        CreateWorktreeResult(
+          name: _nameController.text.trim(),
+          repoPath: _repoPathController.text.trim(),
+          branch: _branchController.text.trim(),
+          setupScript: _setupScriptController.text.trim(),
+        ),
+      );
     }
   }
 
@@ -73,8 +75,7 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _repoPathController,
-                decoration:
-                    const InputDecoration(labelText: 'Repository Path'),
+                decoration: const InputDecoration(labelText: 'Repository Path'),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
@@ -100,10 +101,7 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Create'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Create')),
       ],
     );
   }

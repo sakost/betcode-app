@@ -12,14 +12,13 @@ TodoItem _item({
   String description = '',
   String activeForm = '',
   TodoStatus status = TodoStatus.TODO_STATUS_PENDING,
-}) =>
-    TodoItem(
-      id: id,
-      subject: subject,
-      description: description,
-      activeForm: activeForm,
-      status: status,
-    );
+}) => TodoItem(
+  id: id,
+  subject: subject,
+  description: description,
+  activeForm: activeForm,
+  status: status,
+);
 
 void main() {
   group('TodoListPanel', () {
@@ -35,7 +34,11 @@ void main() {
       final todos = [
         _item(id: '1', subject: 'A', status: TodoStatus.TODO_STATUS_COMPLETED),
         _item(id: '2', subject: 'B', status: TodoStatus.TODO_STATUS_PENDING),
-        _item(id: '3', subject: 'C', status: TodoStatus.TODO_STATUS_IN_PROGRESS),
+        _item(
+          id: '3',
+          subject: 'C',
+          status: TodoStatus.TODO_STATUS_IN_PROGRESS,
+        ),
         _item(id: '4', subject: 'D', status: TodoStatus.TODO_STATUS_COMPLETED),
         _item(id: '5', subject: 'E', status: TodoStatus.TODO_STATUS_PENDING),
       ];
@@ -123,7 +126,11 @@ void main() {
 
     testWidgets('empty description not shown', (t) async {
       final todos = [
-        _item(subject: 'No desc', description: '', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(
+          subject: 'No desc',
+          description: '',
+          status: TodoStatus.TODO_STATUS_PENDING,
+        ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 
@@ -136,9 +143,21 @@ void main() {
 
     testWidgets('multiple items rendered in order', (t) async {
       final todos = [
-        _item(id: '1', subject: 'First', status: TodoStatus.TODO_STATUS_COMPLETED),
-        _item(id: '2', subject: 'Second', status: TodoStatus.TODO_STATUS_IN_PROGRESS),
-        _item(id: '3', subject: 'Third', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(
+          id: '1',
+          subject: 'First',
+          status: TodoStatus.TODO_STATUS_COMPLETED,
+        ),
+        _item(
+          id: '2',
+          subject: 'Second',
+          status: TodoStatus.TODO_STATUS_IN_PROGRESS,
+        ),
+        _item(
+          id: '3',
+          subject: 'Third',
+          status: TodoStatus.TODO_STATUS_PENDING,
+        ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 

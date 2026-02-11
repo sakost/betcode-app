@@ -103,8 +103,9 @@ class IssueCard extends StatelessWidget {
                               MaterialTapTargetSize.shrinkWrap,
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
-                          labelPadding:
-                              const EdgeInsets.symmetric(horizontal: 6),
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                          ),
                         ),
                       )
                       .toList(),

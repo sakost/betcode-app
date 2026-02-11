@@ -12,5 +12,5 @@ final settingsProvider = AsyncNotifierProvider<SettingsNotifier, Settings>(
 /// Provides the list of [McpServerInfo] fetched from the daemon.
 final mcpServersProvider =
     AsyncNotifierProvider<McpServersNotifier, List<McpServerInfo>>(
-  McpServersNotifier.new,
-);
+      McpServersNotifier.new,
+    );

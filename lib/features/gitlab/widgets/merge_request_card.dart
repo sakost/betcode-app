@@ -122,8 +122,7 @@ class MergeRequestCard extends StatelessWidget {
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        labelPadding:
-                            const EdgeInsets.symmetric(horizontal: 6),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                       ),
                     ...mergeRequest.labels.map(
                       (label) => Chip(
@@ -131,8 +130,7 @@ class MergeRequestCard extends StatelessWidget {
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        labelPadding:
-                            const EdgeInsets.symmetric(horizontal: 6),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                       ),
                     ),
                   ],
@@ -175,14 +173,22 @@ class _MergeRequestStateBadge extends StatelessWidget {
 
   (Color, String) _resolve(MergeRequestState state) {
     return switch (state) {
-      MergeRequestState.MERGE_REQUEST_STATE_OPENED =>
-        (AppColors.online, 'Opened'),
-      MergeRequestState.MERGE_REQUEST_STATE_CLOSED =>
-        (AppColors.offline, 'Closed'),
-      MergeRequestState.MERGE_REQUEST_STATE_MERGED =>
-        (AppColors.agentWaiting, 'Merged'),
-      MergeRequestState.MERGE_REQUEST_STATE_LOCKED =>
-        (AppColors.agentIdle, 'Locked'),
+      MergeRequestState.MERGE_REQUEST_STATE_OPENED => (
+        AppColors.online,
+        'Opened',
+      ),
+      MergeRequestState.MERGE_REQUEST_STATE_CLOSED => (
+        AppColors.offline,
+        'Closed',
+      ),
+      MergeRequestState.MERGE_REQUEST_STATE_MERGED => (
+        AppColors.agentWaiting,
+        'Merged',
+      ),
+      MergeRequestState.MERGE_REQUEST_STATE_LOCKED => (
+        AppColors.agentIdle,
+        'Locked',
+      ),
       _ => (AppColors.agentIdle, 'Unknown'),
     };
   }

@@ -684,9 +684,9 @@ void main() {
     });
 
     test('pendingCount queries the database', () async {
-      when(() => mockSelect.get()).thenAnswer(
-        (_) async => [makeItem(id: 1), makeItem(id: 2)],
-      );
+      when(
+        () => mockSelect.get(),
+      ).thenAnswer((_) async => [makeItem(id: 1), makeItem(id: 2)]);
 
       final count = await engine.pendingCount();
       expect(count, 2);

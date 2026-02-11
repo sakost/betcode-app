@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/core/router.dart';
@@ -26,6 +29,14 @@ class _AuthenticatedNotifier extends AuthNotifier {
   }
 }
 
+/// Relay notifier that returns a non-null config for testing.
+class _ConnectedRelayNotifier extends RelayConfigNotifier {
+  @override
+  RelayConfig? build() {
+    return const RelayConfig(host: 'test-relay', port: 443);
+  }
+}
+
 void main() {
   late MockSecureStorageService mockStorage;
 
@@ -34,13 +45,10 @@ void main() {
   });
 
   group('Auth routing guard', () {
-    testWidgets('unauthenticated user is redirected to /login',
-        (tester) async {
+    testWidgets('unauthenticated user is redirected to /login', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-          ],
+          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
           child: Consumer(
             builder: (context, ref, _) {
               final router = ref.watch(routerProvider);
@@ -57,13 +65,17 @@ void main() {
       expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('authenticated user is redirected away from /login',
-        (tester) async {
+    testWidgets('authenticated user is redirected away from /login', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             secureStorageProvider.overrideWithValue(mockStorage),
             authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
+            relayConfigNotifierProvider.overrideWith(
+              _ConnectedRelayNotifier.new,
+            ),
           ],
           child: Consumer(
             builder: (context, ref, _) {
@@ -84,9 +96,7 @@ void main() {
     testWidgets('login screen has link to register', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-          ],
+          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
           child: Consumer(
             builder: (context, ref, _) {
               final router = ref.watch(routerProvider);
@@ -100,18 +110,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.text("Don't have an account? Register"),
-        findsOneWidget,
-      );
+      expect(find.text("Don't have an account? Register"), findsOneWidget);
     });
 
     testWidgets('navigating to register screen works', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-          ],
+          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
           child: Consumer(
             builder: (context, ref, _) {
               final router = ref.watch(routerProvider);
@@ -136,9 +141,7 @@ void main() {
   group('Auth state transitions', () {
     test('AuthNotifier starts as unauthenticated', () {
       final container = ProviderContainer(
-        overrides: [
-          secureStorageProvider.overrideWithValue(mockStorage),
-        ],
+        overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
       );
       addTearDown(container.dispose);
 
@@ -147,15 +150,13 @@ void main() {
     });
 
     test('initialize with tokens transitions to authenticated', () async {
-      when(() => mockStorage.readToken())
-          .thenAnswer((_) async => 'access-tok');
-      when(() => mockStorage.readRefreshToken())
-          .thenAnswer((_) async => 'refresh-tok');
+      when(() => mockStorage.readToken()).thenAnswer((_) async => 'access-tok');
+      when(
+        () => mockStorage.readRefreshToken(),
+      ).thenAnswer((_) async => 'refresh-tok');
 
       final container = ProviderContainer(
-        overrides: [
-          secureStorageProvider.overrideWithValue(mockStorage),
-        ],
+        overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
       );
       addTearDown(container.dispose);
 
@@ -174,9 +175,7 @@ void main() {
       when(() => mockStorage.readRefreshToken()).thenAnswer((_) async => null);
 
       final container = ProviderContainer(
-        overrides: [
-          secureStorageProvider.overrideWithValue(mockStorage),
-        ],
+        overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
       );
       addTearDown(container.dispose);
 
@@ -187,17 +186,13 @@ void main() {
       expect(state, isA<AuthUnauthenticated>());
     });
 
-    test('logout clears storage and transitions to unauthenticated',
-        () async {
+    test('logout clears storage and transitions to unauthenticated', () async {
       when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-      when(() => mockStorage.writeRefreshToken(any()))
-          .thenAnswer((_) async {});
+      when(() => mockStorage.writeRefreshToken(any())).thenAnswer((_) async {});
       when(() => mockStorage.clearAll()).thenAnswer((_) async {});
 
       final container = ProviderContainer(
-        overrides: [
-          secureStorageProvider.overrideWithValue(mockStorage),
-        ],
+        overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
       );
       addTearDown(container.dispose);
 
@@ -224,6 +219,9 @@ void main() {
           overrides: [
             secureStorageProvider.overrideWithValue(mockStorage),
             authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
+            relayConfigNotifierProvider.overrideWith(
+              _ConnectedRelayNotifier.new,
+            ),
           ],
           child: Consumer(
             builder: (context, ref, _) {

@@ -117,8 +117,10 @@ class PermissionSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () =>
-                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_DENY),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      PermissionDecision.PERMISSION_DECISION_DENY,
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colorScheme.error,
                     ),
@@ -128,16 +130,20 @@ class PermissionSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () =>
-                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+                    ),
                     child: const Text('Allow Once'),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton(
-                    onPressed: () =>
-                        Navigator.pop(context, PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION,
+                    ),
                     child: const Text('Allow Session'),
                   ),
                 ),

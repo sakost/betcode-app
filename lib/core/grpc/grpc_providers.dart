@@ -4,6 +4,8 @@ import '../auth/auth.dart';
 import 'client_manager.dart';
 import 'connection_state.dart';
 import 'interceptors.dart';
+import 'relay_config.dart';
+import 'relay_notifier.dart';
 
 /// Provides the singleton [GrpcClientManager] instance.
 ///
@@ -38,3 +40,15 @@ final connectionInfoProvider = StreamProvider<ConnectionInfo>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
   return manager.connectionInfoStream;
 });
+
+/// Manages the active relay configuration and connection lifecycle.
+final relayConfigNotifierProvider =
+    NotifierProvider<RelayConfigNotifier, RelayConfig?>(
+      RelayConfigNotifier.new,
+    );
+
+/// Provides the default relay config from `--dart-define` environment
+/// variables, useful for pre-filling login form fields.
+final relayDefaultsProvider = Provider<RelayConfig>(
+  (ref) => RelayConfig.fromEnvironment(),
+);

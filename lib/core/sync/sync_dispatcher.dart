@@ -16,8 +16,8 @@ class SyncDispatcher {
   SyncDispatcher({
     required AgentServiceClient agentClient,
     required WorktreeServiceClient worktreeClient,
-  })  : _agentClient = agentClient,
-        _worktreeClient = worktreeClient;
+  }) : _agentClient = agentClient,
+       _worktreeClient = worktreeClient;
 
   final AgentServiceClient _agentClient;
   final WorktreeServiceClient _worktreeClient;
@@ -38,9 +38,7 @@ class SyncDispatcher {
         );
       case 'permission_response':
         await _dispatchAgentRequest(
-          AgentRequest(
-            permission: PermissionResponse.fromBuffer(item.payload),
-          ),
+          AgentRequest(permission: PermissionResponse.fromBuffer(item.payload)),
           options,
         );
       case 'question_response':

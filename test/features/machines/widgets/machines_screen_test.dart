@@ -17,7 +17,8 @@ import 'package:betcode_app/shared/theme/app_theme.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _app(Widget child) => MaterialApp(theme: AppTheme.lightTheme, home: child);
+Widget _app(Widget child) =>
+    MaterialApp(theme: AppTheme.lightTheme, home: child);
 
 MachineInfo _makeMachine({
   String machineId = 'mach-1',
@@ -82,8 +83,9 @@ void main() {
       expect(find.text('Machines'), findsOneWidget);
     });
 
-    testWidgets('displays list of MachineCard widgets when data arrives',
-        (t) async {
+    testWidgets('displays list of MachineCard widgets when data arrives', (
+      t,
+    ) async {
       final machines = [
         _makeMachine(machineId: 'm-1', name: 'alpha'),
         _makeMachine(machineId: 'm-2', name: 'beta'),
@@ -171,52 +173,56 @@ void main() {
       expect(find.text('abc-123-def'), findsOneWidget);
     });
 
-    testWidgets('displays Online status badge for MACHINE_STATUS_ONLINE',
-        (t) async {
+    testWidgets('displays Online status badge for MACHINE_STATUS_ONLINE', (
+      t,
+    ) async {
       await t.pumpWidget(
-        _app(MachineCard(
-          machine: _makeMachine(
-            status: MachineStatus.MACHINE_STATUS_ONLINE,
+        _app(
+          MachineCard(
+            machine: _makeMachine(status: MachineStatus.MACHINE_STATUS_ONLINE),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
       expect(find.text('Online'), findsOneWidget);
     });
 
-    testWidgets('displays Offline status badge for MACHINE_STATUS_OFFLINE',
-        (t) async {
+    testWidgets('displays Offline status badge for MACHINE_STATUS_OFFLINE', (
+      t,
+    ) async {
       await t.pumpWidget(
-        _app(MachineCard(
-          machine: _makeMachine(
-            status: MachineStatus.MACHINE_STATUS_OFFLINE,
+        _app(
+          MachineCard(
+            machine: _makeMachine(status: MachineStatus.MACHINE_STATUS_OFFLINE),
           ),
-        )),
+        ),
       );
       await t.pumpAndSettle();
 
       expect(find.text('Offline'), findsOneWidget);
     });
 
-    testWidgets('displays Unknown status badge for MACHINE_STATUS_UNSPECIFIED',
-        (t) async {
-      await t.pumpWidget(
-        _app(MachineCard(
-          machine: _makeMachine(
-            status: MachineStatus.MACHINE_STATUS_UNSPECIFIED,
+    testWidgets(
+      'displays Unknown status badge for MACHINE_STATUS_UNSPECIFIED',
+      (t) async {
+        await t.pumpWidget(
+          _app(
+            MachineCard(
+              machine: _makeMachine(
+                status: MachineStatus.MACHINE_STATUS_UNSPECIFIED,
+              ),
+            ),
           ),
-        )),
-      );
-      await t.pumpAndSettle();
+        );
+        await t.pumpAndSettle();
 
-      expect(find.text('Unknown'), findsOneWidget);
-    });
+        expect(find.text('Unknown'), findsOneWidget);
+      },
+    );
 
     testWidgets('renders card with InkWell for tap target', (t) async {
-      await t.pumpWidget(
-        _app(MachineCard(machine: _makeMachine())),
-      );
+      await t.pumpWidget(_app(MachineCard(machine: _makeMachine())));
       await t.pumpAndSettle();
 
       expect(find.byType(Card), findsOneWidget);
@@ -226,10 +232,7 @@ void main() {
     testWidgets('calls onTap when tapped', (t) async {
       var tapped = false;
       await t.pumpWidget(
-        _app(MachineCard(
-          machine: _makeMachine(),
-          onTap: () => tapped = true,
-        )),
+        _app(MachineCard(machine: _makeMachine(), onTap: () => tapped = true)),
       );
       await t.pumpAndSettle();
 
@@ -238,9 +241,7 @@ void main() {
     });
 
     testWidgets('shows "Unknown" when name is empty', (t) async {
-      await t.pumpWidget(
-        _app(MachineCard(machine: _makeMachine(name: ''))),
-      );
+      await t.pumpWidget(_app(MachineCard(machine: _makeMachine(name: ''))));
       await t.pumpAndSettle();
 
       // The name field should show 'Unknown' as fallback
@@ -252,9 +253,7 @@ void main() {
       machine.metadata['os'] = 'linux';
       machine.metadata['arch'] = 'x86_64';
 
-      await t.pumpWidget(
-        _app(MachineCard(machine: machine)),
-      );
+      await t.pumpWidget(_app(MachineCard(machine: machine)));
       await t.pumpAndSettle();
 
       expect(find.text('os: linux'), findsOneWidget);

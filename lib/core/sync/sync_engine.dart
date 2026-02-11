@@ -32,9 +32,9 @@ class SyncEngine {
     required AppDatabase database,
     required ConnectivityMonitor connectivity,
     required SyncDispatcher dispatcher,
-  })  : _database = database,
-        _connectivity = connectivity,
-        _dispatcher = dispatcher;
+  }) : _database = database,
+       _connectivity = connectivity,
+       _dispatcher = dispatcher;
 
   final AppDatabase _database;
   final ConnectivityMonitor _connectivity;
@@ -90,19 +90,21 @@ class SyncEngine {
     int priority = 4,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    await _database.into(_database.syncQueue).insert(
-      SyncQueueCompanion.insert(
-        machineId: machineId,
-        requestType: requestType,
-        payload: payload,
-        idempotencyKey: generateIdempotencyKey(),
-        priority: Value(priority),
-        sequence: _nextSequence(),
-        createdAt: now,
-        expiresAt: now + _ttlSeconds,
-        sessionId: Value(sessionId),
-      ),
-    );
+    await _database
+        .into(_database.syncQueue)
+        .insert(
+          SyncQueueCompanion.insert(
+            machineId: machineId,
+            requestType: requestType,
+            payload: payload,
+            idempotencyKey: generateIdempotencyKey(),
+            priority: Value(priority),
+            sequence: _nextSequence(),
+            createdAt: now,
+            expiresAt: now + _ttlSeconds,
+            sessionId: Value(sessionId),
+          ),
+        );
     // Trigger drain only if online and not already syncing
     if (!_isSyncing) {
       final status = await _connectivity.currentStatus;
@@ -115,9 +117,7 @@ class SyncEngine {
   /// Query the number of items with 'pending' or 'blocked' status.
   Future<int> pendingCount() async {
     final query = _database.select(_database.syncQueue)
-      ..where(
-        (t) => t.status.isIn(const ['pending', 'blocked']),
-      );
+      ..where((t) => t.status.isIn(const ['pending', 'blocked']));
     final rows = await query.get();
     return rows.length;
   }
@@ -161,12 +161,11 @@ class SyncEngine {
               .write(const SyncQueueCompanion(status: Value('sent')));
         } catch (e) {
           final newRetryCount = item.retryCount + 1;
-          final newStatus =
-              newRetryCount >= _maxRetries ? 'failed' : 'blocked';
+          final newStatus = newRetryCount >= _maxRetries ? 'failed' : 'blocked';
 
-          await (_database.update(_database.syncQueue)
-                ..where((t) => t.id.equals(item.id)))
-              .write(
+          await (_database.update(
+            _database.syncQueue,
+          )..where((t) => t.id.equals(item.id))).write(
             SyncQueueCompanion(
               status: Value(newStatus),
               retryCount: Value(newRetryCount),

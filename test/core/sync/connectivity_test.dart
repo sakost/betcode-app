@@ -30,10 +30,7 @@ void main() {
 
     test('dispose closes the stream', () async {
       var done = false;
-      monitor.statusStream.listen(
-        (_) {},
-        onDone: () => done = true,
-      );
+      monitor.statusStream.listen((_) {}, onDone: () => done = true);
 
       monitor.dispose();
       await Future<void>.delayed(Duration.zero);

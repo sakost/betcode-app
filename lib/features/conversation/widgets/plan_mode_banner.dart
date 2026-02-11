@@ -58,8 +58,7 @@ class PlanModeBanner extends StatelessWidget {
                   child: MarkdownBody(
                     data: planContent!,
                     selectable: true,
-                    styleSheet:
-                        MarkdownStyleSheet.fromTheme(theme).copyWith(
+                    styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
                       p: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onTertiaryContainer,
                       ),

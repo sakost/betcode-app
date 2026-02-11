@@ -32,12 +32,14 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     String? setupScript,
   }) async {
     final client = ref.read(worktreeServiceProvider);
-    await client.createWorktree(CreateWorktreeRequest(
-      name: name,
-      repoPath: repoPath,
-      branch: branch,
-      setupScript: setupScript ?? '',
-    ));
+    await client.createWorktree(
+      CreateWorktreeRequest(
+        name: name,
+        repoPath: repoPath,
+        branch: branch,
+        setupScript: setupScript ?? '',
+      ),
+    );
     await refresh();
   }
 

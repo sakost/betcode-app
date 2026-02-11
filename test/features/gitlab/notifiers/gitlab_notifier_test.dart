@@ -100,9 +100,7 @@ void main() {
     mockClient = MockGitLabServiceClient();
 
     container = ProviderContainer(
-      overrides: [
-        gitlabServiceProvider.overrideWithValue(mockClient),
-      ],
+      overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
     );
   });
 
@@ -132,9 +130,9 @@ void main() {
     });
 
     test('returns empty list when no pipelines exist', () async {
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
-      );
+      when(
+        () => mockClient.listPipelines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
 
       final result = await container.read(pipelinesProvider.future);
       expect(result, isEmpty);
@@ -273,14 +271,12 @@ void main() {
 
     test('recovers from error state on refresh', () async {
       final errClient = MockGitLabServiceClient();
-      when(() => errClient.listPipelines(any())).thenThrow(
-        GrpcError.unavailable(),
-      );
+      when(
+        () => errClient.listPipelines(any()),
+      ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
+        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
       );
       addTearDown(errContainer.dispose);
 
@@ -304,15 +300,15 @@ void main() {
     });
 
     test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
-      );
+      when(
+        () => mockClient.listPipelines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
       await container.read(pipelinesProvider.future);
 
       reset(mockClient);
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
-      );
+      when(
+        () => mockClient.listPipelines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
 
       final notifier = container.read(pipelinesProvider.notifier);
       await notifier.refresh();
@@ -427,9 +423,7 @@ void main() {
       when(() => mockClient.listMergeRequests(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           ListMergeRequestsResponse(
-            mergeRequests: [
-              MergeRequestInfo(id: Int64(1), title: 'First'),
-            ],
+            mergeRequests: [MergeRequestInfo(id: Int64(1), title: 'First')],
           ),
         ),
       );
@@ -488,14 +482,12 @@ void main() {
 
     test('recovers from error state on refresh', () async {
       final errClient = MockGitLabServiceClient();
-      when(() => errClient.listMergeRequests(any())).thenThrow(
-        GrpcError.unavailable(),
-      );
+      when(
+        () => errClient.listMergeRequests(any()),
+      ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
+        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
       );
       addTearDown(errContainer.dispose);
 
@@ -570,9 +562,9 @@ void main() {
     });
 
     test('returns empty list when no issues exist', () async {
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListIssuesResponse()),
-      );
+      when(
+        () => mockClient.listIssues(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
 
       final result = await container.read(issuesProvider.future);
       expect(result, isEmpty);
@@ -697,14 +689,12 @@ void main() {
 
     test('recovers from error state on refresh', () async {
       final errClient = MockGitLabServiceClient();
-      when(() => errClient.listIssues(any())).thenThrow(
-        GrpcError.unavailable(),
-      );
+      when(
+        () => errClient.listIssues(any()),
+      ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
+        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
       );
       addTearDown(errContainer.dispose);
 
@@ -728,15 +718,15 @@ void main() {
     });
 
     test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListIssuesResponse()),
-      );
+      when(
+        () => mockClient.listIssues(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
       await container.read(issuesProvider.future);
 
       reset(mockClient);
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListIssuesResponse()),
-      );
+      when(
+        () => mockClient.listIssues(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
 
       final notifier = container.read(issuesProvider.notifier);
       await notifier.refresh();
