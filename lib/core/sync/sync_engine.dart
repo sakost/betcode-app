@@ -6,8 +6,10 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../grpc/service_providers.dart';
 import '../storage/storage.dart';
 import 'connectivity.dart';
+import 'sync_dispatcher.dart';
 
 class SyncStatus {
   const SyncStatus({
@@ -29,11 +31,14 @@ class SyncEngine {
   SyncEngine({
     required AppDatabase database,
     required ConnectivityMonitor connectivity,
-  }) : _database = database,
-       _connectivity = connectivity;
+    required SyncDispatcher dispatcher,
+  })  : _database = database,
+        _connectivity = connectivity,
+        _dispatcher = dispatcher;
 
   final AppDatabase _database;
   final ConnectivityMonitor _connectivity;
+  final SyncDispatcher _dispatcher;
   final _uuid = const Uuid();
   final _statusController = StreamController<SyncStatus>.broadcast();
   final _random = Random();
@@ -150,8 +155,7 @@ class SyncEngine {
             .write(const SyncQueueCompanion(status: Value('sending')));
 
         try {
-          // TODO: Dispatch via gRPC service routing based on item.requestType.
-          // For now, mark as sent since we don't have service routing yet.
+          await _dispatcher.dispatch(item);
           await (_database.update(_database.syncQueue)
                 ..where((t) => t.id.equals(item.id)))
               .write(const SyncQueueCompanion(status: Value('sent')));
@@ -235,10 +239,24 @@ class SyncEngine {
   }
 }
 
+final syncDispatcherProvider = Provider<SyncDispatcher>((ref) {
+  final agentClient = ref.watch(agentServiceProvider);
+  final worktreeClient = ref.watch(worktreeServiceProvider);
+  return SyncDispatcher(
+    agentClient: agentClient,
+    worktreeClient: worktreeClient,
+  );
+});
+
 final syncEngineProvider = Provider<SyncEngine>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final connectivity = ref.watch(connectivityMonitorProvider);
-  final engine = SyncEngine(database: db, connectivity: connectivity)..start();
+  final dispatcher = ref.watch(syncDispatcherProvider);
+  final engine = SyncEngine(
+    database: db,
+    connectivity: connectivity,
+    dispatcher: dispatcher,
+  )..start();
   ref.onDispose(engine.dispose);
   return engine;
 });

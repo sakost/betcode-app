@@ -5,12 +5,15 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/sync/connectivity.dart';
+import 'package:betcode_app/core/sync/sync_dispatcher.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 class MockAppDatabase extends Mock implements AppDatabase {}
+
+class MockSyncDispatcher extends Mock implements SyncDispatcher {}
 
 class MockSyncQueueTable extends Mock implements $SyncQueueTable {}
 
@@ -32,6 +35,9 @@ class MockInsertStatement extends Mock
 
 /// Fallback value for [SyncQueueCompanion] so mocktail can match `any()`.
 class FakeSyncQueueCompanion extends Fake implements SyncQueueCompanion {}
+
+/// Fallback value for [SyncQueueData] so mocktail can match `any()`.
+class FakeSyncQueueData extends Fake implements SyncQueueData {}
 
 /// Fallback value for [Insertable<SyncQueueData>] so mocktail can match `any()`.
 class FakeInsertable extends Fake implements Insertable<SyncQueueData> {}

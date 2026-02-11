@@ -9,6 +9,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/sync/connectivity.dart';
+import 'package:betcode_app/core/sync/sync_dispatcher.dart';
 import 'package:betcode_app/core/sync/sync_engine.dart';
 
 import 'sync_engine_helpers.dart';
@@ -18,6 +19,7 @@ void main() {
   late MockSyncQueueTable mockTable;
   late MockDeleteStatement mockDelete;
   late FakeConnectivityMonitor fakeConnectivity;
+  late MockSyncDispatcher mockDispatcher;
   late SyncEngine engine;
 
   setUp(() {
@@ -25,6 +27,7 @@ void main() {
     mockTable = MockSyncQueueTable();
     mockDelete = MockDeleteStatement();
     fakeConnectivity = FakeConnectivityMonitor();
+    mockDispatcher = MockSyncDispatcher();
 
     wireUpDeleteChain(
       mockDb: mockDb,
@@ -35,7 +38,17 @@ void main() {
     // Wire up select so _emitStatus() and _drainQueue() can query the DB.
     wireUpSelectChain(mockDb: mockDb, mockTable: mockTable);
 
-    engine = SyncEngine(database: mockDb, connectivity: fakeConnectivity);
+    // Register fallback for SyncQueueData used in dispatcher mock.
+    registerFallbackValue(FakeSyncQueueData());
+
+    // Allow the dispatcher to succeed by default.
+    when(() => mockDispatcher.dispatch(any())).thenAnswer((_) async {});
+
+    engine = SyncEngine(
+      database: mockDb,
+      connectivity: fakeConnectivity,
+      dispatcher: mockDispatcher,
+    );
   });
 
   tearDown(() {
@@ -149,7 +162,11 @@ void main() {
       expect(done, isTrue);
 
       // Recreate to avoid double-dispose in tearDown.
-      engine = SyncEngine(database: mockDb, connectivity: fakeConnectivity);
+      engine = SyncEngine(
+        database: mockDb,
+        connectivity: fakeConnectivity,
+        dispatcher: mockDispatcher,
+      );
     });
   });
 
@@ -294,6 +311,7 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(mockDb),
           connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
+          syncDispatcherProvider.overrideWithValue(mockDispatcher),
         ],
       );
       addTearDown(container.dispose);
@@ -306,6 +324,7 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(mockDb),
           connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
+          syncDispatcherProvider.overrideWithValue(mockDispatcher),
         ],
       );
       addTearDown(container.dispose);
@@ -319,6 +338,7 @@ void main() {
         overrides: [
           appDatabaseProvider.overrideWithValue(mockDb),
           connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
+          syncDispatcherProvider.overrideWithValue(mockDispatcher),
         ],
       );
 
