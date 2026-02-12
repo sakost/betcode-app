@@ -15,6 +15,7 @@ import '../../../generated/betcode/v1/worktree.pb.dart';
 /// the gRPC connection state changes.
 class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   static const _rpcTimeout = Duration(seconds: 10);
+  static const _mutationTimeout = Duration(seconds: 30);
 
   @override
   Future<List<WorktreeDetail>> build() async {
@@ -47,21 +48,25 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     String? setupScript,
   }) async {
     final client = ref.read(worktreeServiceProvider);
-    await client.createWorktree(
-      CreateWorktreeRequest(
-        name: name,
-        repoPath: repoPath,
-        branch: branch,
-        setupScript: setupScript ?? '',
-      ),
-    );
+    await client
+        .createWorktree(
+          CreateWorktreeRequest(
+            name: name,
+            repoPath: repoPath,
+            branch: branch,
+            setupScript: setupScript ?? '',
+          ),
+        )
+        .timeout(_mutationTimeout);
     await refresh();
   }
 
   /// Removes a worktree by ID via gRPC and refreshes the list.
   Future<void> removeWorktree(String id) async {
     final client = ref.read(worktreeServiceProvider);
-    await client.removeWorktree(RemoveWorktreeRequest(id: id));
+    await client
+        .removeWorktree(RemoveWorktreeRequest(id: id))
+        .timeout(_mutationTimeout);
     await refresh();
   }
 }

@@ -53,20 +53,26 @@ class WorktreesScreen extends ConsumerWidget {
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<CreateWorktreeResult>(
       context: context,
       builder: (_) => const CreateWorktreeDialog(),
     );
     if (result == null) return;
-
-    await ref
-        .read(worktreesProvider.notifier)
-        .createWorktree(
-          name: result.name,
-          repoPath: result.repoPath,
-          branch: result.branch,
-          setupScript: result.setupScript,
-        );
+    try {
+      await ref
+          .read(worktreesProvider.notifier)
+          .createWorktree(
+            name: result.name,
+            repoPath: result.repoPath,
+            branch: result.branch,
+            setupScript: result.setupScript,
+          );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to create worktree: $e')),
+      );
+    }
   }
 
   Future<void> _confirmDelete(
@@ -75,6 +81,7 @@ class WorktreesScreen extends ConsumerWidget {
     String id,
     String name,
   ) async {
+    final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -93,8 +100,13 @@ class WorktreesScreen extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
-
-    await ref.read(worktreesProvider.notifier).removeWorktree(id);
+    try {
+      await ref.read(worktreesProvider.notifier).removeWorktree(id);
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to remove worktree: $e')),
+      );
+    }
   }
 }
 

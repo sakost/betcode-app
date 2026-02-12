@@ -14,7 +14,10 @@ class RelayConfig {
   /// Reads `RELAY_HOST`, `RELAY_PORT` (default 443), and `RELAY_USE_TLS`
   /// (default true).
   factory RelayConfig.fromEnvironment() {
-    const host = String.fromEnvironment('RELAY_HOST');
+    const host = String.fromEnvironment(
+      'RELAY_HOST',
+      defaultValue: 'relay.ai.sakost.dev',
+    );
     const port = int.fromEnvironment('RELAY_PORT', defaultValue: 443);
     const useTlsStr = String.fromEnvironment(
       'RELAY_USE_TLS',
