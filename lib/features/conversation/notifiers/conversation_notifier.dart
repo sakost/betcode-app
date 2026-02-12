@@ -46,10 +46,19 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   /// Opens the bidi stream and sends a [StartConversation] request.
   ///
+  /// [workingDirectory] is the absolute path on the daemon machine where the
+  /// Claude Code subprocess will be spawned. It must not be empty — the daemon
+  /// uses it as `current_dir` for the child process.
+  ///
   /// If [sessionId] is non-null, it is sent as an existing session ID to
   /// resume. The daemon will reply with [SessionInfo] containing the
   /// canonical session ID.
-  Future<void> startConversation() async {
+  ///
+  /// The state transitions to [ConversationActive] immediately after the
+  /// stream is established so the user can type their first message. The
+  /// daemon defers subprocess start until the first [UserMessage] arrives,
+  /// so waiting for [SessionInfo] before showing the input bar would deadlock.
+  Future<void> startConversation({required String workingDirectory}) async {
     state = const AsyncData(ConversationState.connecting());
 
     try {
@@ -57,17 +66,34 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
       final responseStream = _client.converse(_requestController!.stream);
 
+      _eventSubscription = responseStream.listen(
+        handleEvent,
+        onError: (Object error) {
+          _handleStreamError(error);
+        },
+        onDone: _handleStreamDone,
+        cancelOnError: false,
+      );
+
       _requestController!.add(
         pb.AgentRequest(
-          start: pb.StartConversation(sessionId: sessionId ?? ''),
+          start: pb.StartConversation(
+            sessionId: sessionId ?? '',
+            workingDirectory: workingDirectory,
+          ),
         ),
       );
 
-      _eventSubscription = responseStream.listen(
-        handleEvent,
-        onError: _handleStreamError,
-        onDone: _handleStreamDone,
-        cancelOnError: false,
+      // Transition to active immediately so the user can type their first
+      // message. The daemon defers subprocess creation until this message
+      // arrives, then sends SessionInfo which updates the session ID.
+      state = AsyncData(
+        ConversationState.active(
+          sessionId: sessionId ?? '',
+          messages: [],
+          agentStatus: AgentStatus.AGENT_STATUS_IDLE,
+          lastSequence: 0,
+        ),
       );
     } catch (e) {
       state = AsyncData(ConversationState.error(e.toString()));

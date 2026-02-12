@@ -37,7 +37,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
       _f.timeout(t, onTimeout: onTimeout);
   @override
   Future<void> cancel() async {}
-  @override
   bool get isCancelled => false;
 }
 
@@ -326,14 +325,109 @@ void main() {
     });
   });
 
+  group('MachineIdInterceptor - unary', () {
+    test('injects x-machine-id when machine ID is present', () async {
+      final interceptor = MachineIdInterceptor(
+        machineIdProvider: () async => 'mach-42',
+      );
+      late CallOptions captured;
+      interceptor.interceptUnary<String, String>(
+        _method(),
+        'req',
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
+      );
+      final md = await _resolveMetadata(captured);
+      expect(md['x-machine-id'], 'mach-42');
+    });
+
+    test('omits x-machine-id when machine ID is null', () async {
+      final interceptor = MachineIdInterceptor(
+        machineIdProvider: () async => null,
+      );
+      late CallOptions captured;
+      interceptor.interceptUnary<String, String>(
+        _method(),
+        'req',
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
+      );
+      final md = await _resolveMetadata(captured);
+      expect(md.containsKey('x-machine-id'), isFalse);
+    });
+
+    test('preserves existing metadata', () async {
+      final interceptor = MachineIdInterceptor(
+        machineIdProvider: () async => 'mach-1',
+      );
+      late CallOptions captured;
+      interceptor.interceptUnary<String, String>(
+        _method(),
+        'req',
+        CallOptions(metadata: {'x-custom': 'v'}),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseFuture.value('ok');
+        },
+      );
+      final md = await _resolveMetadata(captured);
+      expect(md['x-machine-id'], 'mach-1');
+      expect(md['x-custom'], 'v');
+    });
+  });
+
+  group('MachineIdInterceptor - streaming', () {
+    test('injects x-machine-id for streaming calls', () async {
+      final interceptor = MachineIdInterceptor(
+        machineIdProvider: () async => 'stream-mach',
+      );
+      late CallOptions captured;
+      interceptor.interceptStreaming<String, String>(
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseStream(const Stream.empty());
+        },
+      );
+      final md = await _resolveMetadata(captured);
+      expect(md['x-machine-id'], 'stream-mach');
+    });
+
+    test('omits x-machine-id when null for streaming calls', () async {
+      final interceptor = MachineIdInterceptor(
+        machineIdProvider: () async => null,
+      );
+      late CallOptions captured;
+      interceptor.interceptStreaming<String, String>(
+        _method(),
+        const Stream.empty(),
+        CallOptions(),
+        (m, r, o) {
+          captured = o;
+          return FakeResponseStream(const Stream.empty());
+        },
+      );
+      final md = await _resolveMetadata(captured);
+      expect(md.containsKey('x-machine-id'), isFalse);
+    });
+  });
+
   group('TokenProvider typedef', () {
     test('accepts async function returning token', () async {
-      final TokenProvider p = () async => 'abc';
+      Future<String?> p() async => 'abc';
       expect(await p(), 'abc');
     });
 
     test('accepts function returning null', () async {
-      final TokenProvider p = () async => null;
+      Future<String?> p() async => null;
       expect(await p(), isNull);
     });
   });

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/gitlab.pb.dart';
-import '../../../generated/betcode/v1/gitlab.pbenum.dart';
 import '../../../shared/theme/app_colors.dart';
 
 /// A card displaying a single [PipelineInfo] in the pipelines list.

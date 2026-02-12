@@ -9,7 +9,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/sync/connectivity.dart';
-import 'package:betcode_app/core/sync/sync_dispatcher.dart';
 import 'package:betcode_app/core/sync/sync_engine.dart';
 
 import 'sync_engine_helpers.dart';
@@ -358,13 +357,11 @@ void main() {
 
   group('enqueue', () {
     late MockInsertStatement mockInsert;
-    late MockUpdateStatement mockUpdate;
-
     setUp(() {
       registerFallbackValue(FakeInsertable());
       registerFallbackValue(FakeSyncQueueCompanion());
       mockInsert = wireUpInsertChain(mockDb: mockDb, mockTable: mockTable);
-      mockUpdate = wireUpUpdateChain(mockDb: mockDb, mockTable: mockTable);
+      wireUpUpdateChain(mockDb: mockDb, mockTable: mockTable);
     });
 
     test('inserts item into sync_queue table', () async {
@@ -661,9 +658,7 @@ void main() {
       engine.statusStream.listen(statuses.add);
 
       // First _emitStatus call returns pending=2, subsequent calls vary.
-      var selectCallCount = 0;
       when(() => mockSelect.get()).thenAnswer((_) async {
-        selectCallCount++;
         // Return different data depending on which query is being made.
         // We'll return 2 "pending" items for all pending queries, and
         // 1 "failed" item for all failed queries.

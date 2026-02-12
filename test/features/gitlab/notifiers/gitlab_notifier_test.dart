@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/gitlab/notifiers/gitlab_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
-import 'package:betcode_app/generated/betcode/v1/gitlab.pbenum.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pbgrpc.dart';
 
 // ---------------------------------------------------------------------------
@@ -78,7 +78,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
   @override
   Future<void> cancel() async {}
 
-  @override
   bool get isCancelled => false;
 }
 
@@ -100,7 +99,12 @@ void main() {
     mockClient = MockGitLabServiceClient();
 
     container = ProviderContainer(
-      overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
+      overrides: [
+        connectionStatusProvider.overrideWithValue(
+          const AsyncData(GrpcConnectionStatus.connected),
+        ),
+        gitlabServiceProvider.overrideWithValue(mockClient),
+      ],
     );
   });
 
@@ -169,10 +173,51 @@ void main() {
     });
   });
 
+  group('PipelinesNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(pipelinesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(pipelinesProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(pipelinesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.listPipelines(any()));
+    });
+  });
+
   group('PipelinesNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           gitlabServiceProvider.overrideWithValue(
             _FailingGitLabClient(GrpcError.unavailable('connection refused')),
           ),
@@ -191,6 +236,9 @@ void main() {
     test('gRPC error preserves error details', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           gitlabServiceProvider.overrideWithValue(
             _FailingGitLabClient(GrpcError.unavailable('daemon unreachable')),
           ),
@@ -276,7 +324,12 @@ void main() {
       ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
+        overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
+          gitlabServiceProvider.overrideWithValue(errClient),
+        ],
       );
       addTearDown(errContainer.dispose);
 
@@ -398,10 +451,51 @@ void main() {
     });
   });
 
+  group('MergeRequestsNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(mergeRequestsProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(mergeRequestsProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(mergeRequestsProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.listMergeRequests(any()));
+    });
+  });
+
   group('MergeRequestsNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           gitlabServiceProvider.overrideWithValue(
             _FailingGitLabClient(GrpcError.unavailable('connection refused')),
           ),
@@ -487,7 +581,12 @@ void main() {
       ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
+        overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
+          gitlabServiceProvider.overrideWithValue(errClient),
+        ],
       );
       addTearDown(errContainer.dispose);
 
@@ -605,10 +704,51 @@ void main() {
     });
   });
 
+  group('IssuesNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(issuesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(issuesProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          gitlabServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(issuesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.listIssues(any()));
+    });
+  });
+
   group('IssuesNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           gitlabServiceProvider.overrideWithValue(
             _FailingGitLabClient(GrpcError.unavailable('connection refused')),
           ),
@@ -694,7 +834,12 @@ void main() {
       ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [gitlabServiceProvider.overrideWithValue(errClient)],
+        overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
+          gitlabServiceProvider.overrideWithValue(errClient),
+        ],
       );
       addTearDown(errContainer.dispose);
 

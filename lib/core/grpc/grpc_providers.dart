@@ -3,6 +3,7 @@ import 'package:grpc/grpc.dart';
 
 import '../../generated/betcode/v1/auth.pbgrpc.dart';
 import '../../generated/betcode/v1/health.pbgrpc.dart';
+import '../../features/machines/notifiers/machines_providers.dart';
 import '../auth/auth.dart';
 import 'client_manager.dart';
 import 'connection_state.dart';
@@ -27,6 +28,9 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
         authClientFactory: () => AuthServiceClient(manager.channel),
       ),
       AuthInterceptor(tokenProvider: () async => authNotifier.accessToken),
+      MachineIdInterceptor(
+        machineIdProvider: () async => ref.read(selectedMachineIdProvider),
+      ),
       LoggingInterceptor(),
     ],
     healthCheckFn: (channel) async {
@@ -46,17 +50,40 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
 });
 
 /// Streams connection status changes for widgets and other providers to watch.
+///
+/// The stream is seeded with the manager's current status so the provider
+/// resolves immediately to [AsyncData] instead of staying in [AsyncLoading]
+/// until the first event is emitted (which only happens on [connect]).
 final connectionStatusProvider = StreamProvider<GrpcConnectionStatus>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
-  return manager.statusStream;
+  return _seededStatusStream(manager);
 });
+
+/// Yields the manager's current status immediately, then forwards all
+/// subsequent stream events.
+Stream<GrpcConnectionStatus> _seededStatusStream(
+  GrpcClientManager manager,
+) async* {
+  yield manager.status;
+  yield* manager.statusStream;
+}
 
 /// Streams full [ConnectionInfo] snapshots including error messages and
 /// reconnect attempt counts.
+///
+/// Seeded with the manager's current info for the same reason as
+/// [connectionStatusProvider].
 final connectionInfoProvider = StreamProvider<ConnectionInfo>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
-  return manager.connectionInfoStream;
+  return _seededInfoStream(manager);
 });
+
+/// Yields the manager's current connection info immediately, then forwards
+/// all subsequent stream events.
+Stream<ConnectionInfo> _seededInfoStream(GrpcClientManager manager) async* {
+  yield manager.currentInfo;
+  yield* manager.connectionInfoStream;
+}
 
 /// Manages the active relay configuration and connection lifecycle.
 final relayConfigNotifierProvider =

@@ -6,7 +6,6 @@ import '../../../core/grpc/connection_state.dart';
 import '../../../core/grpc/grpc_providers.dart';
 import '../../../generated/betcode/v1/config.pb.dart';
 import '../../../shared/widgets/connection_indicator.dart';
-import '../../../shared/widgets/error_display.dart';
 import '../notifiers/settings_providers.dart';
 import '../widgets/mcp_server_card.dart';
 
@@ -19,27 +18,68 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: settingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorDisplay(
-          error: error,
-          stackTrace: stackTrace,
-          onRetry: () => ref.read(settingsProvider.notifier).refresh(),
-        ),
-        data: (settings) => RefreshIndicator(
-          onRefresh: () async {
-            await ref.read(settingsProvider.notifier).refresh();
-            await ref.read(mcpServersProvider.notifier).refresh();
-          },
-          child: ListView(
-            children: [
-              const _RelayConnectionSection(),
-              _SessionSettingsSection(settings: settings),
-              _PermissionSettingsSection(settings: settings),
-              _McpServersSection(),
-              const _AboutSection(),
-            ],
-          ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(settingsProvider.notifier).refresh();
+          await ref.read(mcpServersProvider.notifier).refresh();
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            const _RelayConnectionSection(),
+            ...settingsAsync.when(
+              loading: () => [
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+              error: (error, _) => [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.cloud_off,
+                        size: 40,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Daemon settings unavailable',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Connect to a relay to view session, permission, '
+                        'and MCP server settings.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: () =>
+                            ref.read(settingsProvider.notifier).refresh(),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              data: (settings) => [
+                _SessionSettingsSection(settings: settings),
+                _PermissionSettingsSection(settings: settings),
+                _McpServersSection(),
+              ],
+            ),
+            const _AboutSection(),
+          ],
         ),
       ),
     );

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
 
 import 'connection_state.dart';
@@ -115,7 +117,18 @@ class GrpcClientManager {
         port: port,
         options: ChannelOptions(
           credentials: useTls
-              ? const ChannelCredentials.secure()
+              ? ChannelCredentials.secure(
+                  onBadCertificate: kDebugMode
+                      ? (X509Certificate cert, String host) {
+                          developer.log(
+                            'Accepting self-signed cert for $host '
+                            '(debug mode)',
+                            name: 'GrpcClientManager',
+                          );
+                          return true;
+                        }
+                      : null,
+                )
               : const ChannelCredentials.insecure(),
           connectionTimeout: const Duration(seconds: 10),
         ),

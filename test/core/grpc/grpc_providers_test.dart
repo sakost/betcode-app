@@ -76,9 +76,20 @@ void main() {
       );
     });
 
-    test('has exactly three interceptors', () {
+    test('interceptor chain contains MachineIdInterceptor', () {
       final manager = container.read(grpcClientManagerProvider);
-      expect(manager.interceptors, hasLength(3));
+      final interceptors = manager.interceptors;
+
+      expect(
+        interceptors.whereType<MachineIdInterceptor>(),
+        hasLength(1),
+        reason: 'MachineIdInterceptor should be present in the chain',
+      );
+    });
+
+    test('has exactly four interceptors', () {
+      final manager = container.read(grpcClientManagerProvider);
+      expect(manager.interceptors, hasLength(4));
     });
 
     test('has a health check function configured', () {

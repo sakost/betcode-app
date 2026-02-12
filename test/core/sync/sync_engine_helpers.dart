@@ -20,6 +20,7 @@ class MockSyncQueueTable extends Mock implements $SyncQueueTable {}
 class MockDeleteStatement extends Mock
     implements DeleteStatement<$SyncQueueTable, SyncQueueData> {}
 
+// ignore: subtype_of_sealed_class
 class MockSelectStatement extends Mock
     implements SimpleSelectStatement<$SyncQueueTable, SyncQueueData> {}
 
@@ -94,7 +95,7 @@ void wireUpDeleteChain({
 }) {
   when(() => mockDb.syncQueue).thenReturn(mockTable);
   when(() => mockDb.delete(mockTable)).thenReturn(mockDelete);
-  when(() => mockDelete.where(any())).thenReturn(mockDelete);
+  when(() => mockDelete.where(any())).thenAnswer((_) {});
   when(() => mockDelete.go()).thenAnswer((_) async => 0);
 }
 
@@ -110,8 +111,8 @@ MockSelectStatement wireUpSelectChain({
 }) {
   final mockSelect = MockSelectStatement();
   when(() => mockDb.select(mockTable)).thenReturn(mockSelect);
-  when(() => mockSelect.where(any())).thenReturn(mockSelect);
-  when(() => mockSelect.orderBy(any())).thenReturn(mockSelect);
+  when(() => mockSelect.where(any())).thenAnswer((_) {});
+  when(() => mockSelect.orderBy(any())).thenAnswer((_) {});
   when(() => mockSelect.get()).thenAnswer((_) async => results);
   return mockSelect;
 }
@@ -124,7 +125,7 @@ MockUpdateStatement wireUpUpdateChain({
 }) {
   final mockUpdate = MockUpdateStatement();
   when(() => mockDb.update(mockTable)).thenReturn(mockUpdate);
-  when(() => mockUpdate.where(any())).thenReturn(mockUpdate);
+  when(() => mockUpdate.where(any())).thenAnswer((_) {});
   when(() => mockUpdate.write(any())).thenAnswer((_) async => 0);
   return mockUpdate;
 }

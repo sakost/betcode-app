@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,7 +22,7 @@ void main() {
   });
 
   group('SyncQueue CRUD', () {
-    SyncQueueCompanion _entry({
+    SyncQueueCompanion entry({
       required String machineId,
       String requestType = 'user_message',
       int priority = 3,
@@ -45,7 +43,7 @@ void main() {
     }
 
     test('insert and retrieve', () async {
-      await db.into(db.syncQueue).insert(_entry(machineId: 'm-1'));
+      await db.into(db.syncQueue).insert(entry(machineId: 'm-1'));
 
       final rows = await db.select(db.syncQueue).get();
       expect(rows, hasLength(1));
@@ -59,10 +57,10 @@ void main() {
     test('auto-increment id', () async {
       await db
           .into(db.syncQueue)
-          .insert(_entry(machineId: 'm-1', idempotencyKey: 'k-1', sequence: 1));
+          .insert(entry(machineId: 'm-1', idempotencyKey: 'k-1', sequence: 1));
       await db
           .into(db.syncQueue)
-          .insert(_entry(machineId: 'm-2', idempotencyKey: 'k-2', sequence: 2));
+          .insert(entry(machineId: 'm-2', idempotencyKey: 'k-2', sequence: 2));
 
       final rows = await db.select(db.syncQueue).get();
       expect(rows, hasLength(2));
@@ -70,7 +68,7 @@ void main() {
     });
 
     test('update status', () async {
-      await db.into(db.syncQueue).insert(_entry(machineId: 'm-1'));
+      await db.into(db.syncQueue).insert(entry(machineId: 'm-1'));
       final row = (await db.select(db.syncQueue).get()).first;
 
       await (db.update(db.syncQueue)..where((t) => t.id.equals(row.id))).write(
@@ -84,7 +82,7 @@ void main() {
     });
 
     test('delete entry', () async {
-      await db.into(db.syncQueue).insert(_entry(machineId: 'm-1'));
+      await db.into(db.syncQueue).insert(entry(machineId: 'm-1'));
       expect(await db.select(db.syncQueue).get(), hasLength(1));
 
       await (db.delete(
@@ -98,7 +96,7 @@ void main() {
       await db
           .into(db.syncQueue)
           .insert(
-            _entry(machineId: 'm-1', idempotencyKey: 'k-low', sequence: 1),
+            entry(machineId: 'm-1', idempotencyKey: 'k-low', sequence: 1),
           );
       await (db.update(db.syncQueue)
             ..where((t) => t.idempotencyKey.equals('k-low')))
@@ -107,7 +105,7 @@ void main() {
       await db
           .into(db.syncQueue)
           .insert(
-            _entry(machineId: 'm-1', idempotencyKey: 'k-high', sequence: 2),
+            entry(machineId: 'm-1', idempotencyKey: 'k-high', sequence: 2),
           );
       await (db.update(db.syncQueue)
             ..where((t) => t.idempotencyKey.equals('k-high')))
@@ -122,7 +120,7 @@ void main() {
   });
 
   group('CachedSessions CRUD', () {
-    CachedSessionsCompanion _session({
+    CachedSessionsCompanion session({
       required String id,
       String machineId = 'machine-1',
     }) {
@@ -134,7 +132,7 @@ void main() {
     }
 
     test('insert and retrieve', () async {
-      await db.into(db.cachedSessions).insert(_session(id: 's-1'));
+      await db.into(db.cachedSessions).insert(session(id: 's-1'));
 
       final rows = await db.select(db.cachedSessions).get();
       expect(rows, hasLength(1));
@@ -171,7 +169,7 @@ void main() {
     });
 
     test('update session', () async {
-      await db.into(db.cachedSessions).insert(_session(id: 's-1'));
+      await db.into(db.cachedSessions).insert(session(id: 's-1'));
 
       await (db.update(
         db.cachedSessions,
@@ -190,8 +188,8 @@ void main() {
     });
 
     test('delete session', () async {
-      await db.into(db.cachedSessions).insert(_session(id: 's-1'));
-      await db.into(db.cachedSessions).insert(_session(id: 's-2'));
+      await db.into(db.cachedSessions).insert(session(id: 's-1'));
+      await db.into(db.cachedSessions).insert(session(id: 's-2'));
 
       await (db.delete(
         db.cachedSessions,
@@ -203,10 +201,10 @@ void main() {
     });
 
     test('primary key prevents duplicate ids', () async {
-      await db.into(db.cachedSessions).insert(_session(id: 's-1'));
+      await db.into(db.cachedSessions).insert(session(id: 's-1'));
 
       expect(
-        () => db.into(db.cachedSessions).insert(_session(id: 's-1')),
+        () => db.into(db.cachedSessions).insert(session(id: 's-1')),
         throwsA(anything),
       );
     });
@@ -214,9 +212,9 @@ void main() {
     test('batch insert', () async {
       await db.batch((batch) {
         batch.insertAll(db.cachedSessions, [
-          _session(id: 's-1'),
-          _session(id: 's-2'),
-          _session(id: 's-3'),
+          session(id: 's-1'),
+          session(id: 's-2'),
+          session(id: 's-3'),
         ]);
       });
 
@@ -226,7 +224,7 @@ void main() {
   });
 
   group('Machines CRUD', () {
-    MachinesCompanion _machine({
+    MachinesCompanion machine({
       required String id,
       String name = 'My Machine',
       String relayUrl = 'wss://relay.example.com',
@@ -235,7 +233,7 @@ void main() {
     }
 
     test('insert and retrieve with defaults', () async {
-      await db.into(db.machines).insert(_machine(id: 'm-1'));
+      await db.into(db.machines).insert(machine(id: 'm-1'));
 
       final rows = await db.select(db.machines).get();
       expect(rows, hasLength(1));
@@ -247,7 +245,7 @@ void main() {
     });
 
     test('update favorite status', () async {
-      await db.into(db.machines).insert(_machine(id: 'm-1'));
+      await db.into(db.machines).insert(machine(id: 'm-1'));
 
       await (db.update(db.machines)..where((t) => t.id.equals('m-1'))).write(
         const MachinesCompanion(isFavorite: Value(true)),
@@ -260,8 +258,8 @@ void main() {
     });
 
     test('filter by status', () async {
-      await db.into(db.machines).insert(_machine(id: 'm-1'));
-      await db.into(db.machines).insert(_machine(id: 'm-2'));
+      await db.into(db.machines).insert(machine(id: 'm-1'));
+      await db.into(db.machines).insert(machine(id: 'm-2'));
 
       await (db.update(db.machines)..where((t) => t.id.equals('m-2'))).write(
         const MachinesCompanion(status: Value('online')),

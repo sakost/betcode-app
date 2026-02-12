@@ -13,15 +13,6 @@ import 'package:betcode_app/shared/theme/app_colors.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
-Widget _dialogHost(VoidCallback onPressed) => MaterialApp(
-  home: Scaffold(
-    body: Builder(
-      builder: (ctx) =>
-          ElevatedButton(onPressed: onPressed.call, child: const Text('Open')),
-    ),
-  ),
-);
-
 final _qOptions = [
   const QuestionOptionData(value: 'a', label: 'Option A'),
   const QuestionOptionData(

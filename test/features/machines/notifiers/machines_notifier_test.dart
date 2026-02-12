@@ -7,7 +7,7 @@ import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/generated/betcode/v1/machine.pbgrpc.dart';
 
 // ---------------------------------------------------------------------------
@@ -15,6 +15,22 @@ import 'package:betcode_app/generated/betcode/v1/machine.pbgrpc.dart';
 // ---------------------------------------------------------------------------
 
 class MockMachineServiceClient extends Mock implements MachineServiceClient {}
+
+/// A fake notifier that stores selection in memory without secure storage.
+class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
+  @override
+  String? build() => null;
+
+  @override
+  Future<void> select(String machineId) async {
+    state = machineId;
+  }
+
+  @override
+  Future<void> clear() async {
+    state = null;
+  }
+}
 
 /// A fake client whose [listMachines] always throws [GrpcError].
 class _FailingMachineClient extends Fake implements MachineServiceClient {
@@ -60,7 +76,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
   @override
   Future<void> cancel() async {}
 
-  @override
   bool get isCancelled => false;
 }
 
@@ -80,7 +95,12 @@ void main() {
     mockClient = MockMachineServiceClient();
 
     container = ProviderContainer(
-      overrides: [machineServiceProvider.overrideWithValue(mockClient)],
+      overrides: [
+        machineServiceProvider.overrideWithValue(mockClient),
+        selectedMachineIdProvider.overrideWith(
+          _FakeSelectedMachineNotifier.new,
+        ),
+      ],
     );
   });
 
@@ -155,6 +175,9 @@ void main() {
           machineServiceProvider.overrideWithValue(
             _FailingMachineClient(GrpcError.unavailable('connection refused')),
           ),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
+          ),
         ],
       );
       addTearDown(errContainer.dispose);
@@ -173,6 +196,9 @@ void main() {
         overrides: [
           machineServiceProvider.overrideWithValue(
             _FailingMachineClient(GrpcError.unavailable('daemon unreachable')),
+          ),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
           ),
         ],
       );
@@ -249,7 +275,12 @@ void main() {
       ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [machineServiceProvider.overrideWithValue(errClient)],
+        overrides: [
+          machineServiceProvider.overrideWithValue(errClient),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
+          ),
+        ],
       );
       addTearDown(errContainer.dispose);
 
@@ -288,6 +319,62 @@ void main() {
       await notifier.refresh();
 
       verify(() => mockClient.listMachines(any())).called(1);
+    });
+  });
+
+  group('MachinesNotifier - auto-select', () {
+    test('auto-selects when exactly one machine and none selected', () async {
+      when(() => mockClient.listMachines(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListMachinesResponse(machines: [makeMachine('only-one')]),
+        ),
+      );
+
+      await container.read(machinesProvider.future);
+
+      expect(container.read(selectedMachineIdProvider), 'only-one');
+    });
+
+    test('does not auto-select when multiple machines', () async {
+      when(() => mockClient.listMachines(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListMachinesResponse(
+            machines: [makeMachine('m-1'), makeMachine('m-2')],
+          ),
+        ),
+      );
+
+      await container.read(machinesProvider.future);
+
+      expect(container.read(selectedMachineIdProvider), isNull);
+    });
+
+    test('does not auto-select when a machine is already selected', () async {
+      // Pre-select a machine
+      await container
+          .read(selectedMachineIdProvider.notifier)
+          .select('existing');
+
+      when(() => mockClient.listMachines(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListMachinesResponse(machines: [makeMachine('only-one')]),
+        ),
+      );
+
+      await container.read(machinesProvider.future);
+
+      // Should keep existing selection, not override
+      expect(container.read(selectedMachineIdProvider), 'existing');
+    });
+
+    test('does not auto-select when no machines', () async {
+      when(
+        () => mockClient.listMachines(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
+
+      await container.read(machinesProvider.future);
+
+      expect(container.read(selectedMachineIdProvider), isNull);
     });
   });
 }

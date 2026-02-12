@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../generated/betcode/v1/common.pb.dart';
+import '../../worktrees/notifiers/worktrees_providers.dart';
 import '../models/conversation_state.dart';
 import '../notifiers/conversation_providers.dart';
 import '../widgets/input_bar.dart';
@@ -49,6 +50,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(conversationProvider(widget.sessionId));
+    // Pre-load worktrees so they're available when the user taps Start.
+    ref.watch(worktreesProvider);
 
     return asyncState.when(
       loading: () => Scaffold(
@@ -68,6 +71,31 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     );
   }
 
+  String? _resolveWorkingDirectory() {
+    final worktrees = ref.read(worktreesProvider).value;
+    if (worktrees != null && worktrees.isNotEmpty) {
+      // Use the first worktree's path as the default working directory.
+      final path = worktrees.first.path;
+      if (path.isNotEmpty) return path;
+    }
+    return null;
+  }
+
+  void _startConversation() {
+    final workingDirectory = _resolveWorkingDirectory();
+    if (workingDirectory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No worktree available. Create a worktree first.'),
+        ),
+      );
+      return;
+    }
+    ref
+        .read(conversationProvider(widget.sessionId).notifier)
+        .startConversation(workingDirectory: workingDirectory);
+  }
+
   Widget _buildInitialState() {
     return Scaffold(
       appBar: AppBar(title: const Text('Conversation')),
@@ -78,9 +106,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             const Text('Start a conversation'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref
-                  .read(conversationProvider(widget.sessionId).notifier)
-                  .startConversation(),
+              onPressed: _startConversation,
               child: const Text('Start'),
             ),
           ],
@@ -117,9 +143,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref
-                  .read(conversationProvider(widget.sessionId).notifier)
-                  .startConversation(),
+              onPressed: _startConversation,
               child: const Text('Retry'),
             ),
           ],

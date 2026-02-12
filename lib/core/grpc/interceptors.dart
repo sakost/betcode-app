@@ -9,6 +9,9 @@ import '../auth/auth_notifier.dart';
 /// A function that returns the current JWT token, or null if unauthenticated.
 typedef TokenProvider = Future<String?> Function();
 
+/// A function that returns the currently selected machine ID, or null.
+typedef MachineIdProvider = Future<String?> Function();
+
 /// Injects a JWT bearer token into every outgoing gRPC call's metadata.
 ///
 /// The token is fetched lazily via [tokenProvider] so it always reflects
@@ -49,6 +52,54 @@ class AuthInterceptor extends ClientInterceptor {
             final token = await tokenProvider();
             if (token != null) {
               metadata[_authHeader] = 'Bearer $token';
+            }
+          },
+        ],
+      ),
+    );
+  }
+}
+
+/// Injects the `x-machine-id` header into every outgoing gRPC call's metadata.
+///
+/// The machine ID is fetched lazily via [machineIdProvider] so it always
+/// reflects the latest selection. If the provider returns null the header is
+/// omitted.
+class MachineIdInterceptor extends ClientInterceptor {
+  MachineIdInterceptor({required this.machineIdProvider});
+
+  final MachineIdProvider machineIdProvider;
+
+  static const _machineIdHeader = 'x-machine-id';
+
+  @override
+  ResponseFuture<R> interceptUnary<Q, R>(
+    ClientMethod<Q, R> method,
+    Q request,
+    CallOptions options,
+    ClientUnaryInvoker<Q, R> invoker,
+  ) {
+    return invoker(method, request, _withMachineId(options));
+  }
+
+  @override
+  ResponseStream<R> interceptStreaming<Q, R>(
+    ClientMethod<Q, R> method,
+    Stream<Q> requests,
+    CallOptions options,
+    ClientStreamingInvoker<Q, R> invoker,
+  ) {
+    return invoker(method, requests, _withMachineId(options));
+  }
+
+  CallOptions _withMachineId(CallOptions options) {
+    return options.mergedWith(
+      CallOptions(
+        providers: [
+          (metadata, uri) async {
+            final machineId = await machineIdProvider();
+            if (machineId != null) {
+              metadata[_machineIdHeader] = machineId;
             }
           },
         ],

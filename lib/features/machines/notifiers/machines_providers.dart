@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../generated/betcode/v1/machine.pb.dart';
 import 'machines_notifier.dart';
+import 'selected_machine_notifier.dart';
 
 /// Provides the list of [MachineInfo] objects fetched from the daemon.
 ///
@@ -10,4 +11,10 @@ import 'machines_notifier.dart';
 final machinesProvider =
     AsyncNotifierProvider<MachinesNotifier, List<MachineInfo>>(
       MachinesNotifier.new,
+    );
+
+/// Tracks the currently selected machine ID, persisted across restarts.
+final selectedMachineIdProvider =
+    NotifierProvider<SelectedMachineNotifier, String?>(
+      SelectedMachineNotifier.new,
     );

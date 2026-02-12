@@ -38,7 +38,6 @@ class MockResponseFuture<T> extends Fake implements ResponseFuture<T> {
       _f.timeout(t, onTimeout: onTimeout);
   @override
   Future<void> cancel() async {}
-  @override
   bool get isCancelled => false;
 }
 

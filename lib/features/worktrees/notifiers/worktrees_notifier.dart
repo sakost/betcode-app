@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/grpc/connection_state.dart';
+import '../../../core/grpc/grpc_providers.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/worktree.pb.dart';
 
@@ -8,13 +10,26 @@ import '../../../generated/betcode/v1/worktree.pb.dart';
 /// On [build], fetches all worktrees and returns them. Callers can
 /// pull-to-refresh via [refresh], create new worktrees, or remove existing
 /// ones.
+///
+/// Watches [connectionStatusProvider] so the provider auto-refreshes when
+/// the gRPC connection state changes.
 class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
+  static const _rpcTimeout = Duration(seconds: 10);
+
   @override
-  Future<List<WorktreeDetail>> build() async => _fetchWorktrees();
+  Future<List<WorktreeDetail>> build() async {
+    final status = await ref.watch(connectionStatusProvider.future);
+    if (status != GrpcConnectionStatus.connected) {
+      throw StateError('Not connected to daemon');
+    }
+    return _fetchWorktrees();
+  }
 
   Future<List<WorktreeDetail>> _fetchWorktrees() async {
     final client = ref.read(worktreeServiceProvider);
-    final response = await client.listWorktrees(ListWorktreesRequest());
+    final response = await client
+        .listWorktrees(ListWorktreesRequest())
+        .timeout(_rpcTimeout);
     return response.worktrees.toList();
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/config.pb.dart';
-import '../../../generated/betcode/v1/config.pbenum.dart';
 
 /// A card displaying a single [McpServerInfo] in the MCP servers list.
 ///

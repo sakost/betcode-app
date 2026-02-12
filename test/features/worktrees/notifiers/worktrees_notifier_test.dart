@@ -5,9 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
   @override
   Future<void> cancel() async {}
 
-  @override
   bool get isCancelled => false;
 }
 
@@ -82,7 +82,12 @@ void main() {
     mockClient = MockWorktreeServiceClient();
 
     container = ProviderContainer(
-      overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
+      overrides: [
+        connectionStatusProvider.overrideWithValue(
+          const AsyncData(GrpcConnectionStatus.connected),
+        ),
+        worktreeServiceProvider.overrideWithValue(mockClient),
+      ],
     );
   });
 
@@ -162,10 +167,51 @@ void main() {
     });
   });
 
+  group('WorktreesNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          worktreeServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(worktreesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(worktreesProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          worktreeServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(worktreesProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.listWorktrees(any()));
+    });
+  });
+
   group('WorktreesNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           worktreeServiceProvider.overrideWithValue(
             _FailingWorktreeClient(GrpcError.unavailable('connection refused')),
           ),
@@ -184,6 +230,9 @@ void main() {
     test('gRPC error preserves error details', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           worktreeServiceProvider.overrideWithValue(
             _FailingWorktreeClient(GrpcError.unavailable('daemon unreachable')),
           ),
@@ -260,7 +309,12 @@ void main() {
       ).thenThrow(GrpcError.unavailable());
 
       final errContainer = ProviderContainer(
-        overrides: [worktreeServiceProvider.overrideWithValue(errClient)],
+        overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
+          worktreeServiceProvider.overrideWithValue(errClient),
+        ],
       );
       addTearDown(errContainer.dispose);
 

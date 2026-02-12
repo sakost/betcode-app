@@ -14,7 +14,6 @@ import 'package:betcode_app/features/settings/notifiers/settings_providers.dart'
 import 'package:betcode_app/features/settings/screens/settings_screen.dart';
 import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
-import 'package:betcode_app/generated/betcode/v1/config.pbenum.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:betcode_app/shared/widgets/connection_indicator.dart';
 
@@ -155,9 +154,18 @@ void main() {
       );
       await t.pumpAndSettle();
 
-      expect(find.textContaining('connection refused'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      // Relay section and About are still visible
+      expect(find.text('Relay Connection'), findsOneWidget);
+      expect(find.text('About'), findsOneWidget);
+
+      // Daemon settings show unavailable message with retry
+      expect(find.text('Daemon settings unavailable'), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
+
+      // Session/Permission sections are NOT shown
+      expect(find.text('Session Settings'), findsNothing);
+      expect(find.text('Permission Settings'), findsNothing);
     });
 
     testWidgets('displays session settings section', (t) async {

@@ -8,6 +8,7 @@ import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 
 import 'package:betcode_app/features/machines/notifiers/machines_notifier.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/features/machines/screens/machines_screen.dart';
 import 'package:betcode_app/features/machines/widgets/machine_card.dart';
 import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
@@ -59,6 +60,16 @@ class _FakeMachinesNotifier extends MachinesNotifier {
   }
 }
 
+/// A notifier that holds a fixed selected machine ID for tests.
+class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
+  _FakeSelectedMachineNotifier([this._initial]);
+
+  final String? _initial;
+
+  @override
+  String? build() => _initial;
+}
+
 // ---------------------------------------------------------------------------
 // MachinesScreen tests
 // ---------------------------------------------------------------------------
@@ -71,6 +82,9 @@ void main() {
           overrides: [
             machinesProvider.overrideWith(
               () => _FakeMachinesNotifier(const AsyncLoading()),
+            ),
+            selectedMachineIdProvider.overrideWith(
+              _FakeSelectedMachineNotifier.new,
             ),
           ],
           child: _app(const MachinesScreen()),
@@ -98,6 +112,9 @@ void main() {
             machinesProvider.overrideWith(
               () => _FakeMachinesNotifier(AsyncData(machines)),
             ),
+            selectedMachineIdProvider.overrideWith(
+              _FakeSelectedMachineNotifier.new,
+            ),
           ],
           child: _app(const MachinesScreen()),
         ),
@@ -116,6 +133,9 @@ void main() {
           overrides: [
             machinesProvider.overrideWith(
               () => _FakeMachinesNotifier(const AsyncData([])),
+            ),
+            selectedMachineIdProvider.overrideWith(
+              _FakeSelectedMachineNotifier.new,
             ),
           ],
           child: _app(const MachinesScreen()),
@@ -137,6 +157,9 @@ void main() {
                 AsyncError(Exception('connection refused'), StackTrace.empty),
               ),
             ),
+            selectedMachineIdProvider.overrideWith(
+              _FakeSelectedMachineNotifier.new,
+            ),
           ],
           child: _app(const MachinesScreen()),
         ),
@@ -147,6 +170,31 @@ void main() {
       expect(find.textContaining('connection refused'), findsOneWidget);
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
       expect(find.text('Retry'), findsOneWidget);
+    });
+
+    testWidgets('highlights selected machine card', (t) async {
+      final machines = [
+        _makeMachine(machineId: 'm-1', name: 'alpha'),
+        _makeMachine(machineId: 'm-2', name: 'beta'),
+      ];
+
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            machinesProvider.overrideWith(
+              () => _FakeMachinesNotifier(AsyncData(machines)),
+            ),
+            selectedMachineIdProvider.overrideWith(
+              () => _FakeSelectedMachineNotifier('m-1'),
+            ),
+          ],
+          child: _app(const MachinesScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      // The selected machine should show a check icon
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
     });
   });
 
@@ -246,6 +294,24 @@ void main() {
 
       // The name field should show 'Unknown' as fallback
       expect(find.text('Unknown'), findsOneWidget);
+    });
+
+    testWidgets('shows check icon when isSelected is true', (t) async {
+      await t.pumpWidget(
+        _app(MachineCard(machine: _makeMachine(), isSelected: true)),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    testWidgets('does not show check icon when isSelected is false', (t) async {
+      await t.pumpWidget(
+        _app(MachineCard(machine: _makeMachine(), isSelected: false)),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.check_circle), findsNothing);
     });
 
     testWidgets('displays metadata entries when present', (t) async {

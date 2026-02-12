@@ -8,10 +8,16 @@ import '../../../shared/theme/app_colors.dart';
 /// Shows machine name, machine ID, status badge, last seen time, and any
 /// metadata entries. Accepts an optional [onTap] callback.
 class MachineCard extends StatelessWidget {
-  const MachineCard({super.key, required this.machine, this.onTap});
+  const MachineCard({
+    super.key,
+    required this.machine,
+    this.onTap,
+    this.isSelected = false,
+  });
 
   final MachineInfo machine;
   final VoidCallback? onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +26,12 @@ class MachineCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      shape: isSelected
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: colorScheme.primary, width: 2),
+            )
+          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
@@ -41,6 +53,14 @@ class MachineCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.check_circle,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   _StatusBadge(status: machine.status),
                 ],

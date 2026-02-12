@@ -19,6 +19,7 @@ class SecureStorageService {
   static const _keyRelayHost = 'relay_host';
   static const _keyRelayPort = 'relay_port';
   static const _keyRelayUseTls = 'relay_use_tls';
+  static const _keySelectedMachineId = 'selected_machine_id';
 
   // -- Access token --------------------------------------------------------
 
@@ -66,6 +67,17 @@ class SecureStorageService {
     await _storage.delete(key: _keyRelayPort);
     await _storage.delete(key: _keyRelayUseTls);
   }
+
+  // -- Selected machine ID -------------------------------------------------
+
+  Future<String?> readSelectedMachineId() =>
+      _storage.read(key: _keySelectedMachineId);
+
+  Future<void> writeSelectedMachineId(String machineId) =>
+      _storage.write(key: _keySelectedMachineId, value: machineId);
+
+  Future<void> deleteSelectedMachineId() =>
+      _storage.delete(key: _keySelectedMachineId);
 
   // -- Bulk operations -----------------------------------------------------
 

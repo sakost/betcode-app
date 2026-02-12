@@ -61,7 +61,7 @@ void main() {
     ConversationNotifier n, {
     String sessionId = 'sess-1',
   }) async {
-    await n.startConversation();
+    await n.startConversation(workingDirectory: '/tmp');
     eventController.add(
       pb.AgentEvent(
         sequence: Int64(1),
@@ -91,7 +91,7 @@ void main() {
         states.add(next);
       });
 
-      await n.startConversation();
+      await n.startConversation(workingDirectory: '/tmp');
 
       expect(states.any((s) => s.value is ConversationConnecting), isTrue);
       await Future<void>.delayed(Duration.zero);
@@ -101,7 +101,7 @@ void main() {
     });
 
     test('sends existing sessionId for resume', () async {
-      await notifier('sess-resume').startConversation();
+      await notifier('sess-resume').startConversation(workingDirectory: '/tmp');
       await Future<void>.delayed(Duration.zero);
       expect(capturedRequests.first.start.sessionId, 'sess-resume');
     });
@@ -125,7 +125,7 @@ void main() {
 
       fc.read(conversationProvider(null));
       final n = fc.read(conversationProvider(null).notifier);
-      await n.startConversation();
+      await n.startConversation(workingDirectory: '/tmp');
 
       final s = fc.read(conversationProvider(null)).value;
       expect(s, isA<ConversationError>());
@@ -325,7 +325,7 @@ void main() {
       );
       lCont.read(conversationProvider(null));
       final n = lCont.read(conversationProvider(null).notifier);
-      await n.startConversation();
+      await n.startConversation(workingDirectory: '/tmp');
 
       lCont.dispose();
 
@@ -392,7 +392,7 @@ void main() {
 
         final n = notifier();
         // Manually drive the futures in fakeAsync.
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         // Transition to active state.
@@ -428,7 +428,7 @@ void main() {
         });
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         eventController.add(
@@ -461,7 +461,7 @@ void main() {
         );
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         // Error before SessionInfo — state is ConversationConnecting, not active.
@@ -486,7 +486,7 @@ void main() {
         );
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         eventController.add(
@@ -517,7 +517,7 @@ void main() {
         ).thenThrow(GrpcError.unavailable('still down'));
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         eventController.add(
@@ -548,7 +548,7 @@ void main() {
         );
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         eventController.add(
@@ -594,7 +594,7 @@ void main() {
         });
 
         final n = notifier();
-        n.startConversation();
+        n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
         eventController.add(

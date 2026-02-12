@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/grpc/connection_state.dart';
+import '../../../core/grpc/grpc_providers.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/config.pb.dart';
 
@@ -7,15 +9,24 @@ import '../../../generated/betcode/v1/config.pb.dart';
 ///
 /// On [build], fetches the current settings. Callers can pull-to-refresh
 /// via [refresh] or push changes via [updateSettings].
+///
+/// Watches [connectionStatusProvider] so the provider auto-refreshes when
+/// the gRPC connection state changes.
 class SettingsNotifier extends AsyncNotifier<Settings> {
+  static const _rpcTimeout = Duration(seconds: 10);
+
   @override
   Future<Settings> build() async {
+    final status = await ref.watch(connectionStatusProvider.future);
+    if (status != GrpcConnectionStatus.connected) {
+      throw StateError('Not connected to daemon');
+    }
     return _fetchSettings();
   }
 
   Future<Settings> _fetchSettings() async {
     final client = ref.read(configServiceProvider);
-    return await client.getSettings(GetSettingsRequest());
+    return await client.getSettings(GetSettingsRequest()).timeout(_rpcTimeout);
   }
 
   /// Re-fetches the settings from the daemon and replaces the current state.

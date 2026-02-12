@@ -7,7 +7,6 @@ import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
-import 'package:betcode_app/core/auth/auth_state.dart';
 import 'package:betcode_app/core/grpc/interceptors.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
@@ -37,7 +36,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
       _f.timeout(t, onTimeout: onTimeout);
   @override
   Future<void> cancel() async {}
-  @override
   bool get isCancelled => false;
 }
 

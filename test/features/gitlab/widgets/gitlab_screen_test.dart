@@ -14,7 +14,6 @@ import 'package:betcode_app/features/gitlab/widgets/issue_card.dart';
 import 'package:betcode_app/features/gitlab/widgets/merge_request_card.dart';
 import 'package:betcode_app/features/gitlab/widgets/pipeline_card.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
-import 'package:betcode_app/generated/betcode/v1/gitlab.pbenum.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 
 // ---------------------------------------------------------------------------

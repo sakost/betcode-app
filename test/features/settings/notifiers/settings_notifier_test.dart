@@ -5,11 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
-import 'package:betcode_app/generated/betcode/v1/config.pbenum.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -68,7 +68,6 @@ class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
   @override
   Future<void> cancel() async {}
 
-  @override
   bool get isCancelled => false;
 }
 
@@ -89,7 +88,12 @@ void main() {
   setUp(() {
     mockClient = MockConfigServiceClient();
     container = ProviderContainer(
-      overrides: [configServiceProvider.overrideWithValue(mockClient)],
+      overrides: [
+        configServiceProvider.overrideWithValue(mockClient),
+        connectionStatusProvider.overrideWithValue(
+          const AsyncData(GrpcConnectionStatus.connected),
+        ),
+      ],
     );
   });
 
@@ -188,10 +192,70 @@ void main() {
     });
   });
 
+  group('SettingsNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          configServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(settingsProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(settingsProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('throws StateError when connecting', () async {
+      final connectingContainer = ProviderContainer(
+        overrides: [
+          configServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connecting),
+          ),
+        ],
+      );
+      addTearDown(connectingContainer.dispose);
+
+      connectingContainer.read(settingsProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = connectingContainer.read(settingsProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          configServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(settingsProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.getSettings(any()));
+    });
+  });
+
   group('SettingsNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('connection refused')),
           ),
@@ -210,6 +274,9 @@ void main() {
     test('gRPC error preserves error details', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('daemon unreachable')),
           ),
@@ -383,10 +450,51 @@ void main() {
     });
   });
 
+  group('McpServersNotifier - connection awareness', () {
+    test('throws StateError when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          configServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(mcpServersProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = disconnectedContainer.read(mcpServersProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
+    });
+
+    test('does not call gRPC when disconnected', () async {
+      final disconnectedContainer = ProviderContainer(
+        overrides: [
+          configServiceProvider.overrideWithValue(mockClient),
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.disconnected),
+          ),
+        ],
+      );
+      addTearDown(disconnectedContainer.dispose);
+
+      disconnectedContainer.read(mcpServersProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(() => mockClient.listMcpServers(any()));
+    });
+  });
+
   group('McpServersNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
       final errContainer = ProviderContainer(
         overrides: [
+          connectionStatusProvider.overrideWithValue(
+            const AsyncData(GrpcConnectionStatus.connected),
+          ),
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('connection refused')),
           ),

@@ -186,6 +186,46 @@ void main() {
     });
   });
 
+  group('SecureStorageService - selected machine ID', () {
+    test('readSelectedMachineId returns null when not stored', () async {
+      when(
+        () => mockStorage.read(key: 'selected_machine_id'),
+      ).thenAnswer((_) async => null);
+
+      final result = await service.readSelectedMachineId();
+
+      expect(result, isNull);
+    });
+
+    test('write and read roundtrip returns correct machine ID', () async {
+      when(
+        () => mockStorage.write(key: 'selected_machine_id', value: 'mach-42'),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockStorage.read(key: 'selected_machine_id'),
+      ).thenAnswer((_) async => 'mach-42');
+
+      await service.writeSelectedMachineId('mach-42');
+
+      verify(
+        () => mockStorage.write(key: 'selected_machine_id', value: 'mach-42'),
+      ).called(1);
+
+      final result = await service.readSelectedMachineId();
+      expect(result, 'mach-42');
+    });
+
+    test('deleteSelectedMachineId removes the key', () async {
+      when(
+        () => mockStorage.delete(key: 'selected_machine_id'),
+      ).thenAnswer((_) async {});
+
+      await service.deleteSelectedMachineId();
+
+      verify(() => mockStorage.delete(key: 'selected_machine_id')).called(1);
+    });
+  });
+
   group('SecureStorageService - default construction', () {
     test('creates instance without explicit storage', () {
       // Should not throw when constructed without passing storage.

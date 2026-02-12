@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/grpc/connection_state.dart';
+import '../../../core/grpc/grpc_providers.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../core/storage/database.dart';
 import '../../../core/storage/storage_providers.dart';
@@ -11,19 +13,27 @@ import '../../../generated/betcode/v1/agent.pb.dart';
 /// On [build], fetches the first page of sessions, caches each one to the
 /// local drift database for offline access, and returns them. Callers can
 /// pull-to-refresh via [refresh].
+///
+/// Watches [connectionStatusProvider] so the provider auto-refreshes when
+/// the gRPC connection state changes.
 class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   static const _pageSize = 20;
+  static const _rpcTimeout = Duration(seconds: 10);
 
   @override
   Future<List<SessionSummary>> build() async {
+    final status = await ref.watch(connectionStatusProvider.future);
+    if (status != GrpcConnectionStatus.connected) {
+      throw StateError('Not connected to daemon');
+    }
     return _fetchSessions();
   }
 
   Future<List<SessionSummary>> _fetchSessions({int offset = 0}) async {
     final client = ref.read(agentServiceProvider);
-    final response = await client.listSessions(
-      ListSessionsRequest(limit: _pageSize, offset: offset),
-    );
+    final response = await client
+        .listSessions(ListSessionsRequest(limit: _pageSize, offset: offset))
+        .timeout(_rpcTimeout);
 
     await _cacheToDb(response.sessions);
     return response.sessions.toList();

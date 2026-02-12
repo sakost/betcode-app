@@ -11,6 +11,7 @@ class MachinesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final machinesAsync = ref.watch(machinesProvider);
+    final selectedId = ref.watch(selectedMachineIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Machines')),
@@ -31,8 +32,16 @@ class MachinesScreen extends ConsumerWidget {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: machines.length,
-              itemBuilder: (context, index) =>
-                  MachineCard(machine: machines[index]),
+              itemBuilder: (context, index) {
+                final machine = machines[index];
+                return MachineCard(
+                  machine: machine,
+                  isSelected: machine.machineId == selectedId,
+                  onTap: () => ref
+                      .read(selectedMachineIdProvider.notifier)
+                      .select(machine.machineId),
+                );
+              },
             ),
           );
         },

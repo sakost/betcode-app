@@ -16,7 +16,10 @@ import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart'
 import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -33,6 +36,15 @@ class MockConversationNotifier extends AsyncNotifier<ConversationState>
   FutureOr<ConversationState> build() => _state;
 }
 
+class _FakeWorktreesNotifier extends WorktreesNotifier {
+  _FakeWorktreesNotifier(this._worktrees);
+
+  final List<WorktreeDetail> _worktrees;
+
+  @override
+  Future<List<WorktreeDetail>> build() async => _worktrees;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -43,10 +55,19 @@ Widget _buildApp({
   String? sessionId = _sessionId,
   required ConversationState state,
   MockConversationNotifier? notifier,
+  List<WorktreeDetail>? worktrees,
 }) {
   final mock = notifier ?? MockConversationNotifier(state);
+  final defaultWorktrees =
+      worktrees ??
+      [WorktreeDetail(id: 'wt-1', name: 'main', path: '/home/user/project')];
   return ProviderScope(
-    overrides: [conversationProvider(sessionId).overrideWith(() => mock)],
+    overrides: [
+      conversationProvider(sessionId).overrideWith(() => mock),
+      worktreesProvider.overrideWith(
+        () => _FakeWorktreesNotifier(defaultWorktrees),
+      ),
+    ],
     child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
   );
 }
@@ -94,7 +115,11 @@ void main() {
         final notifier = MockConversationNotifier(
           const ConversationState.initial(),
         );
-        when(() => notifier.startConversation()).thenAnswer((_) async {});
+        when(
+          () => notifier.startConversation(
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {});
 
         await tester.pumpWidget(
           _buildApp(
@@ -107,7 +132,11 @@ void main() {
         await tester.tap(find.byType(ElevatedButton));
         await tester.pump();
 
-        verify(() => notifier.startConversation()).called(1);
+        verify(
+          () => notifier.startConversation(
+            workingDirectory: '/home/user/project',
+          ),
+        ).called(1);
       });
 
       testWidgets('connecting state shows progress indicator', (tester) async {
@@ -124,7 +153,11 @@ void main() {
         final notifier = MockConversationNotifier(
           const ConversationState.error('Network failure'),
         );
-        when(() => notifier.startConversation()).thenAnswer((_) async {});
+        when(
+          () => notifier.startConversation(
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        ).thenAnswer((_) async {});
 
         await tester.pumpWidget(
           _buildApp(
@@ -140,7 +173,11 @@ void main() {
         await tester.tap(find.text('Retry'));
         await tester.pump();
 
-        verify(() => notifier.startConversation()).called(1);
+        verify(
+          () => notifier.startConversation(
+            workingDirectory: '/home/user/project',
+          ),
+        ).called(1);
       });
 
       testWidgets('active state shows message list and input bar', (
