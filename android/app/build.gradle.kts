@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "dev.sakost.betcode_app"
     compileSdk = flutter.compileSdkVersion
-    // ndkVersion = flutter.ndkVersion  // Commented out: NDK not available in read-only Nix SDK
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
