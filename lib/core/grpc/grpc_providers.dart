@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart';
 
+import '../../generated/betcode/v1/auth.pbgrpc.dart';
+import '../../generated/betcode/v1/health.pbgrpc.dart';
 import '../auth/auth.dart';
 import 'client_manager.dart';
 import 'connection_state.dart';
@@ -9,16 +12,30 @@ import 'relay_notifier.dart';
 
 /// Provides the singleton [GrpcClientManager] instance.
 ///
-/// The [AuthInterceptor] reads the current JWT from the auth notifier so
-/// every outgoing RPC carries a fresh token.
+/// The [TokenRefreshInterceptor] checks token expiry before each RPC and
+/// triggers a refresh if the token expires within 2 minutes.
+/// The [AuthInterceptor] then reads the (possibly refreshed) JWT so every
+/// outgoing RPC carries a valid token.
 final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
   final authNotifier = ref.read(authNotifierProvider.notifier);
 
-  final manager = GrpcClientManager(
+  late final GrpcClientManager manager;
+  manager = GrpcClientManager(
     interceptors: [
+      TokenRefreshInterceptor(
+        authNotifier: authNotifier,
+        authClientFactory: () => AuthServiceClient(manager.channel),
+      ),
       AuthInterceptor(tokenProvider: () async => authNotifier.accessToken),
       LoggingInterceptor(),
     ],
+    healthCheckFn: (channel) async {
+      final client = HealthClient(channel);
+      await client.check(
+        HealthCheckRequest(),
+        options: CallOptions(timeout: const Duration(seconds: 5)),
+      );
+    },
   );
 
   ref.onDispose(() async {

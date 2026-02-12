@@ -83,6 +83,9 @@ class GrpcClientManager {
   /// The interceptors configured for this manager.
   List<ClientInterceptor> get interceptors => List.unmodifiable(_interceptors);
 
+  /// Whether a health check function has been configured.
+  bool get hasHealthCheck => _healthCheckFn != null;
+
   /// The host from the last [connect] call, or null if never connected.
   String? get host => _host;
 
