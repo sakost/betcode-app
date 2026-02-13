@@ -7,6 +7,7 @@ import '../../generated/betcode/v1/gitlab.pbgrpc.dart';
 import '../../generated/betcode/v1/health.pbgrpc.dart';
 import '../../generated/betcode/v1/machine.pbgrpc.dart';
 import '../../generated/betcode/v1/version.pbgrpc.dart';
+import '../../generated/betcode/v1/git_repo.pbgrpc.dart';
 import '../../generated/betcode/v1/worktree.pbgrpc.dart';
 import 'grpc_providers.dart';
 
@@ -41,6 +42,16 @@ final machineServiceProvider = Provider<MachineServiceClient>((ref) {
 final worktreeServiceProvider = Provider<WorktreeServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
   return WorktreeServiceClient(
+    manager.channel,
+    interceptors: manager.interceptors,
+  );
+});
+
+/// Provides the [GitRepoServiceClient] for repository registration and
+/// configuration management.
+final gitRepoServiceProvider = Provider<GitRepoServiceClient>((ref) {
+  final manager = ref.watch(grpcClientManagerProvider);
+  return GitRepoServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
   );
