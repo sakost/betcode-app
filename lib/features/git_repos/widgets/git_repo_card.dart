@@ -50,7 +50,7 @@ class GitRepoCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (repo.worktreeMode.isNotEmpty)
+                if (repo.worktreeMode != WorktreeMode.WORKTREE_MODE_UNSPECIFIED)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -61,7 +61,7 @@ class GitRepoCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      repo.worktreeMode,
+                      _modeLabel(repo.worktreeMode),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.onPrimary,
                       ),
@@ -122,17 +122,22 @@ class GitRepoCard extends StatelessWidget {
     );
   }
 
-  Color _badgeColor(String mode, ColorScheme colorScheme) {
-    switch (mode) {
-      case 'global':
-        return colorScheme.primary;
-      case 'local':
-        return colorScheme.secondary;
-      case 'custom':
-        return colorScheme.tertiary;
-      default:
-        return colorScheme.outline;
-    }
+  static String _modeLabel(WorktreeMode mode) {
+    return switch (mode) {
+      WorktreeMode.WORKTREE_MODE_GLOBAL => 'Global',
+      WorktreeMode.WORKTREE_MODE_LOCAL => 'Local',
+      WorktreeMode.WORKTREE_MODE_CUSTOM => 'Custom',
+      _ => 'Unknown',
+    };
+  }
+
+  Color _badgeColor(WorktreeMode mode, ColorScheme colorScheme) {
+    return switch (mode) {
+      WorktreeMode.WORKTREE_MODE_GLOBAL => colorScheme.primary,
+      WorktreeMode.WORKTREE_MODE_LOCAL => colorScheme.secondary,
+      WorktreeMode.WORKTREE_MODE_CUSTOM => colorScheme.tertiary,
+      _ => colorScheme.outline,
+    };
   }
 
   String _relativeTime(GitRepoDetail r) {

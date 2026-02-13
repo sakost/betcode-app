@@ -23,7 +23,7 @@ GitRepoDetail _makeRepo({
   String id = 'repo-1',
   String name = 'my-project',
   String repoPath = '/home/user/projects/my-project',
-  String worktreeMode = 'global',
+  WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
   int worktreeCount = 3,
 }) {
   return GitRepoDetail(
@@ -183,14 +183,14 @@ void main() {
       await t.pumpWidget(
         _app(
           GitRepoCard(
-            repo: _makeRepo(worktreeMode: 'global'),
+            repo: _makeRepo(worktreeMode: WorktreeMode.WORKTREE_MODE_GLOBAL),
             onDelete: () {},
           ),
         ),
       );
       await t.pumpAndSettle();
 
-      expect(find.text('global'), findsOneWidget);
+      expect(find.text('Global'), findsOneWidget);
     });
 
     testWidgets('has delete icon button', (t) async {

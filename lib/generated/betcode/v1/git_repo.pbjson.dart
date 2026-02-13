@@ -15,13 +15,37 @@ import 'dart:convert' as $convert;
 import 'dart:core' as $core;
 import 'dart:typed_data' as $typed_data;
 
+@$core.Deprecated('Use worktreeModeDescriptor instead')
+const WorktreeMode$json = {
+  '1': 'WorktreeMode',
+  '2': [
+    {'1': 'WORKTREE_MODE_UNSPECIFIED', '2': 0},
+    {'1': 'WORKTREE_MODE_GLOBAL', '2': 1},
+    {'1': 'WORKTREE_MODE_LOCAL', '2': 2},
+    {'1': 'WORKTREE_MODE_CUSTOM', '2': 3},
+  ],
+};
+
+/// Descriptor for `WorktreeMode`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List worktreeModeDescriptor = $convert.base64Decode(
+    'CgxXb3JrdHJlZU1vZGUSHQoZV09SS1RSRUVfTU9ERV9VTlNQRUNJRklFRBAAEhgKFFdPUktUUk'
+    'VFX01PREVfR0xPQkFMEAESFwoTV09SS1RSRUVfTU9ERV9MT0NBTBACEhgKFFdPUktUUkVFX01P'
+    'REVfQ1VTVE9NEAM=');
+
 @$core.Deprecated('Use registerRepoRequestDescriptor instead')
 const RegisterRepoRequest$json = {
   '1': 'RegisterRepoRequest',
   '2': [
     {'1': 'repo_path', '3': 1, '4': 1, '5': 9, '10': 'repoPath'},
     {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'worktree_mode', '3': 3, '4': 1, '5': 9, '10': 'worktreeMode'},
+    {
+      '1': 'worktree_mode',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.betcode.v1.WorktreeMode',
+      '10': 'worktreeMode'
+    },
     {'1': 'local_subfolder', '3': 4, '4': 1, '5': 9, '10': 'localSubfolder'},
     {'1': 'custom_path', '3': 5, '4': 1, '5': 9, '10': 'customPath'},
     {'1': 'setup_script', '3': 6, '4': 1, '5': 9, '10': 'setupScript'},
@@ -32,10 +56,11 @@ const RegisterRepoRequest$json = {
 /// Descriptor for `RegisterRepoRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List registerRepoRequestDescriptor = $convert.base64Decode(
     'ChNSZWdpc3RlclJlcG9SZXF1ZXN0EhsKCXJlcG9fcGF0aBgBIAEoCVIIcmVwb1BhdGgSEgoEbm'
-    'FtZRgCIAEoCVIEbmFtZRIjCg13b3JrdHJlZV9tb2RlGAMgASgJUgx3b3JrdHJlZU1vZGUSJwoP'
-    'bG9jYWxfc3ViZm9sZGVyGAQgASgJUg5sb2NhbFN1YmZvbGRlchIfCgtjdXN0b21fcGF0aBgFIA'
-    'EoCVIKY3VzdG9tUGF0aBIhCgxzZXR1cF9zY3JpcHQYBiABKAlSC3NldHVwU2NyaXB0EiUKDmF1'
-    'dG9fZ2l0aWdub3JlGAcgASgIUg1hdXRvR2l0aWdub3Jl');
+    'FtZRgCIAEoCVIEbmFtZRI9Cg13b3JrdHJlZV9tb2RlGAMgASgOMhguYmV0Y29kZS52MS5Xb3Jr'
+    'dHJlZU1vZGVSDHdvcmt0cmVlTW9kZRInCg9sb2NhbF9zdWJmb2xkZXIYBCABKAlSDmxvY2FsU3'
+    'ViZm9sZGVyEh8KC2N1c3RvbV9wYXRoGAUgASgJUgpjdXN0b21QYXRoEiEKDHNldHVwX3Njcmlw'
+    'dBgGIAEoCVILc2V0dXBTY3JpcHQSJQoOYXV0b19naXRpZ25vcmUYByABKAhSDWF1dG9HaXRpZ2'
+    '5vcmU=');
 
 @$core.Deprecated('Use unregisterRepoRequestDescriptor instead')
 const UnregisterRepoRequest$json = {
@@ -54,11 +79,16 @@ final $typed_data.Uint8List unregisterRepoRequestDescriptor = $convert.base64Dec
 @$core.Deprecated('Use listReposRequestDescriptor instead')
 const ListReposRequest$json = {
   '1': 'ListReposRequest',
+  '2': [
+    {'1': 'limit', '3': 1, '4': 1, '5': 13, '10': 'limit'},
+    {'1': 'offset', '3': 2, '4': 1, '5': 13, '10': 'offset'},
+  ],
 };
 
 /// Descriptor for `ListReposRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List listReposRequestDescriptor =
-    $convert.base64Decode('ChBMaXN0UmVwb3NSZXF1ZXN0');
+final $typed_data.Uint8List listReposRequestDescriptor = $convert.base64Decode(
+    'ChBMaXN0UmVwb3NSZXF1ZXN0EhQKBWxpbWl0GAEgASgNUgVsaW1pdBIWCgZvZmZzZXQYAiABKA'
+    '1SBm9mZnNldA==');
 
 @$core.Deprecated('Use getRepoRequestDescriptor instead')
 const GetRepoRequest$json = {
@@ -77,22 +107,74 @@ const UpdateRepoRequest$json = {
   '1': 'UpdateRepoRequest',
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
-    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'worktree_mode', '3': 3, '4': 1, '5': 9, '10': 'worktreeMode'},
-    {'1': 'local_subfolder', '3': 4, '4': 1, '5': 9, '10': 'localSubfolder'},
-    {'1': 'custom_path', '3': 5, '4': 1, '5': 9, '10': 'customPath'},
-    {'1': 'setup_script', '3': 6, '4': 1, '5': 9, '10': 'setupScript'},
-    {'1': 'auto_gitignore', '3': 7, '4': 1, '5': 8, '10': 'autoGitignore'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '9': 0, '10': 'name', '17': true},
+    {
+      '1': 'worktree_mode',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.betcode.v1.WorktreeMode',
+      '9': 1,
+      '10': 'worktreeMode',
+      '17': true
+    },
+    {
+      '1': 'local_subfolder',
+      '3': 4,
+      '4': 1,
+      '5': 9,
+      '9': 2,
+      '10': 'localSubfolder',
+      '17': true
+    },
+    {
+      '1': 'custom_path',
+      '3': 5,
+      '4': 1,
+      '5': 9,
+      '9': 3,
+      '10': 'customPath',
+      '17': true
+    },
+    {
+      '1': 'setup_script',
+      '3': 6,
+      '4': 1,
+      '5': 9,
+      '9': 4,
+      '10': 'setupScript',
+      '17': true
+    },
+    {
+      '1': 'auto_gitignore',
+      '3': 7,
+      '4': 1,
+      '5': 8,
+      '9': 5,
+      '10': 'autoGitignore',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_name'},
+    {'1': '_worktree_mode'},
+    {'1': '_local_subfolder'},
+    {'1': '_custom_path'},
+    {'1': '_setup_script'},
+    {'1': '_auto_gitignore'},
   ],
 };
 
 /// Descriptor for `UpdateRepoRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List updateRepoRequestDescriptor = $convert.base64Decode(
-    'ChFVcGRhdGVSZXBvUmVxdWVzdBIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZR'
-    'IjCg13b3JrdHJlZV9tb2RlGAMgASgJUgx3b3JrdHJlZU1vZGUSJwoPbG9jYWxfc3ViZm9sZGVy'
-    'GAQgASgJUg5sb2NhbFN1YmZvbGRlchIfCgtjdXN0b21fcGF0aBgFIAEoCVIKY3VzdG9tUGF0aB'
-    'IhCgxzZXR1cF9zY3JpcHQYBiABKAlSC3NldHVwU2NyaXB0EiUKDmF1dG9fZ2l0aWdub3JlGAcg'
-    'ASgIUg1hdXRvR2l0aWdub3Jl');
+    'ChFVcGRhdGVSZXBvUmVxdWVzdBIOCgJpZBgBIAEoCVICaWQSFwoEbmFtZRgCIAEoCUgAUgRuYW'
+    '1liAEBEkIKDXdvcmt0cmVlX21vZGUYAyABKA4yGC5iZXRjb2RlLnYxLldvcmt0cmVlTW9kZUgB'
+    'Ugx3b3JrdHJlZU1vZGWIAQESLAoPbG9jYWxfc3ViZm9sZGVyGAQgASgJSAJSDmxvY2FsU3ViZm'
+    '9sZGVyiAEBEiQKC2N1c3RvbV9wYXRoGAUgASgJSANSCmN1c3RvbVBhdGiIAQESJgoMc2V0dXBf'
+    'c2NyaXB0GAYgASgJSARSC3NldHVwU2NyaXB0iAEBEioKDmF1dG9fZ2l0aWdub3JlGAcgASgISA'
+    'VSDWF1dG9HaXRpZ25vcmWIAQFCBwoFX25hbWVCEAoOX3dvcmt0cmVlX21vZGVCEgoQX2xvY2Fs'
+    'X3N1YmZvbGRlckIOCgxfY3VzdG9tX3BhdGhCDwoNX3NldHVwX3NjcmlwdEIRCg9fYXV0b19naX'
+    'RpZ25vcmU=');
 
 @$core.Deprecated('Use scanReposRequestDescriptor instead')
 const ScanReposRequest$json = {
@@ -141,13 +223,14 @@ const ListReposResponse$json = {
       '6': '.betcode.v1.GitRepoDetail',
       '10': 'repos'
     },
+    {'1': 'total_count', '3': 2, '4': 1, '5': 13, '10': 'totalCount'},
   ],
 };
 
 /// Descriptor for `ListReposResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List listReposResponseDescriptor = $convert.base64Decode(
     'ChFMaXN0UmVwb3NSZXNwb25zZRIvCgVyZXBvcxgBIAMoCzIZLmJldGNvZGUudjEuR2l0UmVwb0'
-    'RldGFpbFIFcmVwb3M=');
+    'RldGFpbFIFcmVwb3MSHwoLdG90YWxfY291bnQYAiABKA1SCnRvdGFsQ291bnQ=');
 
 @$core.Deprecated('Use gitRepoDetailDescriptor instead')
 const GitRepoDetail$json = {
@@ -156,7 +239,14 @@ const GitRepoDetail$json = {
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
     {'1': 'repo_path', '3': 3, '4': 1, '5': 9, '10': 'repoPath'},
-    {'1': 'worktree_mode', '3': 4, '4': 1, '5': 9, '10': 'worktreeMode'},
+    {
+      '1': 'worktree_mode',
+      '3': 4,
+      '4': 1,
+      '5': 14,
+      '6': '.betcode.v1.WorktreeMode',
+      '10': 'worktreeMode'
+    },
     {'1': 'local_subfolder', '3': 5, '4': 1, '5': 9, '10': 'localSubfolder'},
     {'1': 'custom_path', '3': 6, '4': 1, '5': 9, '10': 'customPath'},
     {'1': 'setup_script', '3': 7, '4': 1, '5': 9, '10': 'setupScript'},
@@ -184,10 +274,11 @@ const GitRepoDetail$json = {
 /// Descriptor for `GitRepoDetail`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List gitRepoDetailDescriptor = $convert.base64Decode(
     'Cg1HaXRSZXBvRGV0YWlsEg4KAmlkGAEgASgJUgJpZBISCgRuYW1lGAIgASgJUgRuYW1lEhsKCX'
-    'JlcG9fcGF0aBgDIAEoCVIIcmVwb1BhdGgSIwoNd29ya3RyZWVfbW9kZRgEIAEoCVIMd29ya3Ry'
-    'ZWVNb2RlEicKD2xvY2FsX3N1YmZvbGRlchgFIAEoCVIObG9jYWxTdWJmb2xkZXISHwoLY3VzdG'
-    '9tX3BhdGgYBiABKAlSCmN1c3RvbVBhdGgSIQoMc2V0dXBfc2NyaXB0GAcgASgJUgtzZXR1cFNj'
-    'cmlwdBIlCg5hdXRvX2dpdGlnbm9yZRgIIAEoCFINYXV0b0dpdGlnbm9yZRIlCg53b3JrdHJlZV'
-    '9jb3VudBgJIAEoDVINd29ya3RyZWVDb3VudBI5CgpjcmVhdGVkX2F0GAogASgLMhouZ29vZ2xl'
-    'LnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EjsKC2xhc3RfYWN0aXZlGAsgASgLMhouZ2'
-    '9vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIKbGFzdEFjdGl2ZQ==');
+    'JlcG9fcGF0aBgDIAEoCVIIcmVwb1BhdGgSPQoNd29ya3RyZWVfbW9kZRgEIAEoDjIYLmJldGNv'
+    'ZGUudjEuV29ya3RyZWVNb2RlUgx3b3JrdHJlZU1vZGUSJwoPbG9jYWxfc3ViZm9sZGVyGAUgAS'
+    'gJUg5sb2NhbFN1YmZvbGRlchIfCgtjdXN0b21fcGF0aBgGIAEoCVIKY3VzdG9tUGF0aBIhCgxz'
+    'ZXR1cF9zY3JpcHQYByABKAlSC3NldHVwU2NyaXB0EiUKDmF1dG9fZ2l0aWdub3JlGAggASgIUg'
+    '1hdXRvR2l0aWdub3JlEiUKDndvcmt0cmVlX2NvdW50GAkgASgNUg13b3JrdHJlZUNvdW50EjkK'
+    'CmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQX'
+    'QSOwoLbGFzdF9hY3RpdmUYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpsYXN0'
+    'QWN0aXZl');

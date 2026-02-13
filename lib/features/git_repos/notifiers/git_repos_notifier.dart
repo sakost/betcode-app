@@ -44,7 +44,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
   Future<void> registerRepo({
     required String repoPath,
     String? name,
-    String? worktreeMode,
+    WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_UNSPECIFIED,
     String? localSubfolder,
     String? customPath,
     String? setupScript,
@@ -56,7 +56,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
           RegisterRepoRequest(
             repoPath: repoPath,
             name: name ?? '',
-            worktreeMode: worktreeMode ?? '',
+            worktreeMode: worktreeMode,
             localSubfolder: localSubfolder ?? '',
             customPath: customPath ?? '',
             setupScript: setupScript ?? '',

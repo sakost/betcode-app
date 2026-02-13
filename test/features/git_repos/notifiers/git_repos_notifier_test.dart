@@ -97,7 +97,7 @@ void main() {
     String id, {
     String name = 'my-repo',
     String repoPath = '/home/user/projects/my-repo',
-    String worktreeMode = 'global',
+    WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
     int worktreeCount = 3,
   }) => GitRepoDetail(
     id: id,
@@ -141,7 +141,7 @@ void main() {
                 id: 'repo-42',
                 name: 'betcode',
                 repoPath: '/home/user/projects/betcode',
-                worktreeMode: 'local',
+                worktreeMode: WorktreeMode.WORKTREE_MODE_LOCAL,
                 localSubfolder: '.worktrees',
                 setupScript: 'npm install',
                 autoGitignore: true,
@@ -159,7 +159,7 @@ void main() {
       expect(repo.id, 'repo-42');
       expect(repo.name, 'betcode');
       expect(repo.repoPath, '/home/user/projects/betcode');
-      expect(repo.worktreeMode, 'local');
+      expect(repo.worktreeMode, WorktreeMode.WORKTREE_MODE_LOCAL);
       expect(repo.localSubfolder, '.worktrees');
       expect(repo.setupScript, 'npm install');
       expect(repo.autoGitignore, isTrue);
@@ -287,7 +287,7 @@ void main() {
       await notifier.registerRepo(
         repoPath: '/home/user/projects/betcode',
         name: 'betcode',
-        worktreeMode: 'local',
+        worktreeMode: WorktreeMode.WORKTREE_MODE_LOCAL,
         localSubfolder: '.worktrees',
         setupScript: 'npm install',
         autoGitignore: false,
@@ -299,7 +299,7 @@ void main() {
 
       expect(captured.repoPath, '/home/user/projects/betcode');
       expect(captured.name, 'betcode');
-      expect(captured.worktreeMode, 'local');
+      expect(captured.worktreeMode, WorktreeMode.WORKTREE_MODE_LOCAL);
       expect(captured.localSubfolder, '.worktrees');
       expect(captured.setupScript, 'npm install');
       expect(captured.autoGitignore, isFalse);
@@ -324,7 +324,7 @@ void main() {
 
       expect(captured.repoPath, '/home/user/projects/test');
       expect(captured.name, '');
-      expect(captured.worktreeMode, '');
+      expect(captured.worktreeMode, WorktreeMode.WORKTREE_MODE_UNSPECIFIED);
       expect(captured.localSubfolder, '');
       expect(captured.customPath, '');
       expect(captured.setupScript, '');

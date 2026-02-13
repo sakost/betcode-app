@@ -35,9 +35,8 @@ void main() {
     });
 
     test('fromEnvironment uses defaults', () {
-      // Without --dart-define, host is empty, port 443, useTls true
       final config = RelayConfig.fromEnvironment();
-      expect(config.host, '');
+      expect(config.host, 'relay.ai.sakost.dev');
       expect(config.port, 443);
       expect(config.useTls, isTrue);
     });

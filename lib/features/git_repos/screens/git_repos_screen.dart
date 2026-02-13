@@ -68,6 +68,7 @@ class GitReposScreen extends ConsumerWidget {
             repoPath: result.repoPath,
             name: result.name,
             worktreeMode: result.worktreeMode,
+
             setupScript: result.setupScript,
           );
     } catch (e) {

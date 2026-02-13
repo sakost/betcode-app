@@ -53,7 +53,7 @@ GitRepoDetail _makeRepo({
   String id = 'repo-1',
   String name = 'my-project',
   String repoPath = '/home/user/projects/my-project',
-  String worktreeMode = 'global',
+  WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
   int worktreeCount = 3,
 }) {
   return GitRepoDetail(

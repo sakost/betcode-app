@@ -16,13 +16,17 @@ import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
     as $1;
 
+import 'git_repo.pbenum.dart';
+
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
+
+export 'git_repo.pbenum.dart';
 
 class RegisterRepoRequest extends $pb.GeneratedMessage {
   factory RegisterRepoRequest({
     $core.String? repoPath,
     $core.String? name,
-    $core.String? worktreeMode,
+    WorktreeMode? worktreeMode,
     $core.String? localSubfolder,
     $core.String? customPath,
     $core.String? setupScript,
@@ -54,7 +58,8 @@ class RegisterRepoRequest extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'repoPath')
     ..aOS(2, _omitFieldNames ? '' : 'name')
-    ..aOS(3, _omitFieldNames ? '' : 'worktreeMode')
+    ..aE<WorktreeMode>(3, _omitFieldNames ? '' : 'worktreeMode',
+        enumValues: WorktreeMode.values)
     ..aOS(4, _omitFieldNames ? '' : 'localSubfolder')
     ..aOS(5, _omitFieldNames ? '' : 'customPath')
     ..aOS(6, _omitFieldNames ? '' : 'setupScript')
@@ -100,11 +105,11 @@ class RegisterRepoRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(2)
   void clearName() => $_clearField(2);
 
-  /// Worktree storage mode: "global", "local", or "custom".
+  /// Worktree storage mode (default: GLOBAL).
   @$pb.TagNumber(3)
-  $core.String get worktreeMode => $_getSZ(2);
+  WorktreeMode get worktreeMode => $_getN(2);
   @$pb.TagNumber(3)
-  set worktreeMode($core.String value) => $_setString(2, value);
+  set worktreeMode(WorktreeMode value) => $_setField(3, value);
   @$pb.TagNumber(3)
   $core.bool hasWorktreeMode() => $_has(2);
   @$pb.TagNumber(3)
@@ -220,7 +225,15 @@ class UnregisterRepoRequest extends $pb.GeneratedMessage {
 }
 
 class ListReposRequest extends $pb.GeneratedMessage {
-  factory ListReposRequest() => create();
+  factory ListReposRequest({
+    $core.int? limit,
+    $core.int? offset,
+  }) {
+    final result = create();
+    if (limit != null) result.limit = limit;
+    if (offset != null) result.offset = offset;
+    return result;
+  }
 
   ListReposRequest._();
 
@@ -235,6 +248,8 @@ class ListReposRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ListReposRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
+    ..aI(1, _omitFieldNames ? '' : 'limit', fieldType: $pb.PbFieldType.OU3)
+    ..aI(2, _omitFieldNames ? '' : 'offset', fieldType: $pb.PbFieldType.OU3)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -255,6 +270,26 @@ class ListReposRequest extends $pb.GeneratedMessage {
   static ListReposRequest getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<ListReposRequest>(create);
   static ListReposRequest? _defaultInstance;
+
+  /// Maximum number of results to return (0 = no limit).
+  @$pb.TagNumber(1)
+  $core.int get limit => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set limit($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasLimit() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearLimit() => $_clearField(1);
+
+  /// Number of results to skip for pagination.
+  @$pb.TagNumber(2)
+  $core.int get offset => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set offset($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasOffset() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearOffset() => $_clearField(2);
 }
 
 class GetRepoRequest extends $pb.GeneratedMessage {
@@ -315,7 +350,7 @@ class UpdateRepoRequest extends $pb.GeneratedMessage {
   factory UpdateRepoRequest({
     $core.String? id,
     $core.String? name,
-    $core.String? worktreeMode,
+    WorktreeMode? worktreeMode,
     $core.String? localSubfolder,
     $core.String? customPath,
     $core.String? setupScript,
@@ -347,7 +382,8 @@ class UpdateRepoRequest extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'name')
-    ..aOS(3, _omitFieldNames ? '' : 'worktreeMode')
+    ..aE<WorktreeMode>(3, _omitFieldNames ? '' : 'worktreeMode',
+        enumValues: WorktreeMode.values)
     ..aOS(4, _omitFieldNames ? '' : 'localSubfolder')
     ..aOS(5, _omitFieldNames ? '' : 'customPath')
     ..aOS(6, _omitFieldNames ? '' : 'setupScript')
@@ -392,9 +428,9 @@ class UpdateRepoRequest extends $pb.GeneratedMessage {
   void clearName() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $core.String get worktreeMode => $_getSZ(2);
+  WorktreeMode get worktreeMode => $_getN(2);
   @$pb.TagNumber(3)
-  set worktreeMode($core.String value) => $_setString(2, value);
+  set worktreeMode(WorktreeMode value) => $_setField(3, value);
   @$pb.TagNumber(3)
   $core.bool hasWorktreeMode() => $_has(2);
   @$pb.TagNumber(3)
@@ -576,9 +612,11 @@ class UnregisterRepoResponse extends $pb.GeneratedMessage {
 class ListReposResponse extends $pb.GeneratedMessage {
   factory ListReposResponse({
     $core.Iterable<GitRepoDetail>? repos,
+    $core.int? totalCount,
   }) {
     final result = create();
     if (repos != null) result.repos.addAll(repos);
+    if (totalCount != null) result.totalCount = totalCount;
     return result;
   }
 
@@ -597,6 +635,7 @@ class ListReposResponse extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..pPM<GitRepoDetail>(1, _omitFieldNames ? '' : 'repos',
         subBuilder: GitRepoDetail.create)
+    ..aI(2, _omitFieldNames ? '' : 'totalCount', fieldType: $pb.PbFieldType.OU3)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -620,6 +659,16 @@ class ListReposResponse extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(1)
   $pb.PbList<GitRepoDetail> get repos => $_getList(0);
+
+  /// Total number of repositories (before pagination).
+  @$pb.TagNumber(2)
+  $core.int get totalCount => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set totalCount($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasTotalCount() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearTotalCount() => $_clearField(2);
 }
 
 class GitRepoDetail extends $pb.GeneratedMessage {
@@ -627,7 +676,7 @@ class GitRepoDetail extends $pb.GeneratedMessage {
     $core.String? id,
     $core.String? name,
     $core.String? repoPath,
-    $core.String? worktreeMode,
+    WorktreeMode? worktreeMode,
     $core.String? localSubfolder,
     $core.String? customPath,
     $core.String? setupScript,
@@ -667,7 +716,8 @@ class GitRepoDetail extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'id')
     ..aOS(2, _omitFieldNames ? '' : 'name')
     ..aOS(3, _omitFieldNames ? '' : 'repoPath')
-    ..aOS(4, _omitFieldNames ? '' : 'worktreeMode')
+    ..aE<WorktreeMode>(4, _omitFieldNames ? '' : 'worktreeMode',
+        enumValues: WorktreeMode.values)
     ..aOS(5, _omitFieldNames ? '' : 'localSubfolder')
     ..aOS(6, _omitFieldNames ? '' : 'customPath')
     ..aOS(7, _omitFieldNames ? '' : 'setupScript')
@@ -727,9 +777,9 @@ class GitRepoDetail extends $pb.GeneratedMessage {
   void clearRepoPath() => $_clearField(3);
 
   @$pb.TagNumber(4)
-  $core.String get worktreeMode => $_getSZ(3);
+  WorktreeMode get worktreeMode => $_getN(3);
   @$pb.TagNumber(4)
-  set worktreeMode($core.String value) => $_setString(3, value);
+  set worktreeMode(WorktreeMode value) => $_setField(4, value);
   @$pb.TagNumber(4)
   $core.bool hasWorktreeMode() => $_has(3);
   @$pb.TagNumber(4)

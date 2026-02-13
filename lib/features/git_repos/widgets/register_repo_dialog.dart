@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../generated/betcode/v1/git_repo.pbenum.dart';
+
 /// The result returned from [RegisterRepoDialog] when the user presses
 /// Register and validation passes.
 class RegisterRepoResult {
@@ -12,7 +14,7 @@ class RegisterRepoResult {
 
   final String repoPath;
   final String name;
-  final String worktreeMode;
+  final WorktreeMode worktreeMode;
   final String setupScript;
 }
 
@@ -32,9 +34,22 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
   final _repoPathController = TextEditingController();
   final _nameController = TextEditingController();
   final _setupScriptController = TextEditingController();
-  String _worktreeMode = 'global';
+  WorktreeMode _worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL;
 
-  static const _worktreeModes = ['global', 'local', 'custom'];
+  static const _worktreeModes = [
+    WorktreeMode.WORKTREE_MODE_GLOBAL,
+    WorktreeMode.WORKTREE_MODE_LOCAL,
+    WorktreeMode.WORKTREE_MODE_CUSTOM,
+  ];
+
+  static String _modeLabel(WorktreeMode mode) {
+    return switch (mode) {
+      WorktreeMode.WORKTREE_MODE_GLOBAL => 'Global',
+      WorktreeMode.WORKTREE_MODE_LOCAL => 'Local',
+      WorktreeMode.WORKTREE_MODE_CUSTOM => 'Custom',
+      _ => mode.name,
+    };
+  }
 
   @override
   void dispose() {
@@ -83,7 +98,7 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
                 ),
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
+              DropdownButtonFormField<WorktreeMode>(
                 initialValue: _worktreeMode,
                 decoration: const InputDecoration(
                   labelText: 'Worktree Mode',
@@ -92,7 +107,7 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
                     .map(
                       (mode) => DropdownMenuItem(
                         value: mode,
-                        child: Text(mode),
+                        child: Text(_modeLabel(mode)),
                       ),
                     )
                     .toList(),
