@@ -64,7 +64,7 @@ class WorktreesScreen extends ConsumerWidget {
           .read(worktreesProvider.notifier)
           .createWorktree(
             name: result.name,
-            repoPath: result.repoPath,
+            repoId: result.repoId,
             branch: result.branch,
             setupScript: result.setupScript,
           );
