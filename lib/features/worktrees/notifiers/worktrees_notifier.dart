@@ -43,7 +43,7 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   /// Creates a new worktree via gRPC and refreshes the list.
   Future<void> createWorktree({
     required String name,
-    required String repoPath,
+    required String repoId,
     required String branch,
     String? setupScript,
   }) async {
@@ -52,7 +52,7 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
         .createWorktree(
           CreateWorktreeRequest(
             name: name,
-            repoPath: repoPath,
+            repoId: repoId,
             branch: branch,
             setupScript: setupScript ?? '',
           ),
