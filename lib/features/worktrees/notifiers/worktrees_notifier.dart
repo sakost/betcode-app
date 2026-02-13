@@ -4,6 +4,7 @@ import '../../../core/grpc/connection_state.dart';
 import '../../../core/grpc/grpc_providers.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/worktree.pb.dart';
+import '../../machines/notifiers/machines_providers.dart';
 
 /// Manages the list of worktrees fetched from the daemon via gRPC.
 ///
@@ -12,7 +13,8 @@ import '../../../generated/betcode/v1/worktree.pb.dart';
 /// ones.
 ///
 /// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// the gRPC connection state changes. Also watches [selectedMachineIdProvider]
+/// so worktrees are re-fetched when the active machine changes.
 class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   static const _rpcTimeout = Duration(seconds: 10);
   static const _mutationTimeout = Duration(seconds: 30);
@@ -23,6 +25,10 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
+
     return _fetchWorktrees();
   }
 

@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
 
 import '../../generated/betcode/v1/auth.pbgrpc.dart';
@@ -110,11 +110,11 @@ class MachineIdInterceptor extends ClientInterceptor {
 
 /// Logs every gRPC method invocation for debugging purposes.
 ///
-/// Emits entries via [developer.log] under the name `gRPC` so they appear
-/// in DevTools and can be filtered easily. Logs the method path on request
-/// and the outcome (success or error) on response.
+/// Uses [debugPrint] so entries appear in both Flutter DevTools and Android
+/// logcat (as `I/flutter` tag). Logs the method path on request and the
+/// outcome (success or error) on response.
 class LoggingInterceptor extends ClientInterceptor {
-  static const _logName = 'gRPC';
+  static const _tag = '[gRPC]';
 
   @override
   ResponseFuture<R> interceptUnary<Q, R>(
@@ -124,24 +124,21 @@ class LoggingInterceptor extends ClientInterceptor {
     ClientUnaryInvoker<Q, R> invoker,
   ) {
     final stopwatch = Stopwatch()..start();
-    developer.log('-> ${method.path}', name: _logName);
+    debugPrint('$_tag -> ${method.path}');
 
     final response = invoker(method, request, options);
 
     response.then(
       (_) {
         stopwatch.stop();
-        developer.log(
-          '<- ${method.path} OK (${stopwatch.elapsedMilliseconds}ms)',
-          name: _logName,
+        debugPrint(
+          '$_tag <- ${method.path} OK (${stopwatch.elapsedMilliseconds}ms)',
         );
       },
       onError: (Object error) {
         stopwatch.stop();
-        developer.log(
-          '<- ${method.path} ERROR (${stopwatch.elapsedMilliseconds}ms): $error',
-          name: _logName,
-          level: 900,
+        debugPrint(
+          '$_tag <- ${method.path} ERROR (${stopwatch.elapsedMilliseconds}ms): $error',
         );
       },
     );
@@ -156,7 +153,7 @@ class LoggingInterceptor extends ClientInterceptor {
     CallOptions options,
     ClientStreamingInvoker<Q, R> invoker,
   ) {
-    developer.log('-> ${method.path} (stream)', name: _logName);
+    debugPrint('$_tag -> ${method.path} (stream)');
     return invoker(method, requests, options);
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:betcode_app/core/auth/auth.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
@@ -30,6 +31,17 @@ class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
   Future<void> clear() async {
     state = null;
   }
+}
+
+/// A fake auth notifier that always returns an authenticated state.
+class _FakeAuthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState.authenticated(
+    accessToken: 'fake-token',
+    refreshToken: 'fake-refresh',
+    userId: 'user-1',
+    expiresAt: DateTime.now().add(const Duration(hours: 1)),
+  );
 }
 
 /// A fake client whose [listMachines] always throws [GrpcError].
@@ -100,6 +112,7 @@ void main() {
         selectedMachineIdProvider.overrideWith(
           _FakeSelectedMachineNotifier.new,
         ),
+        authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
       ],
     );
   });
@@ -178,6 +191,7 @@ void main() {
           selectedMachineIdProvider.overrideWith(
             _FakeSelectedMachineNotifier.new,
           ),
+          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
         ],
       );
       addTearDown(errContainer.dispose);
@@ -200,6 +214,7 @@ void main() {
           selectedMachineIdProvider.overrideWith(
             _FakeSelectedMachineNotifier.new,
           ),
+          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
         ],
       );
       addTearDown(errContainer.dispose);
@@ -280,6 +295,7 @@ void main() {
           selectedMachineIdProvider.overrideWith(
             _FakeSelectedMachineNotifier.new,
           ),
+          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
         ],
       );
       addTearDown(errContainer.dispose);

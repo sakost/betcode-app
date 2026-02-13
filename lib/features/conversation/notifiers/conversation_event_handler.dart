@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../generated/betcode/v1/agent.pb.dart' as pb;
@@ -12,6 +13,7 @@ import '../models/conversation_state.dart';
 mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
+    debugPrint('[Conversation] Event received: ${event.whichEvent().name} seq=${event.sequence}');
     final seq = event.sequence.toInt();
     final current = state.value;
 

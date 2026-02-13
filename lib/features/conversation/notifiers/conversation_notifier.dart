@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:fixnum/fixnum.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
 
@@ -59,6 +60,10 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   /// daemon defers subprocess start until the first [UserMessage] arrives,
   /// so waiting for [SessionInfo] before showing the input bar would deadlock.
   Future<void> startConversation({required String workingDirectory}) async {
+    debugPrint(
+      '[Conversation] startConversation(workingDirectory: $workingDirectory, '
+      'sessionId: $sessionId)',
+    );
     state = const AsyncData(ConversationState.connecting());
 
     try {
@@ -103,7 +108,16 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   /// Sends a user message through the active bidi stream.
   void sendMessage(String content) {
     final current = state.value;
-    if (current is! ConversationActive || _requestController == null) return;
+    if (current is! ConversationActive || _requestController == null) {
+      debugPrint(
+        '[Conversation] sendMessage ignored: '
+        'state=${state.value.runtimeType}, '
+        'hasStream=${_requestController != null}',
+      );
+      return;
+    }
+
+    debugPrint('[Conversation] sendMessage: "${content.substring(0, content.length.clamp(0, 80))}"');
 
     final userMsg = ChatMessage.user(
       content: content,
@@ -190,6 +204,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   // ---------------------------------------------------------------------------
 
   void _handleStreamError(Object error) {
+    debugPrint('[Conversation] Stream error: $error');
     _eventSubscription?.cancel();
     _eventSubscription = null;
 
@@ -277,6 +292,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   }
 
   void _handleStreamDone() {
+    debugPrint('[Conversation] Stream done');
     final current = state.value;
     if (current is ConversationActive) {
       state = AsyncData(

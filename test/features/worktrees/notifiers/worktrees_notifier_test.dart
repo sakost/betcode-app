@@ -8,6 +8,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
@@ -16,6 +18,12 @@ import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 // ---------------------------------------------------------------------------
 
 class MockWorktreeServiceClient extends Mock implements WorktreeServiceClient {}
+
+/// A fake notifier that returns a pre-set machine ID without secure storage.
+class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
+  @override
+  String? build() => 'machine-1';
+}
 
 /// A fake client whose [listWorktrees] always throws [GrpcError].
 class _FailingWorktreeClient extends Fake implements WorktreeServiceClient {
@@ -87,6 +95,9 @@ void main() {
           const AsyncData(GrpcConnectionStatus.connected),
         ),
         worktreeServiceProvider.overrideWithValue(mockClient),
+        selectedMachineIdProvider.overrideWith(
+          _FakeSelectedMachineNotifier.new,
+        ),
       ],
     );
   });
@@ -215,6 +226,9 @@ void main() {
           worktreeServiceProvider.overrideWithValue(
             _FailingWorktreeClient(GrpcError.unavailable('connection refused')),
           ),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
+          ),
         ],
       );
       addTearDown(errContainer.dispose);
@@ -235,6 +249,9 @@ void main() {
           ),
           worktreeServiceProvider.overrideWithValue(
             _FailingWorktreeClient(GrpcError.unavailable('daemon unreachable')),
+          ),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
           ),
         ],
       );
@@ -314,6 +331,9 @@ void main() {
             const AsyncData(GrpcConnectionStatus.connected),
           ),
           worktreeServiceProvider.overrideWithValue(errClient),
+          selectedMachineIdProvider.overrideWith(
+            _FakeSelectedMachineNotifier.new,
+          ),
         ],
       );
       addTearDown(errContainer.dispose);

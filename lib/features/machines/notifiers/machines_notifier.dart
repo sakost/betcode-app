@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/auth.dart';
 import '../../../core/grpc/service_providers.dart';
 import '../../../generated/betcode/v1/machine.pb.dart';
 import 'machines_providers.dart';
@@ -9,11 +10,15 @@ import 'machines_providers.dart';
 /// On [build], fetches all machines and returns them. Callers can
 /// pull-to-refresh via [refresh].
 ///
-/// When the fetched list contains exactly one machine and no machine is
-/// currently selected, auto-selects it.
+/// Watches [authNotifierProvider] so the provider auto-refreshes when
+/// the user logs in or out. When the fetched list contains exactly one
+/// machine and no machine is currently selected, auto-selects it.
 class MachinesNotifier extends AsyncNotifier<List<MachineInfo>> {
   @override
   Future<List<MachineInfo>> build() async {
+    final auth = ref.watch(authNotifierProvider);
+    if (auth is! AuthAuthenticated) return [];
+
     final machines = await _fetchMachines();
     await _autoSelectIfSingle(machines);
     return machines;

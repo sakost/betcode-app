@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/common.pb.dart';
 import '../../worktrees/notifiers/worktrees_providers.dart';
@@ -84,6 +85,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   void _startConversation() {
     final workingDirectory = _resolveWorkingDirectory();
     if (workingDirectory == null) {
+      debugPrint('[ConversationScreen] Cannot start: no working directory');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No worktree available. Create a worktree first.'),
@@ -91,25 +93,80 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       );
       return;
     }
+    debugPrint('[ConversationScreen] Starting with dir: $workingDirectory');
     ref
         .read(conversationProvider(widget.sessionId).notifier)
         .startConversation(workingDirectory: workingDirectory);
   }
 
   Widget _buildInitialState() {
+    final worktreesAsync = ref.watch(worktreesProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Conversation')),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Start a conversation'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _startConversation,
-              child: const Text('Start'),
-            ),
-          ],
+        child: worktreesAsync.when(
+          loading: () => const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading worktrees...'),
+            ],
+          ),
+          error: (error, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                'Could not load worktrees:\n$error',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(worktreesProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+          data: (worktrees) {
+            if (worktrees.isEmpty) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.account_tree_outlined,
+                    size: 48,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No worktrees available.\n'
+                    'Create a worktree to start a conversation.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/worktrees'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Worktree'),
+                  ),
+                ],
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Start a conversation'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _startConversation,
+                  child: const Text('Start'),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

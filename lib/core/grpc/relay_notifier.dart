@@ -1,5 +1,4 @@
-import 'dart:developer' as developer;
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../storage/storage.dart';
@@ -28,10 +27,7 @@ class RelayConfigNotifier extends Notifier<RelayConfig?> {
       await manager.connect(config.host, config.port, useTls: config.useTls);
       state = config;
     } catch (e) {
-      developer.log(
-        'Failed to connect to relay on init: $e',
-        name: 'RelayConfigNotifier',
-      );
+      debugPrint('[RelayConfigNotifier] Failed to connect to relay on init: $e');
       state = null;
     }
   }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math';
 
@@ -120,10 +119,9 @@ class GrpcClientManager {
               ? ChannelCredentials.secure(
                   onBadCertificate: kDebugMode
                       ? (X509Certificate cert, String host) {
-                          developer.log(
-                            'Accepting self-signed cert for $host '
-                            '(debug mode)',
-                            name: 'GrpcClientManager',
+                          debugPrint(
+                            '[GrpcClientManager] Accepting self-signed cert '
+                            'for $host (debug mode)',
                           );
                           return true;
                         }
@@ -138,10 +136,7 @@ class GrpcClientManager {
         try {
           await _healthCheckFn(_channel!);
         } on Object catch (e) {
-          developer.log(
-            'Health check failed (connecting anyway): $e',
-            name: 'GrpcClientManager',
-          );
+          debugPrint('[GrpcClientManager] Health check failed (connecting anyway): $e');
         }
       }
 
@@ -214,9 +209,8 @@ class GrpcClientManager {
       reconnectAttempt: attempt + 1,
     );
 
-    developer.log(
-      'Reconnecting in ${delay.inMilliseconds}ms (attempt ${attempt + 1})',
-      name: 'GrpcClientManager',
+    debugPrint(
+      '[GrpcClientManager] Reconnecting in ${delay.inMilliseconds}ms (attempt ${attempt + 1})',
     );
 
     _reconnectTimer = Timer(delay, () async {
@@ -224,10 +218,7 @@ class GrpcClientManager {
       try {
         await connect(host, port, useTls: useTls);
       } on Object catch (e) {
-        developer.log(
-          'Reconnect attempt ${attempt + 1} failed: $e',
-          name: 'GrpcClientManager',
-        );
+        debugPrint('[GrpcClientManager] Reconnect attempt ${attempt + 1} failed: $e');
         _reconnectLoop(host, port, useTls: useTls, attempt: attempt + 1);
       }
     });
@@ -245,10 +236,7 @@ class GrpcClientManager {
       try {
         await ch.shutdown();
       } on Object catch (e) {
-        developer.log(
-          'Error shutting down channel: $e',
-          name: 'GrpcClientManager',
-        );
+        debugPrint('[GrpcClientManager] Error shutting down channel: $e');
       }
     }
   }
