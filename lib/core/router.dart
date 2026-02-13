@@ -8,6 +8,7 @@ import '../features/gitlab/gitlab.dart';
 import '../features/machines/machines.dart';
 import '../features/sessions/sessions.dart';
 import '../features/settings/settings.dart';
+import '../features/git_repos/git_repos.dart';
 import '../features/worktrees/worktrees.dart';
 import 'auth/auth.dart';
 import 'grpc/grpc_providers.dart';
@@ -73,6 +74,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: '/repos',
+            builder: (context, state) => const GitReposScreen(),
+          ),
+          GoRoute(
             path: '/worktrees',
             builder: (context, state) => const WorktreesScreen(),
           ),
@@ -112,6 +117,11 @@ class AppShell extends StatelessWidget {
       label: 'Machines',
     ),
     NavigationDestination(
+      icon: Icon(Icons.folder_outlined),
+      selectedIcon: Icon(Icons.folder),
+      label: 'Repos',
+    ),
+    NavigationDestination(
       icon: Icon(Icons.account_tree_outlined),
       selectedIcon: Icon(Icons.account_tree),
       label: 'Worktrees',
@@ -132,6 +142,7 @@ class AppShell extends StatelessWidget {
     '/conversation',
     '/sessions',
     '/machines',
+    '/repos',
     '/worktrees',
     '/gitlab',
     '/settings',
