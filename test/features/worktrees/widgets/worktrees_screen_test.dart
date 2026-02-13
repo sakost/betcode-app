@@ -6,11 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_notifier.dart';
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
 import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
 import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 
@@ -46,6 +49,22 @@ WorktreeDetail _makeWorktree({
   return wt;
 }
 
+GitRepoDetail _makeRepo({
+  String id = 'repo-1',
+  String name = 'my-project',
+  String repoPath = '/home/user/projects/my-project',
+  String worktreeMode = 'global',
+  int worktreeCount = 3,
+}) {
+  return GitRepoDetail(
+    id: id,
+    name: name,
+    repoPath: repoPath,
+    worktreeMode: worktreeMode,
+    worktreeCount: worktreeCount,
+  );
+}
+
 /// A notifier that returns a canned async value without gRPC calls.
 class _FakeWorktreesNotifier extends WorktreesNotifier {
   _FakeWorktreesNotifier(this._value);
@@ -61,6 +80,44 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
       error: (e, st) => Future.error(e, st),
     );
   }
+}
+
+/// A notifier that returns a canned async value without gRPC calls.
+class _FakeGitReposNotifier extends GitReposNotifier {
+  _FakeGitReposNotifier(this._value);
+
+  final AsyncValue<List<GitRepoDetail>> _value;
+
+  @override
+  Future<List<GitRepoDetail>> build() {
+    return _value.when(
+      data: (d) => Future.value(d),
+      loading: () =>
+          Completer<List<GitRepoDetail>>().future, // never completes
+      error: (e, st) => Future.error(e, st),
+    );
+  }
+}
+
+/// Shorthand for a ProviderScope wrapping [child] with gitReposProvider
+/// overridden to return canned data.
+ProviderScope _withRepos(Widget child, [List<GitRepoDetail>? repos]) {
+  return ProviderScope(
+    overrides: [
+      gitReposProvider.overrideWith(
+        () => _FakeGitReposNotifier(
+          AsyncData(
+            repos ??
+                [
+                  _makeRepo(),
+                  _makeRepo(id: 'repo-2', name: 'other-project'),
+                ],
+          ),
+        ),
+      ),
+    ],
+    child: child,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +351,9 @@ void main() {
 
   group('CreateWorktreeDialog', () {
     testWidgets('has required form fields', (t) async {
-      await t.pumpWidget(_app(const Scaffold(body: CreateWorktreeDialog())));
+      await t.pumpWidget(
+        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog()))),
+      );
       await t.pumpAndSettle();
 
       expect(find.text('Name'), findsOneWidget);
@@ -304,7 +363,9 @@ void main() {
     });
 
     testWidgets('has Cancel and Create buttons', (t) async {
-      await t.pumpWidget(_app(const Scaffold(body: CreateWorktreeDialog())));
+      await t.pumpWidget(
+        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog()))),
+      );
       await t.pumpAndSettle();
 
       expect(find.text('Cancel'), findsOneWidget);
@@ -315,17 +376,19 @@ void main() {
       Object? result = 'sentinel';
 
       await t.pumpWidget(
-        _app(
-          Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () async {
-                  result = await showDialog<CreateWorktreeResult>(
-                    context: context,
-                    builder: (_) => const CreateWorktreeDialog(),
-                  );
-                },
-                child: const Text('Open'),
+        _withRepos(
+          _app(
+            Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    result = await showDialog<CreateWorktreeResult>(
+                      context: context,
+                      builder: (_) => const CreateWorktreeDialog(),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
               ),
             ),
           ),
@@ -345,21 +408,29 @@ void main() {
     testWidgets('returns form values when Create is pressed', (t) async {
       CreateWorktreeResult? result;
 
+      final repos = [
+        _makeRepo(id: 'repo-1', name: 'my-project'),
+        _makeRepo(id: 'repo-2', name: 'other-project'),
+      ];
+
       await t.pumpWidget(
-        _app(
-          Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () async {
-                  result = await showDialog<CreateWorktreeResult>(
-                    context: context,
-                    builder: (_) => const CreateWorktreeDialog(),
-                  );
-                },
-                child: const Text('Open'),
+        _withRepos(
+          _app(
+            Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    result = await showDialog<CreateWorktreeResult>(
+                      context: context,
+                      builder: (_) => const CreateWorktreeDialog(),
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
               ),
             ),
           ),
+          repos,
         ),
       );
       await t.pumpAndSettle();
@@ -367,18 +438,25 @@ void main() {
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
 
+      // Fill in the Name field.
       await t.enterText(
         find.widgetWithText(TextFormField, 'Name'),
         'feat-login',
       );
-      await t.enterText(
-        find.widgetWithText(TextFormField, 'Repository'),
-        '/repo',
-      );
+
+      // Select a repo from the dropdown.
+      await t.tap(find.text('Repository'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('my-project').last);
+      await t.pumpAndSettle();
+
+      // Fill in the Branch field.
       await t.enterText(
         find.widgetWithText(TextFormField, 'Branch'),
         'feat/login',
       );
+
+      // Fill in the Setup Script field.
       await t.enterText(
         find.widgetWithText(TextFormField, 'Setup Script'),
         'npm install',
@@ -389,7 +467,7 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.name, 'feat-login');
-      expect(result!.repoId, '/repo');
+      expect(result!.repoId, 'repo-1');
       expect(result!.branch, 'feat/login');
       expect(result!.setupScript, 'npm install');
     });
@@ -403,18 +481,20 @@ void main() {
       );
 
       await t.pumpWidget(
-        _app(
-          Scaffold(
-            body: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () async {
-                  final r = await showDialog<CreateWorktreeResult>(
-                    context: context,
-                    builder: (_) => const CreateWorktreeDialog(),
-                  );
-                  if (r != null) result = r;
-                },
-                child: const Text('Open'),
+        _withRepos(
+          _app(
+            Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    final r = await showDialog<CreateWorktreeResult>(
+                      context: context,
+                      builder: (_) => const CreateWorktreeDialog(),
+                    );
+                    if (r != null) result = r;
+                  },
+                  child: const Text('Open'),
+                ),
               ),
             ),
           ),
