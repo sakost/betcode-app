@@ -26,7 +26,7 @@ WorktreeDetail _makeWorktree({
   String name = 'feat-login',
   String branch = 'feat/login',
   String path = '/home/user/worktrees/feat-login',
-  String repoPath = '/home/user/repo',
+  String repoId = 'repo-1',
   bool existsOnDisk = true,
   int sessionCount = 2,
   int? lastActiveSeconds,
@@ -36,7 +36,7 @@ WorktreeDetail _makeWorktree({
     name: name,
     branch: branch,
     path: path,
-    repoPath: repoPath,
+    repoId: repoId,
     existsOnDisk: existsOnDisk,
     sessionCount: sessionCount,
   );
@@ -298,7 +298,7 @@ void main() {
       await t.pumpAndSettle();
 
       expect(find.text('Name'), findsOneWidget);
-      expect(find.text('Repository Path'), findsOneWidget);
+      expect(find.text('Repository'), findsOneWidget);
       expect(find.text('Branch'), findsOneWidget);
       expect(find.text('Setup Script'), findsOneWidget);
     });
@@ -372,7 +372,7 @@ void main() {
         'feat-login',
       );
       await t.enterText(
-        find.widgetWithText(TextFormField, 'Repository Path'),
+        find.widgetWithText(TextFormField, 'Repository'),
         '/repo',
       );
       await t.enterText(
@@ -389,7 +389,7 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.name, 'feat-login');
-      expect(result!.repoPath, '/repo');
+      expect(result!.repoId, '/repo');
       expect(result!.branch, 'feat/login');
       expect(result!.setupScript, 'npm install');
     });
@@ -397,7 +397,7 @@ void main() {
     testWidgets('does not submit if required fields are empty', (t) async {
       CreateWorktreeResult? result = const CreateWorktreeResult(
         name: 'sentinel',
-        repoPath: '',
+        repoId: '',
         branch: '',
         setupScript: '',
       );

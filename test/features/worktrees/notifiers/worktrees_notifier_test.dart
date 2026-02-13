@@ -144,7 +144,7 @@ void main() {
                 name: 'feat-auth',
                 branch: 'feat/auth',
                 path: '/home/user/worktrees/feat-auth',
-                repoPath: '/home/user/repo',
+                repoId: 'repo-1',
                 existsOnDisk: true,
                 sessionCount: 5,
               ),
@@ -161,7 +161,7 @@ void main() {
       expect(wt.name, 'feat-auth');
       expect(wt.branch, 'feat/auth');
       expect(wt.path, '/home/user/worktrees/feat-auth');
-      expect(wt.repoPath, '/home/user/repo');
+      expect(wt.repoId, 'repo-1');
       expect(wt.existsOnDisk, isTrue);
       expect(wt.sessionCount, 5);
     });
@@ -372,7 +372,7 @@ void main() {
       final notifier = container.read(worktreesProvider.notifier);
       await notifier.createWorktree(
         name: 'feat-login',
-        repoPath: '/home/user/repo',
+        repoId: 'repo-1',
         branch: 'feat/login',
       );
 
@@ -394,7 +394,7 @@ void main() {
       final notifier = container.read(worktreesProvider.notifier);
       await notifier.createWorktree(
         name: 'feat-auth',
-        repoPath: '/repo',
+        repoId: 'repo-1',
         branch: 'feat/auth',
         setupScript: 'npm install',
       );
@@ -404,7 +404,7 @@ void main() {
               as CreateWorktreeRequest;
 
       expect(captured.name, 'feat-auth');
-      expect(captured.repoPath, '/repo');
+      expect(captured.repoId, 'repo-1');
       expect(captured.branch, 'feat/auth');
       expect(captured.setupScript, 'npm install');
     });
@@ -422,7 +422,7 @@ void main() {
       final notifier = container.read(worktreesProvider.notifier);
       await notifier.createWorktree(
         name: 'test',
-        repoPath: '/repo',
+        repoId: 'repo-1',
         branch: 'main',
       );
 

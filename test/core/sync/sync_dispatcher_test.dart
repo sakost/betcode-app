@@ -307,7 +307,7 @@ void main() {
     test('calls createWorktree() with correct request', () async {
       final req = CreateWorktreeRequest(
         name: 'feature-branch',
-        repoPath: '/repo',
+        repoId: 'repo-1',
         branch: 'feature',
       );
       final payload = req.writeToBuffer();
@@ -322,7 +322,7 @@ void main() {
 
       expect(fakeWorktreeClient.lastCreateRequest, isNotNull);
       expect(fakeWorktreeClient.lastCreateRequest!.name, 'feature-branch');
-      expect(fakeWorktreeClient.lastCreateRequest!.repoPath, '/repo');
+      expect(fakeWorktreeClient.lastCreateRequest!.repoId, 'repo-1');
       expect(fakeWorktreeClient.lastCreateRequest!.branch, 'feature');
 
       expect(
