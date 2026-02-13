@@ -158,13 +158,13 @@ void main() {
   });
 
   group('Router - AppShell navigation', () {
-    // Use a large surface to avoid overflow from both 6 nav destinations
+    // Use a large surface to avoid overflow from both 7 nav destinations
     // (width) and ErrorDisplay content in screens that lack gRPC (height).
     Future<void> setLargeSize(WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
     }
 
-    testWidgets('has exactly 6 navigation destinations', (tester) async {
+    testWidgets('has exactly 7 navigation destinations', (tester) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -172,7 +172,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.destinations, hasLength(6));
+      expect(navBar.destinations, hasLength(7));
     });
 
     testWidgets('tapping Sessions navigates to /sessions', (tester) async {
@@ -203,6 +203,20 @@ void main() {
       expect(navBar.selectedIndex, 2);
     });
 
+    testWidgets('tapping Repos navigates to /repos', (tester) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Repos'));
+      await tester.pumpAndSettle();
+
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 3);
+    });
+
     testWidgets('tapping Worktrees navigates to /worktrees', (tester) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
@@ -214,7 +228,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 3);
+      expect(navBar.selectedIndex, 4);
     });
 
     testWidgets('tapping GitLab navigates to /gitlab', (tester) async {
@@ -228,7 +242,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 4);
+      expect(navBar.selectedIndex, 5);
     });
 
     testWidgets('tapping Settings navigates to /settings', (tester) async {
@@ -242,7 +256,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 5);
+      expect(navBar.selectedIndex, 6);
     });
 
     testWidgets('tapping Chat returns to /conversation', (tester) async {

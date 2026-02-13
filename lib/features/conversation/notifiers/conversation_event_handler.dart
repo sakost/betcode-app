@@ -41,6 +41,10 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
         _onTodoUpdate(event.todoUpdate, seq);
       case pb.AgentEvent_Event.planMode:
         _onPlanModeChange(event.planMode, seq);
+      case pb.AgentEvent_Event.userInput:
+        _onUserInput(event.userInput, seq);
+      case pb.AgentEvent_Event.encrypted:
+        break; // Encrypted envelope – handled at transport layer, not here.
       case pb.AgentEvent_Event.error:
         _onError(event.error, seq);
       case pb.AgentEvent_Event.notSet:
@@ -253,6 +257,19 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
         planContent: change.hasPlan() ? change.plan : null,
         lastSequence: seq,
       );
+    });
+  }
+
+  void _onUserInput(pb.UserInput input, int seq) {
+    _updateActive((active) {
+      final messages = [
+        ...active.messages,
+        ChatMessage.user(
+          content: input.content,
+          timestamp: DateTime.now(),
+        ),
+      ];
+      return active.copyWith(messages: messages, lastSequence: seq);
     });
   }
 
