@@ -20,7 +20,7 @@ const CreateWorktreeRequest$json = {
   '1': 'CreateWorktreeRequest',
   '2': [
     {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
-    {'1': 'repo_path', '3': 2, '4': 1, '5': 9, '10': 'repoPath'},
+    {'1': 'repo_id', '3': 2, '4': 1, '5': 9, '10': 'repoId'},
     {'1': 'branch', '3': 3, '4': 1, '5': 9, '10': 'branch'},
     {'1': 'setup_script', '3': 4, '4': 1, '5': 9, '10': 'setupScript'},
   ],
@@ -28,9 +28,9 @@ const CreateWorktreeRequest$json = {
 
 /// Descriptor for `CreateWorktreeRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List createWorktreeRequestDescriptor = $convert.base64Decode(
-    'ChVDcmVhdGVXb3JrdHJlZVJlcXVlc3QSEgoEbmFtZRgBIAEoCVIEbmFtZRIbCglyZXBvX3BhdG'
-    'gYAiABKAlSCHJlcG9QYXRoEhYKBmJyYW5jaBgDIAEoCVIGYnJhbmNoEiEKDHNldHVwX3Njcmlw'
-    'dBgEIAEoCVILc2V0dXBTY3JpcHQ=');
+    'ChVDcmVhdGVXb3JrdHJlZVJlcXVlc3QSEgoEbmFtZRgBIAEoCVIEbmFtZRIXCgdyZXBvX2lkGA'
+    'IgASgJUgZyZXBvSWQSFgoGYnJhbmNoGAMgASgJUgZicmFuY2gSIQoMc2V0dXBfc2NyaXB0GAQg'
+    'ASgJUgtzZXR1cFNjcmlwdA==');
 
 @$core.Deprecated('Use removeWorktreeRequestDescriptor instead')
 const RemoveWorktreeRequest$json = {
@@ -48,14 +48,14 @@ final $typed_data.Uint8List removeWorktreeRequestDescriptor = $convert
 const ListWorktreesRequest$json = {
   '1': 'ListWorktreesRequest',
   '2': [
-    {'1': 'repo_path', '3': 1, '4': 1, '5': 9, '10': 'repoPath'},
+    {'1': 'repo_id', '3': 1, '4': 1, '5': 9, '10': 'repoId'},
   ],
 };
 
 /// Descriptor for `ListWorktreesRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List listWorktreesRequestDescriptor =
     $convert.base64Decode(
-        'ChRMaXN0V29ya3RyZWVzUmVxdWVzdBIbCglyZXBvX3BhdGgYASABKAlSCHJlcG9QYXRo');
+        'ChRMaXN0V29ya3RyZWVzUmVxdWVzdBIXCgdyZXBvX2lkGAEgASgJUgZyZXBvSWQ=');
 
 @$core.Deprecated('Use getWorktreeRequestDescriptor instead')
 const GetWorktreeRequest$json = {
@@ -110,7 +110,7 @@ const WorktreeDetail$json = {
     {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
     {'1': 'path', '3': 3, '4': 1, '5': 9, '10': 'path'},
     {'1': 'branch', '3': 4, '4': 1, '5': 9, '10': 'branch'},
-    {'1': 'repo_path', '3': 5, '4': 1, '5': 9, '10': 'repoPath'},
+    {'1': 'repo_id', '3': 5, '4': 1, '5': 9, '10': 'repoId'},
     {'1': 'setup_script', '3': 6, '4': 1, '5': 9, '10': 'setupScript'},
     {'1': 'exists_on_disk', '3': 7, '4': 1, '5': 8, '10': 'existsOnDisk'},
     {'1': 'session_count', '3': 8, '4': 1, '5': 13, '10': 'sessionCount'},
@@ -136,9 +136,9 @@ const WorktreeDetail$json = {
 /// Descriptor for `WorktreeDetail`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List worktreeDetailDescriptor = $convert.base64Decode(
     'Cg5Xb3JrdHJlZURldGFpbBIOCgJpZBgBIAEoCVICaWQSEgoEbmFtZRgCIAEoCVIEbmFtZRISCg'
-    'RwYXRoGAMgASgJUgRwYXRoEhYKBmJyYW5jaBgEIAEoCVIGYnJhbmNoEhsKCXJlcG9fcGF0aBgF'
-    'IAEoCVIIcmVwb1BhdGgSIQoMc2V0dXBfc2NyaXB0GAYgASgJUgtzZXR1cFNjcmlwdBIkCg5leG'
-    'lzdHNfb25fZGlzaxgHIAEoCFIMZXhpc3RzT25EaXNrEiMKDXNlc3Npb25fY291bnQYCCABKA1S'
-    'DHNlc3Npb25Db3VudBI5CgpjcmVhdGVkX2F0GAkgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbW'
-    'VzdGFtcFIJY3JlYXRlZEF0EjsKC2xhc3RfYWN0aXZlGAogASgLMhouZ29vZ2xlLnByb3RvYnVm'
-    'LlRpbWVzdGFtcFIKbGFzdEFjdGl2ZQ==');
+    'RwYXRoGAMgASgJUgRwYXRoEhYKBmJyYW5jaBgEIAEoCVIGYnJhbmNoEhcKB3JlcG9faWQYBSAB'
+    'KAlSBnJlcG9JZBIhCgxzZXR1cF9zY3JpcHQYBiABKAlSC3NldHVwU2NyaXB0EiQKDmV4aXN0c1'
+    '9vbl9kaXNrGAcgASgIUgxleGlzdHNPbkRpc2sSIwoNc2Vzc2lvbl9jb3VudBgIIAEoDVIMc2Vz'
+    'c2lvbkNvdW50EjkKCmNyZWF0ZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW'
+    '1wUgljcmVhdGVkQXQSOwoLbGFzdF9hY3RpdmUYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGlt'
+    'ZXN0YW1wUgpsYXN0QWN0aXZl');

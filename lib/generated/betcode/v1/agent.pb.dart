@@ -16,9 +16,9 @@ import 'package:fixnum/fixnum.dart' as $fixnum;
 import 'package:protobuf/protobuf.dart' as $pb;
 import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart' as $3;
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
-    as $2;
+    as $4;
 
-import 'common.pb.dart' as $1;
+import 'common.pb.dart' as $2;
 
 export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 
@@ -28,6 +28,7 @@ enum AgentRequest_Request {
   permission,
   questionResponse,
   cancel,
+  encrypted,
   notSet
 }
 
@@ -39,6 +40,7 @@ class AgentRequest extends $pb.GeneratedMessage {
     PermissionResponse? permission,
     UserQuestionResponse? questionResponse,
     CancelRequest? cancel,
+    EncryptedEnvelope? encrypted,
   }) {
     final result = create();
     if (start != null) result.start = start;
@@ -46,6 +48,7 @@ class AgentRequest extends $pb.GeneratedMessage {
     if (permission != null) result.permission = permission;
     if (questionResponse != null) result.questionResponse = questionResponse;
     if (cancel != null) result.cancel = cancel;
+    if (encrypted != null) result.encrypted = encrypted;
     return result;
   }
 
@@ -65,13 +68,14 @@ class AgentRequest extends $pb.GeneratedMessage {
     3: AgentRequest_Request.permission,
     4: AgentRequest_Request.questionResponse,
     5: AgentRequest_Request.cancel,
+    6: AgentRequest_Request.encrypted,
     0: AgentRequest_Request.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
-    ..oo(0, [1, 2, 3, 4, 5])
+    ..oo(0, [1, 2, 3, 4, 5, 6])
     ..aOM<StartConversation>(1, _omitFieldNames ? '' : 'start',
         subBuilder: StartConversation.create)
     ..aOM<UserMessage>(2, _omitFieldNames ? '' : 'message',
@@ -82,6 +86,8 @@ class AgentRequest extends $pb.GeneratedMessage {
         subBuilder: UserQuestionResponse.create)
     ..aOM<CancelRequest>(5, _omitFieldNames ? '' : 'cancel',
         subBuilder: CancelRequest.create)
+    ..aOM<EncryptedEnvelope>(6, _omitFieldNames ? '' : 'encrypted',
+        subBuilder: EncryptedEnvelope.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -108,6 +114,7 @@ class AgentRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   AgentRequest_Request whichRequest() =>
       _AgentRequest_RequestByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(1)
@@ -115,6 +122,7 @@ class AgentRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   void clearRequest() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -171,6 +179,17 @@ class AgentRequest extends $pb.GeneratedMessage {
   void clearCancel() => $_clearField(5);
   @$pb.TagNumber(5)
   CancelRequest ensureCancel() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  EncryptedEnvelope get encrypted => $_getN(5);
+  @$pb.TagNumber(6)
+  set encrypted(EncryptedEnvelope value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasEncrypted() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearEncrypted() => $_clearField(6);
+  @$pb.TagNumber(6)
+  EncryptedEnvelope ensureEncrypted() => $_ensure(5);
 }
 
 /// StartConversation initiates or resumes a conversation session.
@@ -296,7 +315,7 @@ class StartConversation extends $pb.GeneratedMessage {
 class UserMessage extends $pb.GeneratedMessage {
   factory UserMessage({
     $core.String? content,
-    $core.Iterable<$1.Attachment>? attachments,
+    $core.Iterable<$2.Attachment>? attachments,
   }) {
     final result = create();
     if (content != null) result.content = content;
@@ -318,8 +337,8 @@ class UserMessage extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'content')
-    ..pPM<$1.Attachment>(2, _omitFieldNames ? '' : 'attachments',
-        subBuilder: $1.Attachment.create)
+    ..pPM<$2.Attachment>(2, _omitFieldNames ? '' : 'attachments',
+        subBuilder: $2.Attachment.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -351,18 +370,22 @@ class UserMessage extends $pb.GeneratedMessage {
   void clearContent() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $pb.PbList<$1.Attachment> get attachments => $_getList(1);
+  $pb.PbList<$2.Attachment> get attachments => $_getList(1);
 }
 
 /// PermissionResponse is the user's decision on a permission request.
 class PermissionResponse extends $pb.GeneratedMessage {
   factory PermissionResponse({
     $core.String? requestId,
-    $1.PermissionDecision? decision,
+    $2.PermissionDecision? decision,
+    $3.Struct? updatedInput,
+    $core.String? message,
   }) {
     final result = create();
     if (requestId != null) result.requestId = requestId;
     if (decision != null) result.decision = decision;
+    if (updatedInput != null) result.updatedInput = updatedInput;
+    if (message != null) result.message = message;
     return result;
   }
 
@@ -380,8 +403,11 @@ class PermissionResponse extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'requestId')
-    ..aE<$1.PermissionDecision>(2, _omitFieldNames ? '' : 'decision',
-        enumValues: $1.PermissionDecision.values)
+    ..aE<$2.PermissionDecision>(2, _omitFieldNames ? '' : 'decision',
+        enumValues: $2.PermissionDecision.values)
+    ..aOM<$3.Struct>(3, _omitFieldNames ? '' : 'updatedInput',
+        subBuilder: $3.Struct.create)
+    ..aOS(4, _omitFieldNames ? '' : 'message')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -413,13 +439,35 @@ class PermissionResponse extends $pb.GeneratedMessage {
   void clearRequestId() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $1.PermissionDecision get decision => $_getN(1);
+  $2.PermissionDecision get decision => $_getN(1);
   @$pb.TagNumber(2)
-  set decision($1.PermissionDecision value) => $_setField(2, value);
+  set decision($2.PermissionDecision value) => $_setField(2, value);
   @$pb.TagNumber(2)
   $core.bool hasDecision() => $_has(1);
   @$pb.TagNumber(2)
   void clearDecision() => $_clearField(2);
+
+  /// Modified tool input (for ALLOW_WITH_EDIT).
+  @$pb.TagNumber(3)
+  $3.Struct get updatedInput => $_getN(2);
+  @$pb.TagNumber(3)
+  set updatedInput($3.Struct value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasUpdatedInput() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearUpdatedInput() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $3.Struct ensureUpdatedInput() => $_ensure(2);
+
+  /// Deny message or follow-up comment.
+  @$pb.TagNumber(4)
+  $core.String get message => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set message($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasMessage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearMessage() => $_clearField(4);
 }
 
 /// UserQuestionResponse is the user's answer to a question.
@@ -555,6 +603,8 @@ enum AgentEvent_Event {
   usage,
   planMode,
   turnComplete,
+  userInput,
+  encrypted,
   notSet
 }
 
@@ -562,7 +612,7 @@ enum AgentEvent_Event {
 class AgentEvent extends $pb.GeneratedMessage {
   factory AgentEvent({
     $fixnum.Int64? sequence,
-    $2.Timestamp? timestamp,
+    $4.Timestamp? timestamp,
     $core.String? parentToolUseId,
     TextDelta? textDelta,
     ToolCallStart? toolCallStart,
@@ -576,6 +626,8 @@ class AgentEvent extends $pb.GeneratedMessage {
     UsageReport? usage,
     PlanModeChange? planMode,
     TurnComplete? turnComplete,
+    UserInput? userInput,
+    EncryptedEnvelope? encrypted,
   }) {
     final result = create();
     if (sequence != null) result.sequence = sequence;
@@ -593,6 +645,8 @@ class AgentEvent extends $pb.GeneratedMessage {
     if (usage != null) result.usage = usage;
     if (planMode != null) result.planMode = planMode;
     if (turnComplete != null) result.turnComplete = turnComplete;
+    if (userInput != null) result.userInput = userInput;
+    if (encrypted != null) result.encrypted = encrypted;
     return result;
   }
 
@@ -618,18 +672,20 @@ class AgentEvent extends $pb.GeneratedMessage {
     19: AgentEvent_Event.usage,
     20: AgentEvent_Event.planMode,
     21: AgentEvent_Event.turnComplete,
+    22: AgentEvent_Event.userInput,
+    23: AgentEvent_Event.encrypted,
     0: AgentEvent_Event.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'AgentEvent',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
-    ..oo(0, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21])
+    ..oo(0, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
     ..a<$fixnum.Int64>(
         1, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
-    ..aOM<$2.Timestamp>(2, _omitFieldNames ? '' : 'timestamp',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$4.Timestamp>(2, _omitFieldNames ? '' : 'timestamp',
+        subBuilder: $4.Timestamp.create)
     ..aOS(3, _omitFieldNames ? '' : 'parentToolUseId')
     ..aOM<TextDelta>(10, _omitFieldNames ? '' : 'textDelta',
         subBuilder: TextDelta.create)
@@ -655,6 +711,10 @@ class AgentEvent extends $pb.GeneratedMessage {
         subBuilder: PlanModeChange.create)
     ..aOM<TurnComplete>(21, _omitFieldNames ? '' : 'turnComplete',
         subBuilder: TurnComplete.create)
+    ..aOM<UserInput>(22, _omitFieldNames ? '' : 'userInput',
+        subBuilder: UserInput.create)
+    ..aOM<EncryptedEnvelope>(23, _omitFieldNames ? '' : 'encrypted',
+        subBuilder: EncryptedEnvelope.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -687,6 +747,8 @@ class AgentEvent extends $pb.GeneratedMessage {
   @$pb.TagNumber(19)
   @$pb.TagNumber(20)
   @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(23)
   AgentEvent_Event whichEvent() => _AgentEvent_EventByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(10)
   @$pb.TagNumber(11)
@@ -700,6 +762,8 @@ class AgentEvent extends $pb.GeneratedMessage {
   @$pb.TagNumber(19)
   @$pb.TagNumber(20)
   @$pb.TagNumber(21)
+  @$pb.TagNumber(22)
+  @$pb.TagNumber(23)
   void clearEvent() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -712,15 +776,15 @@ class AgentEvent extends $pb.GeneratedMessage {
   void clearSequence() => $_clearField(1);
 
   @$pb.TagNumber(2)
-  $2.Timestamp get timestamp => $_getN(1);
+  $4.Timestamp get timestamp => $_getN(1);
   @$pb.TagNumber(2)
-  set timestamp($2.Timestamp value) => $_setField(2, value);
+  set timestamp($4.Timestamp value) => $_setField(2, value);
   @$pb.TagNumber(2)
   $core.bool hasTimestamp() => $_has(1);
   @$pb.TagNumber(2)
   void clearTimestamp() => $_clearField(2);
   @$pb.TagNumber(2)
-  $2.Timestamp ensureTimestamp() => $_ensure(1);
+  $4.Timestamp ensureTimestamp() => $_ensure(1);
 
   @$pb.TagNumber(3)
   $core.String get parentToolUseId => $_getSZ(2);
@@ -862,6 +926,28 @@ class AgentEvent extends $pb.GeneratedMessage {
   void clearTurnComplete() => $_clearField(21);
   @$pb.TagNumber(21)
   TurnComplete ensureTurnComplete() => $_ensure(14);
+
+  @$pb.TagNumber(22)
+  UserInput get userInput => $_getN(15);
+  @$pb.TagNumber(22)
+  set userInput(UserInput value) => $_setField(22, value);
+  @$pb.TagNumber(22)
+  $core.bool hasUserInput() => $_has(15);
+  @$pb.TagNumber(22)
+  void clearUserInput() => $_clearField(22);
+  @$pb.TagNumber(22)
+  UserInput ensureUserInput() => $_ensure(15);
+
+  @$pb.TagNumber(23)
+  EncryptedEnvelope get encrypted => $_getN(16);
+  @$pb.TagNumber(23)
+  set encrypted(EncryptedEnvelope value) => $_setField(23, value);
+  @$pb.TagNumber(23)
+  $core.bool hasEncrypted() => $_has(16);
+  @$pb.TagNumber(23)
+  void clearEncrypted() => $_clearField(23);
+  @$pb.TagNumber(23)
+  EncryptedEnvelope ensureEncrypted() => $_ensure(16);
 }
 
 /// TextDelta streams incremental text output.
@@ -1214,7 +1300,7 @@ class UserQuestion extends $pb.GeneratedMessage {
   factory UserQuestion({
     $core.String? questionId,
     $core.String? question,
-    $core.Iterable<$1.QuestionOption>? options,
+    $core.Iterable<$2.QuestionOption>? options,
     $core.bool? multiSelect,
   }) {
     final result = create();
@@ -1240,8 +1326,8 @@ class UserQuestion extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'questionId')
     ..aOS(2, _omitFieldNames ? '' : 'question')
-    ..pPM<$1.QuestionOption>(3, _omitFieldNames ? '' : 'options',
-        subBuilder: $1.QuestionOption.create)
+    ..pPM<$2.QuestionOption>(3, _omitFieldNames ? '' : 'options',
+        subBuilder: $2.QuestionOption.create)
     ..aOB(4, _omitFieldNames ? '' : 'multiSelect')
     ..hasRequiredFields = false;
 
@@ -1283,7 +1369,7 @@ class UserQuestion extends $pb.GeneratedMessage {
   void clearQuestion() => $_clearField(2);
 
   @$pb.TagNumber(3)
-  $pb.PbList<$1.QuestionOption> get options => $_getList(2);
+  $pb.PbList<$2.QuestionOption> get options => $_getList(2);
 
   @$pb.TagNumber(4)
   $core.bool get multiSelect => $_getBF(3);
@@ -1298,7 +1384,7 @@ class UserQuestion extends $pb.GeneratedMessage {
 /// TodoUpdate provides the current task list state.
 class TodoUpdate extends $pb.GeneratedMessage {
   factory TodoUpdate({
-    $core.Iterable<$1.TodoItem>? items,
+    $core.Iterable<$2.TodoItem>? items,
   }) {
     final result = create();
     if (items != null) result.items.addAll(items);
@@ -1318,8 +1404,8 @@ class TodoUpdate extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'TodoUpdate',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
-    ..pPM<$1.TodoItem>(1, _omitFieldNames ? '' : 'items',
-        subBuilder: $1.TodoItem.create)
+    ..pPM<$2.TodoItem>(1, _omitFieldNames ? '' : 'items',
+        subBuilder: $2.TodoItem.create)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1341,13 +1427,13 @@ class TodoUpdate extends $pb.GeneratedMessage {
   static TodoUpdate? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $pb.PbList<$1.TodoItem> get items => $_getList(0);
+  $pb.PbList<$2.TodoItem> get items => $_getList(0);
 }
 
 /// StatusChange indicates a change in agent state.
 class StatusChange extends $pb.GeneratedMessage {
   factory StatusChange({
-    $1.AgentStatus? status,
+    $2.AgentStatus? status,
     $core.String? message,
   }) {
     final result = create();
@@ -1369,8 +1455,8 @@ class StatusChange extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'StatusChange',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
-    ..aE<$1.AgentStatus>(1, _omitFieldNames ? '' : 'status',
-        enumValues: $1.AgentStatus.values)
+    ..aE<$2.AgentStatus>(1, _omitFieldNames ? '' : 'status',
+        enumValues: $2.AgentStatus.values)
     ..aOS(2, _omitFieldNames ? '' : 'message')
     ..hasRequiredFields = false;
 
@@ -1394,9 +1480,9 @@ class StatusChange extends $pb.GeneratedMessage {
   static StatusChange? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $1.AgentStatus get status => $_getN(0);
+  $2.AgentStatus get status => $_getN(0);
   @$pb.TagNumber(1)
-  set status($1.AgentStatus value) => $_setField(1, value);
+  set status($2.AgentStatus value) => $_setField(1, value);
   @$pb.TagNumber(1)
   $core.bool hasStatus() => $_has(0);
   @$pb.TagNumber(1)
@@ -1897,6 +1983,130 @@ class TurnComplete extends $pb.GeneratedMessage {
   void clearStopReason() => $_clearField(1);
 }
 
+/// UserInput records a user's prompt for session replay.
+class UserInput extends $pb.GeneratedMessage {
+  factory UserInput({
+    $core.String? content,
+  }) {
+    final result = create();
+    if (content != null) result.content = content;
+    return result;
+  }
+
+  UserInput._();
+
+  factory UserInput.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UserInput.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UserInput',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'content')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserInput clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UserInput copyWith(void Function(UserInput) updates) =>
+      super.copyWith((message) => updates(message as UserInput)) as UserInput;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UserInput create() => UserInput._();
+  @$core.override
+  UserInput createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UserInput getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<UserInput>(create);
+  static UserInput? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get content => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set content($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasContent() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearContent() => $_clearField(1);
+}
+
+/// EncryptedEnvelope wraps an application-layer encrypted payload.
+/// The relay sees valid protobuf but cannot read the inner content.
+class EncryptedEnvelope extends $pb.GeneratedMessage {
+  factory EncryptedEnvelope({
+    $core.List<$core.int>? ciphertext,
+    $core.List<$core.int>? nonce,
+  }) {
+    final result = create();
+    if (ciphertext != null) result.ciphertext = ciphertext;
+    if (nonce != null) result.nonce = nonce;
+    return result;
+  }
+
+  EncryptedEnvelope._();
+
+  factory EncryptedEnvelope.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory EncryptedEnvelope.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'EncryptedEnvelope',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'ciphertext', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'nonce', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EncryptedEnvelope clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  EncryptedEnvelope copyWith(void Function(EncryptedEnvelope) updates) =>
+      super.copyWith((message) => updates(message as EncryptedEnvelope))
+          as EncryptedEnvelope;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static EncryptedEnvelope create() => EncryptedEnvelope._();
+  @$core.override
+  EncryptedEnvelope createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static EncryptedEnvelope getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<EncryptedEnvelope>(create);
+  static EncryptedEnvelope? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get ciphertext => $_getN(0);
+  @$pb.TagNumber(1)
+  set ciphertext($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCiphertext() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCiphertext() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get nonce => $_getN(1);
+  @$pb.TagNumber(2)
+  set nonce($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNonce() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNonce() => $_clearField(2);
+}
+
 class ListSessionsRequest extends $pb.GeneratedMessage {
   factory ListSessionsRequest({
     $core.String? workingDirectory,
@@ -2059,8 +2269,8 @@ class SessionSummary extends $pb.GeneratedMessage {
     $core.int? totalInputTokens,
     $core.int? totalOutputTokens,
     $core.double? totalCostUsd,
-    $2.Timestamp? createdAt,
-    $2.Timestamp? updatedAt,
+    $4.Timestamp? createdAt,
+    $4.Timestamp? updatedAt,
     $core.String? lastMessagePreview,
   }) {
     final result = create();
@@ -2105,10 +2315,10 @@ class SessionSummary extends $pb.GeneratedMessage {
     ..aI(8, _omitFieldNames ? '' : 'totalOutputTokens',
         fieldType: $pb.PbFieldType.OU3)
     ..aD(9, _omitFieldNames ? '' : 'totalCostUsd')
-    ..aOM<$2.Timestamp>(10, _omitFieldNames ? '' : 'createdAt',
-        subBuilder: $2.Timestamp.create)
-    ..aOM<$2.Timestamp>(11, _omitFieldNames ? '' : 'updatedAt',
-        subBuilder: $2.Timestamp.create)
+    ..aOM<$4.Timestamp>(10, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $4.Timestamp.create)
+    ..aOM<$4.Timestamp>(11, _omitFieldNames ? '' : 'updatedAt',
+        subBuilder: $4.Timestamp.create)
     ..aOS(12, _omitFieldNames ? '' : 'lastMessagePreview')
     ..hasRequiredFields = false;
 
@@ -2213,26 +2423,26 @@ class SessionSummary extends $pb.GeneratedMessage {
   void clearTotalCostUsd() => $_clearField(9);
 
   @$pb.TagNumber(10)
-  $2.Timestamp get createdAt => $_getN(9);
+  $4.Timestamp get createdAt => $_getN(9);
   @$pb.TagNumber(10)
-  set createdAt($2.Timestamp value) => $_setField(10, value);
+  set createdAt($4.Timestamp value) => $_setField(10, value);
   @$pb.TagNumber(10)
   $core.bool hasCreatedAt() => $_has(9);
   @$pb.TagNumber(10)
   void clearCreatedAt() => $_clearField(10);
   @$pb.TagNumber(10)
-  $2.Timestamp ensureCreatedAt() => $_ensure(9);
+  $4.Timestamp ensureCreatedAt() => $_ensure(9);
 
   @$pb.TagNumber(11)
-  $2.Timestamp get updatedAt => $_getN(10);
+  $4.Timestamp get updatedAt => $_getN(10);
   @$pb.TagNumber(11)
-  set updatedAt($2.Timestamp value) => $_setField(11, value);
+  set updatedAt($4.Timestamp value) => $_setField(11, value);
   @$pb.TagNumber(11)
   $core.bool hasUpdatedAt() => $_has(10);
   @$pb.TagNumber(11)
   void clearUpdatedAt() => $_clearField(11);
   @$pb.TagNumber(11)
-  $2.Timestamp ensureUpdatedAt() => $_ensure(10);
+  $4.Timestamp ensureUpdatedAt() => $_ensure(10);
 
   @$pb.TagNumber(12)
   $core.String get lastMessagePreview => $_getSZ(11);

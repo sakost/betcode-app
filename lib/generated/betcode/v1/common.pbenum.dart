@@ -28,15 +28,33 @@ class PermissionDecision extends $pb.ProtobufEnum {
   static const PermissionDecision PERMISSION_DECISION_DENY =
       PermissionDecision._(3, _omitEnumNames ? '' : 'PERMISSION_DECISION_DENY');
 
+  /// Allow with modified tool input (Tab → edit input).
+  static const PermissionDecision PERMISSION_DECISION_ALLOW_WITH_EDIT =
+      PermissionDecision._(
+          4, _omitEnumNames ? '' : 'PERMISSION_DECISION_ALLOW_WITH_EDIT');
+
+  /// Deny without interrupting the current turn.
+  static const PermissionDecision PERMISSION_DECISION_DENY_NO_INTERRUPT =
+      PermissionDecision._(
+          5, _omitEnumNames ? '' : 'PERMISSION_DECISION_DENY_NO_INTERRUPT');
+
+  /// Deny and interrupt the current turn.
+  static const PermissionDecision PERMISSION_DECISION_DENY_WITH_INTERRUPT =
+      PermissionDecision._(
+          6, _omitEnumNames ? '' : 'PERMISSION_DECISION_DENY_WITH_INTERRUPT');
+
   static const $core.List<PermissionDecision> values = <PermissionDecision>[
     PERMISSION_DECISION_UNSPECIFIED,
     PERMISSION_DECISION_ALLOW_ONCE,
     PERMISSION_DECISION_ALLOW_SESSION,
     PERMISSION_DECISION_DENY,
+    PERMISSION_DECISION_ALLOW_WITH_EDIT,
+    PERMISSION_DECISION_DENY_NO_INTERRUPT,
+    PERMISSION_DECISION_DENY_WITH_INTERRUPT,
   ];
 
   static final $core.List<PermissionDecision?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
   static PermissionDecision? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

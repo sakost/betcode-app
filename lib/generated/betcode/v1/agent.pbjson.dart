@@ -64,6 +64,15 @@ const AgentRequest$json = {
       '9': 0,
       '10': 'cancel'
     },
+    {
+      '1': 'encrypted',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.betcode.v1.EncryptedEnvelope',
+      '9': 0,
+      '10': 'encrypted'
+    },
   ],
   '8': [
     {'1': 'request'},
@@ -77,7 +86,9 @@ final $typed_data.Uint8List agentRequestDescriptor = $convert.base64Decode(
     'SABSB21lc3NhZ2USQAoKcGVybWlzc2lvbhgDIAEoCzIeLmJldGNvZGUudjEuUGVybWlzc2lvbl'
     'Jlc3BvbnNlSABSCnBlcm1pc3Npb24STwoRcXVlc3Rpb25fcmVzcG9uc2UYBCABKAsyIC5iZXRj'
     'b2RlLnYxLlVzZXJRdWVzdGlvblJlc3BvbnNlSABSEHF1ZXN0aW9uUmVzcG9uc2USMwoGY2FuY2'
-    'VsGAUgASgLMhkuYmV0Y29kZS52MS5DYW5jZWxSZXF1ZXN0SABSBmNhbmNlbEIJCgdyZXF1ZXN0');
+    'VsGAUgASgLMhkuYmV0Y29kZS52MS5DYW5jZWxSZXF1ZXN0SABSBmNhbmNlbBI9CgllbmNyeXB0'
+    'ZWQYBiABKAsyHS5iZXRjb2RlLnYxLkVuY3J5cHRlZEVudmVsb3BlSABSCWVuY3J5cHRlZEIJCg'
+    'dyZXF1ZXN0');
 
 @$core.Deprecated('Use startConversationDescriptor instead')
 const StartConversation$json = {
@@ -161,13 +172,24 @@ const PermissionResponse$json = {
       '6': '.betcode.v1.PermissionDecision',
       '10': 'decision'
     },
+    {
+      '1': 'updated_input',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.google.protobuf.Struct',
+      '10': 'updatedInput'
+    },
+    {'1': 'message', '3': 4, '4': 1, '5': 9, '10': 'message'},
   ],
 };
 
 /// Descriptor for `PermissionResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List permissionResponseDescriptor = $convert.base64Decode(
     'ChJQZXJtaXNzaW9uUmVzcG9uc2USHQoKcmVxdWVzdF9pZBgBIAEoCVIJcmVxdWVzdElkEjoKCG'
-    'RlY2lzaW9uGAIgASgOMh4uYmV0Y29kZS52MS5QZXJtaXNzaW9uRGVjaXNpb25SCGRlY2lzaW9u');
+    'RlY2lzaW9uGAIgASgOMh4uYmV0Y29kZS52MS5QZXJtaXNzaW9uRGVjaXNpb25SCGRlY2lzaW9u'
+    'EjwKDXVwZGF0ZWRfaW5wdXQYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ugx1cGRhdG'
+    'VkSW5wdXQSGAoHbWVzc2FnZRgEIAEoCVIHbWVzc2FnZQ==');
 
 @$core.Deprecated('Use userQuestionResponseDescriptor instead')
 const UserQuestionResponse$json = {
@@ -343,6 +365,24 @@ const AgentEvent$json = {
       '9': 0,
       '10': 'turnComplete'
     },
+    {
+      '1': 'user_input',
+      '3': 22,
+      '4': 1,
+      '5': 11,
+      '6': '.betcode.v1.UserInput',
+      '9': 0,
+      '10': 'userInput'
+    },
+    {
+      '1': 'encrypted',
+      '3': 23,
+      '4': 1,
+      '5': 11,
+      '6': '.betcode.v1.EncryptedEnvelope',
+      '9': 0,
+      '10': 'encrypted'
+    },
   ],
   '8': [
     {'1': 'event'},
@@ -367,7 +407,9 @@ final $typed_data.Uint8List agentEventDescriptor = $convert.base64Decode(
     'oFdXNhZ2UYEyABKAsyFy5iZXRjb2RlLnYxLlVzYWdlUmVwb3J0SABSBXVzYWdlEjkKCXBsYW5f'
     'bW9kZRgUIAEoCzIaLmJldGNvZGUudjEuUGxhbk1vZGVDaGFuZ2VIAFIIcGxhbk1vZGUSPwoNdH'
     'Vybl9jb21wbGV0ZRgVIAEoCzIYLmJldGNvZGUudjEuVHVybkNvbXBsZXRlSABSDHR1cm5Db21w'
-    'bGV0ZUIHCgVldmVudA==');
+    'bGV0ZRI2Cgp1c2VyX2lucHV0GBYgASgLMhUuYmV0Y29kZS52MS5Vc2VySW5wdXRIAFIJdXNlck'
+    'lucHV0Ej0KCWVuY3J5cHRlZBgXIAEoCzIdLmJldGNvZGUudjEuRW5jcnlwdGVkRW52ZWxvcGVI'
+    'AFIJZW5jcnlwdGVkQgcKBWV2ZW50');
 
 @$core.Deprecated('Use textDeltaDescriptor instead')
 const TextDelta$json = {
@@ -644,6 +686,32 @@ const TurnComplete$json = {
 /// Descriptor for `TurnComplete`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List turnCompleteDescriptor = $convert.base64Decode(
     'CgxUdXJuQ29tcGxldGUSHwoLc3RvcF9yZWFzb24YASABKAlSCnN0b3BSZWFzb24=');
+
+@$core.Deprecated('Use userInputDescriptor instead')
+const UserInput$json = {
+  '1': 'UserInput',
+  '2': [
+    {'1': 'content', '3': 1, '4': 1, '5': 9, '10': 'content'},
+  ],
+};
+
+/// Descriptor for `UserInput`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List userInputDescriptor = $convert
+    .base64Decode('CglVc2VySW5wdXQSGAoHY29udGVudBgBIAEoCVIHY29udGVudA==');
+
+@$core.Deprecated('Use encryptedEnvelopeDescriptor instead')
+const EncryptedEnvelope$json = {
+  '1': 'EncryptedEnvelope',
+  '2': [
+    {'1': 'ciphertext', '3': 1, '4': 1, '5': 12, '10': 'ciphertext'},
+    {'1': 'nonce', '3': 2, '4': 1, '5': 12, '10': 'nonce'},
+  ],
+};
+
+/// Descriptor for `EncryptedEnvelope`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List encryptedEnvelopeDescriptor = $convert.base64Decode(
+    'ChFFbmNyeXB0ZWRFbnZlbG9wZRIeCgpjaXBoZXJ0ZXh0GAEgASgMUgpjaXBoZXJ0ZXh0EhQKBW'
+    '5vbmNlGAIgASgMUgVub25jZQ==');
 
 @$core.Deprecated('Use listSessionsRequestDescriptor instead')
 const ListSessionsRequest$json = {

@@ -1,0 +1,809 @@
+// This is a generated file - do not edit.
+//
+// Generated from betcode/v1/git_repo.proto.
+
+// @dart = 3.3
+
+// ignore_for_file: annotate_overrides, camel_case_types, comment_references
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+
+import 'dart:core' as $core;
+
+import 'package:protobuf/protobuf.dart' as $pb;
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart'
+    as $1;
+
+export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
+
+class RegisterRepoRequest extends $pb.GeneratedMessage {
+  factory RegisterRepoRequest({
+    $core.String? repoPath,
+    $core.String? name,
+    $core.String? worktreeMode,
+    $core.String? localSubfolder,
+    $core.String? customPath,
+    $core.String? setupScript,
+    $core.bool? autoGitignore,
+  }) {
+    final result = create();
+    if (repoPath != null) result.repoPath = repoPath;
+    if (name != null) result.name = name;
+    if (worktreeMode != null) result.worktreeMode = worktreeMode;
+    if (localSubfolder != null) result.localSubfolder = localSubfolder;
+    if (customPath != null) result.customPath = customPath;
+    if (setupScript != null) result.setupScript = setupScript;
+    if (autoGitignore != null) result.autoGitignore = autoGitignore;
+    return result;
+  }
+
+  RegisterRepoRequest._();
+
+  factory RegisterRepoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RegisterRepoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegisterRepoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'repoPath')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'worktreeMode')
+    ..aOS(4, _omitFieldNames ? '' : 'localSubfolder')
+    ..aOS(5, _omitFieldNames ? '' : 'customPath')
+    ..aOS(6, _omitFieldNames ? '' : 'setupScript')
+    ..aOB(7, _omitFieldNames ? '' : 'autoGitignore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterRepoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterRepoRequest copyWith(void Function(RegisterRepoRequest) updates) =>
+      super.copyWith((message) => updates(message as RegisterRepoRequest))
+          as RegisterRepoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RegisterRepoRequest create() => RegisterRepoRequest._();
+  @$core.override
+  RegisterRepoRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RegisterRepoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegisterRepoRequest>(create);
+  static RegisterRepoRequest? _defaultInstance;
+
+  /// Absolute path to the git repository root.
+  @$pb.TagNumber(1)
+  $core.String get repoPath => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repoPath($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepoPath() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepoPath() => $_clearField(1);
+
+  /// Display name (optional; defaults to last path component).
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  /// Worktree storage mode: "global", "local", or "custom".
+  @$pb.TagNumber(3)
+  $core.String get worktreeMode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set worktreeMode($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWorktreeMode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWorktreeMode() => $_clearField(3);
+
+  /// Subfolder name for local mode (default: ".worktree").
+  @$pb.TagNumber(4)
+  $core.String get localSubfolder => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set localSubfolder($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocalSubfolder() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocalSubfolder() => $_clearField(4);
+
+  /// Absolute path for custom mode.
+  @$pb.TagNumber(5)
+  $core.String get customPath => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set customPath($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCustomPath() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCustomPath() => $_clearField(5);
+
+  /// Default setup script for new worktrees.
+  @$pb.TagNumber(6)
+  $core.String get setupScript => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set setupScript($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSetupScript() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSetupScript() => $_clearField(6);
+
+  /// Whether to auto-add local subfolder to .gitignore (default: true).
+  @$pb.TagNumber(7)
+  $core.bool get autoGitignore => $_getBF(6);
+  @$pb.TagNumber(7)
+  set autoGitignore($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAutoGitignore() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAutoGitignore() => $_clearField(7);
+}
+
+class UnregisterRepoRequest extends $pb.GeneratedMessage {
+  factory UnregisterRepoRequest({
+    $core.String? id,
+    $core.bool? removeWorktrees,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (removeWorktrees != null) result.removeWorktrees = removeWorktrees;
+    return result;
+  }
+
+  UnregisterRepoRequest._();
+
+  factory UnregisterRepoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UnregisterRepoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UnregisterRepoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOB(2, _omitFieldNames ? '' : 'removeWorktrees')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UnregisterRepoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UnregisterRepoRequest copyWith(
+          void Function(UnregisterRepoRequest) updates) =>
+      super.copyWith((message) => updates(message as UnregisterRepoRequest))
+          as UnregisterRepoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UnregisterRepoRequest create() => UnregisterRepoRequest._();
+  @$core.override
+  UnregisterRepoRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UnregisterRepoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UnregisterRepoRequest>(create);
+  static UnregisterRepoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  /// If true, also remove all worktrees on disk.
+  @$pb.TagNumber(2)
+  $core.bool get removeWorktrees => $_getBF(1);
+  @$pb.TagNumber(2)
+  set removeWorktrees($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasRemoveWorktrees() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearRemoveWorktrees() => $_clearField(2);
+}
+
+class ListReposRequest extends $pb.GeneratedMessage {
+  factory ListReposRequest() => create();
+
+  ListReposRequest._();
+
+  factory ListReposRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListReposRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListReposRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReposRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReposRequest copyWith(void Function(ListReposRequest) updates) =>
+      super.copyWith((message) => updates(message as ListReposRequest))
+          as ListReposRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReposRequest create() => ListReposRequest._();
+  @$core.override
+  ListReposRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListReposRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListReposRequest>(create);
+  static ListReposRequest? _defaultInstance;
+}
+
+class GetRepoRequest extends $pb.GeneratedMessage {
+  factory GetRepoRequest({
+    $core.String? id,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    return result;
+  }
+
+  GetRepoRequest._();
+
+  factory GetRepoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetRepoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetRepoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRepoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRepoRequest copyWith(void Function(GetRepoRequest) updates) =>
+      super.copyWith((message) => updates(message as GetRepoRequest))
+          as GetRepoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetRepoRequest create() => GetRepoRequest._();
+  @$core.override
+  GetRepoRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetRepoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetRepoRequest>(create);
+  static GetRepoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+}
+
+class UpdateRepoRequest extends $pb.GeneratedMessage {
+  factory UpdateRepoRequest({
+    $core.String? id,
+    $core.String? name,
+    $core.String? worktreeMode,
+    $core.String? localSubfolder,
+    $core.String? customPath,
+    $core.String? setupScript,
+    $core.bool? autoGitignore,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (worktreeMode != null) result.worktreeMode = worktreeMode;
+    if (localSubfolder != null) result.localSubfolder = localSubfolder;
+    if (customPath != null) result.customPath = customPath;
+    if (setupScript != null) result.setupScript = setupScript;
+    if (autoGitignore != null) result.autoGitignore = autoGitignore;
+    return result;
+  }
+
+  UpdateRepoRequest._();
+
+  factory UpdateRepoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UpdateRepoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UpdateRepoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'worktreeMode')
+    ..aOS(4, _omitFieldNames ? '' : 'localSubfolder')
+    ..aOS(5, _omitFieldNames ? '' : 'customPath')
+    ..aOS(6, _omitFieldNames ? '' : 'setupScript')
+    ..aOB(7, _omitFieldNames ? '' : 'autoGitignore')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateRepoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UpdateRepoRequest copyWith(void Function(UpdateRepoRequest) updates) =>
+      super.copyWith((message) => updates(message as UpdateRepoRequest))
+          as UpdateRepoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UpdateRepoRequest create() => UpdateRepoRequest._();
+  @$core.override
+  UpdateRepoRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UpdateRepoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UpdateRepoRequest>(create);
+  static UpdateRepoRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get worktreeMode => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set worktreeMode($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasWorktreeMode() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearWorktreeMode() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get localSubfolder => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set localSubfolder($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasLocalSubfolder() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearLocalSubfolder() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get customPath => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set customPath($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasCustomPath() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearCustomPath() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get setupScript => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set setupScript($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSetupScript() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSetupScript() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get autoGitignore => $_getBF(6);
+  @$pb.TagNumber(7)
+  set autoGitignore($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAutoGitignore() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAutoGitignore() => $_clearField(7);
+}
+
+class ScanReposRequest extends $pb.GeneratedMessage {
+  factory ScanReposRequest({
+    $core.String? scanPath,
+    $core.int? maxDepth,
+  }) {
+    final result = create();
+    if (scanPath != null) result.scanPath = scanPath;
+    if (maxDepth != null) result.maxDepth = maxDepth;
+    return result;
+  }
+
+  ScanReposRequest._();
+
+  factory ScanReposRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ScanReposRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ScanReposRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'scanPath')
+    ..aI(2, _omitFieldNames ? '' : 'maxDepth', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScanReposRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ScanReposRequest copyWith(void Function(ScanReposRequest) updates) =>
+      super.copyWith((message) => updates(message as ScanReposRequest))
+          as ScanReposRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ScanReposRequest create() => ScanReposRequest._();
+  @$core.override
+  ScanReposRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ScanReposRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ScanReposRequest>(create);
+  static ScanReposRequest? _defaultInstance;
+
+  /// Directory to scan for git repositories.
+  @$pb.TagNumber(1)
+  $core.String get scanPath => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set scanPath($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasScanPath() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearScanPath() => $_clearField(1);
+
+  /// Maximum depth to scan (default: 2).
+  @$pb.TagNumber(2)
+  $core.int get maxDepth => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set maxDepth($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMaxDepth() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMaxDepth() => $_clearField(2);
+}
+
+class UnregisterRepoResponse extends $pb.GeneratedMessage {
+  factory UnregisterRepoResponse({
+    $core.bool? removed,
+    $core.int? worktreesRemoved,
+  }) {
+    final result = create();
+    if (removed != null) result.removed = removed;
+    if (worktreesRemoved != null) result.worktreesRemoved = worktreesRemoved;
+    return result;
+  }
+
+  UnregisterRepoResponse._();
+
+  factory UnregisterRepoResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory UnregisterRepoResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UnregisterRepoResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'removed')
+    ..aI(2, _omitFieldNames ? '' : 'worktreesRemoved',
+        fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UnregisterRepoResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UnregisterRepoResponse copyWith(
+          void Function(UnregisterRepoResponse) updates) =>
+      super.copyWith((message) => updates(message as UnregisterRepoResponse))
+          as UnregisterRepoResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static UnregisterRepoResponse create() => UnregisterRepoResponse._();
+  @$core.override
+  UnregisterRepoResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static UnregisterRepoResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UnregisterRepoResponse>(create);
+  static UnregisterRepoResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get removed => $_getBF(0);
+  @$pb.TagNumber(1)
+  set removed($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRemoved() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRemoved() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get worktreesRemoved => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set worktreesRemoved($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasWorktreesRemoved() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearWorktreesRemoved() => $_clearField(2);
+}
+
+class ListReposResponse extends $pb.GeneratedMessage {
+  factory ListReposResponse({
+    $core.Iterable<GitRepoDetail>? repos,
+  }) {
+    final result = create();
+    if (repos != null) result.repos.addAll(repos);
+    return result;
+  }
+
+  ListReposResponse._();
+
+  factory ListReposResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListReposResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListReposResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..pPM<GitRepoDetail>(1, _omitFieldNames ? '' : 'repos',
+        subBuilder: GitRepoDetail.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReposResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListReposResponse copyWith(void Function(ListReposResponse) updates) =>
+      super.copyWith((message) => updates(message as ListReposResponse))
+          as ListReposResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListReposResponse create() => ListReposResponse._();
+  @$core.override
+  ListReposResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListReposResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListReposResponse>(create);
+  static ListReposResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<GitRepoDetail> get repos => $_getList(0);
+}
+
+class GitRepoDetail extends $pb.GeneratedMessage {
+  factory GitRepoDetail({
+    $core.String? id,
+    $core.String? name,
+    $core.String? repoPath,
+    $core.String? worktreeMode,
+    $core.String? localSubfolder,
+    $core.String? customPath,
+    $core.String? setupScript,
+    $core.bool? autoGitignore,
+    $core.int? worktreeCount,
+    $1.Timestamp? createdAt,
+    $1.Timestamp? lastActive,
+  }) {
+    final result = create();
+    if (id != null) result.id = id;
+    if (name != null) result.name = name;
+    if (repoPath != null) result.repoPath = repoPath;
+    if (worktreeMode != null) result.worktreeMode = worktreeMode;
+    if (localSubfolder != null) result.localSubfolder = localSubfolder;
+    if (customPath != null) result.customPath = customPath;
+    if (setupScript != null) result.setupScript = setupScript;
+    if (autoGitignore != null) result.autoGitignore = autoGitignore;
+    if (worktreeCount != null) result.worktreeCount = worktreeCount;
+    if (createdAt != null) result.createdAt = createdAt;
+    if (lastActive != null) result.lastActive = lastActive;
+    return result;
+  }
+
+  GitRepoDetail._();
+
+  factory GitRepoDetail.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GitRepoDetail.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GitRepoDetail',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'id')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'repoPath')
+    ..aOS(4, _omitFieldNames ? '' : 'worktreeMode')
+    ..aOS(5, _omitFieldNames ? '' : 'localSubfolder')
+    ..aOS(6, _omitFieldNames ? '' : 'customPath')
+    ..aOS(7, _omitFieldNames ? '' : 'setupScript')
+    ..aOB(8, _omitFieldNames ? '' : 'autoGitignore')
+    ..aI(9, _omitFieldNames ? '' : 'worktreeCount',
+        fieldType: $pb.PbFieldType.OU3)
+    ..aOM<$1.Timestamp>(10, _omitFieldNames ? '' : 'createdAt',
+        subBuilder: $1.Timestamp.create)
+    ..aOM<$1.Timestamp>(11, _omitFieldNames ? '' : 'lastActive',
+        subBuilder: $1.Timestamp.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GitRepoDetail clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GitRepoDetail copyWith(void Function(GitRepoDetail) updates) =>
+      super.copyWith((message) => updates(message as GitRepoDetail))
+          as GitRepoDetail;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GitRepoDetail create() => GitRepoDetail._();
+  @$core.override
+  GitRepoDetail createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GitRepoDetail getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GitRepoDetail>(create);
+  static GitRepoDetail? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get id => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set id($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get repoPath => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set repoPath($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRepoPath() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRepoPath() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get worktreeMode => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set worktreeMode($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasWorktreeMode() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearWorktreeMode() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.String get localSubfolder => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set localSubfolder($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLocalSubfolder() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLocalSubfolder() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.String get customPath => $_getSZ(5);
+  @$pb.TagNumber(6)
+  set customPath($core.String value) => $_setString(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasCustomPath() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearCustomPath() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get setupScript => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set setupScript($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasSetupScript() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearSetupScript() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.bool get autoGitignore => $_getBF(7);
+  @$pb.TagNumber(8)
+  set autoGitignore($core.bool value) => $_setBool(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAutoGitignore() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAutoGitignore() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.int get worktreeCount => $_getIZ(8);
+  @$pb.TagNumber(9)
+  set worktreeCount($core.int value) => $_setUnsignedInt32(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasWorktreeCount() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearWorktreeCount() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $1.Timestamp get createdAt => $_getN(9);
+  @$pb.TagNumber(10)
+  set createdAt($1.Timestamp value) => $_setField(10, value);
+  @$pb.TagNumber(10)
+  $core.bool hasCreatedAt() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearCreatedAt() => $_clearField(10);
+  @$pb.TagNumber(10)
+  $1.Timestamp ensureCreatedAt() => $_ensure(9);
+
+  @$pb.TagNumber(11)
+  $1.Timestamp get lastActive => $_getN(10);
+  @$pb.TagNumber(11)
+  set lastActive($1.Timestamp value) => $_setField(11, value);
+  @$pb.TagNumber(11)
+  $core.bool hasLastActive() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearLastActive() => $_clearField(11);
+  @$pb.TagNumber(11)
+  $1.Timestamp ensureLastActive() => $_ensure(10);
+}
+
+const $core.bool _omitFieldNames =
+    $core.bool.fromEnvironment('protobuf.omit_field_names');
+const $core.bool _omitMessageNames =
+    $core.bool.fromEnvironment('protobuf.omit_message_names');

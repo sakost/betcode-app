@@ -21,13 +21,13 @@ export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
 class CreateWorktreeRequest extends $pb.GeneratedMessage {
   factory CreateWorktreeRequest({
     $core.String? name,
-    $core.String? repoPath,
+    $core.String? repoId,
     $core.String? branch,
     $core.String? setupScript,
   }) {
     final result = create();
     if (name != null) result.name = name;
-    if (repoPath != null) result.repoPath = repoPath;
+    if (repoId != null) result.repoId = repoId;
     if (branch != null) result.branch = branch;
     if (setupScript != null) result.setupScript = setupScript;
     return result;
@@ -47,7 +47,7 @@ class CreateWorktreeRequest extends $pb.GeneratedMessage {
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'name')
-    ..aOS(2, _omitFieldNames ? '' : 'repoPath')
+    ..aOS(2, _omitFieldNames ? '' : 'repoId')
     ..aOS(3, _omitFieldNames ? '' : 'branch')
     ..aOS(4, _omitFieldNames ? '' : 'setupScript')
     ..hasRequiredFields = false;
@@ -82,15 +82,15 @@ class CreateWorktreeRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearName() => $_clearField(1);
 
-  /// Path to the git repository root.
+  /// ID of the registered git repository.
   @$pb.TagNumber(2)
-  $core.String get repoPath => $_getSZ(1);
+  $core.String get repoId => $_getSZ(1);
   @$pb.TagNumber(2)
-  set repoPath($core.String value) => $_setString(1, value);
+  set repoId($core.String value) => $_setString(1, value);
   @$pb.TagNumber(2)
-  $core.bool hasRepoPath() => $_has(1);
+  $core.bool hasRepoId() => $_has(1);
   @$pb.TagNumber(2)
-  void clearRepoPath() => $_clearField(2);
+  void clearRepoId() => $_clearField(2);
 
   /// Branch name to create (passed to `git worktree add -b`).
   @$pb.TagNumber(3)
@@ -170,10 +170,10 @@ class RemoveWorktreeRequest extends $pb.GeneratedMessage {
 
 class ListWorktreesRequest extends $pb.GeneratedMessage {
   factory ListWorktreesRequest({
-    $core.String? repoPath,
+    $core.String? repoId,
   }) {
     final result = create();
-    if (repoPath != null) result.repoPath = repoPath;
+    if (repoId != null) result.repoId = repoId;
     return result;
   }
 
@@ -190,7 +190,7 @@ class ListWorktreesRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'ListWorktreesRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
-    ..aOS(1, _omitFieldNames ? '' : 'repoPath')
+    ..aOS(1, _omitFieldNames ? '' : 'repoId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -212,15 +212,15 @@ class ListWorktreesRequest extends $pb.GeneratedMessage {
       $pb.GeneratedMessage.$_defaultFor<ListWorktreesRequest>(create);
   static ListWorktreesRequest? _defaultInstance;
 
-  /// Filter by repo path. Empty string returns all.
+  /// Filter by repo ID. Empty string returns all.
   @$pb.TagNumber(1)
-  $core.String get repoPath => $_getSZ(0);
+  $core.String get repoId => $_getSZ(0);
   @$pb.TagNumber(1)
-  set repoPath($core.String value) => $_setString(0, value);
+  set repoId($core.String value) => $_setString(0, value);
   @$pb.TagNumber(1)
-  $core.bool hasRepoPath() => $_has(0);
+  $core.bool hasRepoId() => $_has(0);
   @$pb.TagNumber(1)
-  void clearRepoPath() => $_clearField(1);
+  void clearRepoId() => $_clearField(1);
 }
 
 class GetWorktreeRequest extends $pb.GeneratedMessage {
@@ -389,7 +389,7 @@ class WorktreeDetail extends $pb.GeneratedMessage {
     $core.String? name,
     $core.String? path,
     $core.String? branch,
-    $core.String? repoPath,
+    $core.String? repoId,
     $core.String? setupScript,
     $core.bool? existsOnDisk,
     $core.int? sessionCount,
@@ -401,7 +401,7 @@ class WorktreeDetail extends $pb.GeneratedMessage {
     if (name != null) result.name = name;
     if (path != null) result.path = path;
     if (branch != null) result.branch = branch;
-    if (repoPath != null) result.repoPath = repoPath;
+    if (repoId != null) result.repoId = repoId;
     if (setupScript != null) result.setupScript = setupScript;
     if (existsOnDisk != null) result.existsOnDisk = existsOnDisk;
     if (sessionCount != null) result.sessionCount = sessionCount;
@@ -427,7 +427,7 @@ class WorktreeDetail extends $pb.GeneratedMessage {
     ..aOS(2, _omitFieldNames ? '' : 'name')
     ..aOS(3, _omitFieldNames ? '' : 'path')
     ..aOS(4, _omitFieldNames ? '' : 'branch')
-    ..aOS(5, _omitFieldNames ? '' : 'repoPath')
+    ..aOS(5, _omitFieldNames ? '' : 'repoId')
     ..aOS(6, _omitFieldNames ? '' : 'setupScript')
     ..aOB(7, _omitFieldNames ? '' : 'existsOnDisk')
     ..aI(8, _omitFieldNames ? '' : 'sessionCount',
@@ -494,13 +494,13 @@ class WorktreeDetail extends $pb.GeneratedMessage {
   void clearBranch() => $_clearField(4);
 
   @$pb.TagNumber(5)
-  $core.String get repoPath => $_getSZ(4);
+  $core.String get repoId => $_getSZ(4);
   @$pb.TagNumber(5)
-  set repoPath($core.String value) => $_setString(4, value);
+  set repoId($core.String value) => $_setString(4, value);
   @$pb.TagNumber(5)
-  $core.bool hasRepoPath() => $_has(4);
+  $core.bool hasRepoId() => $_has(4);
   @$pb.TagNumber(5)
-  void clearRepoPath() => $_clearField(5);
+  void clearRepoId() => $_clearField(5);
 
   @$pb.TagNumber(6)
   $core.String get setupScript => $_getSZ(5);
