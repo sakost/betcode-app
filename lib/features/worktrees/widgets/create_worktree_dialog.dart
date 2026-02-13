@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 class CreateWorktreeResult {
   const CreateWorktreeResult({
     required this.name,
-    required this.repoPath,
+    required this.repoId,
     required this.branch,
     required this.setupScript,
   });
 
   final String name;
-  final String repoPath;
+  final String repoId;
   final String branch;
   final String setupScript;
 }
@@ -30,14 +30,14 @@ class CreateWorktreeDialog extends StatefulWidget {
 class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _repoPathController = TextEditingController();
+  final _repoIdController = TextEditingController();
   final _branchController = TextEditingController();
   final _setupScriptController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
-    _repoPathController.dispose();
+    _repoIdController.dispose();
     _branchController.dispose();
     _setupScriptController.dispose();
     super.dispose();
@@ -48,7 +48,7 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
       Navigator.of(context).pop(
         CreateWorktreeResult(
           name: _nameController.text.trim(),
-          repoPath: _repoPathController.text.trim(),
+          repoId: _repoIdController.text.trim(),
           branch: _branchController.text.trim(),
           setupScript: _setupScriptController.text.trim(),
         ),
@@ -74,8 +74,8 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _repoPathController,
-                decoration: const InputDecoration(labelText: 'Repository Path'),
+                controller: _repoIdController,
+                decoration: const InputDecoration(labelText: 'Repository'),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
