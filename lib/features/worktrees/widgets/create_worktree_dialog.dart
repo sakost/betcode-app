@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../git_repos/notifiers/git_repos_providers.dart';
 
 /// The result returned from [CreateWorktreeDialog] when the user presses
 /// Create and validation passes.
@@ -20,24 +23,24 @@ class CreateWorktreeResult {
 ///
 /// Returns a [CreateWorktreeResult] when the user fills in required fields
 /// and presses Create, or `null` if cancelled.
-class CreateWorktreeDialog extends StatefulWidget {
+class CreateWorktreeDialog extends ConsumerStatefulWidget {
   const CreateWorktreeDialog({super.key});
 
   @override
-  State<CreateWorktreeDialog> createState() => _CreateWorktreeDialogState();
+  ConsumerState<CreateWorktreeDialog> createState() =>
+      _CreateWorktreeDialogState();
 }
 
-class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
+class _CreateWorktreeDialogState extends ConsumerState<CreateWorktreeDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _repoIdController = TextEditingController();
   final _branchController = TextEditingController();
   final _setupScriptController = TextEditingController();
+  String? _selectedRepoId;
 
   @override
   void dispose() {
     _nameController.dispose();
-    _repoIdController.dispose();
     _branchController.dispose();
     _setupScriptController.dispose();
     super.dispose();
@@ -48,7 +51,7 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
       Navigator.of(context).pop(
         CreateWorktreeResult(
           name: _nameController.text.trim(),
-          repoId: _repoIdController.text.trim(),
+          repoId: _selectedRepoId!,
           branch: _branchController.text.trim(),
           setupScript: _setupScriptController.text.trim(),
         ),
@@ -58,6 +61,8 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final reposAsync = ref.watch(gitReposProvider);
+
     return AlertDialog(
       title: const Text('New Worktree'),
       content: SingleChildScrollView(
@@ -73,11 +78,28 @@ class _CreateWorktreeDialogState extends State<CreateWorktreeDialog> {
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _repoIdController,
-                decoration: const InputDecoration(labelText: 'Repository'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              reposAsync.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Failed to load repos: $e'),
+                data: (repos) => DropdownButtonFormField<String>(
+                  initialValue: _selectedRepoId,
+                  decoration: const InputDecoration(labelText: 'Repository'),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Required' : null,
+                  items: repos
+                      .map(
+                        (r) => DropdownMenuItem(
+                          value: r.id,
+                          child: Text(
+                            r.name.isNotEmpty
+                                ? r.name
+                                : r.repoPath.split('/').last,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedRepoId = v),
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
