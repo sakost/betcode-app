@@ -19,6 +19,7 @@ import '../../../generated/betcode/v1/agent.pb.dart';
 class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   static const _pageSize = 20;
   static const _rpcTimeout = Duration(seconds: 10);
+  static const _mutationTimeout = Duration(seconds: 30);
 
   @override
   Future<List<SessionSummary>> build() async {
@@ -44,6 +45,20 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _fetchSessions());
+  }
+
+  /// Renames a session via gRPC and refreshes the local list.
+  ///
+  /// Throws on gRPC/timeout errors so callers can display feedback.
+  Future<void> renameSession({
+    required String sessionId,
+    required String name,
+  }) async {
+    final client = ref.read(agentServiceProvider);
+    await client
+        .renameSession(RenameSessionRequest(sessionId: sessionId, name: name))
+        .timeout(_mutationTimeout);
+    await refresh();
   }
 
   /// Upserts each [SessionSummary] into the local [CachedSessions] table so

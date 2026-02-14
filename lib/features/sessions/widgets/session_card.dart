@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/agent.pb.dart';
 import '../../../shared/theme/app_colors.dart';
@@ -7,13 +6,32 @@ import '../../../shared/utils/time_utils.dart';
 
 /// A card displaying a single [SessionSummary] in the sessions list.
 ///
-/// Shows model name, status badge, last message preview, message count, cost,
-/// and a relative timestamp. Tapping navigates to the conversation screen to
-/// resume the session.
+/// Shows session name (or last message preview as fallback), model name, status
+/// badge, message count, cost, and a relative timestamp.
+///
+/// [onTap] is called when the card is tapped.
+/// [onRename] is called with the current name when the user picks Rename from
+/// the long-press context menu.
+/// [onDelete] is called when the user picks Delete from the context menu.
 class SessionCard extends StatelessWidget {
-  const SessionCard({super.key, required this.session});
+  const SessionCard({
+    super.key,
+    required this.session,
+    this.onTap,
+    this.onRename,
+    this.onDelete,
+  });
 
   final SessionSummary session;
+  final VoidCallback? onTap;
+  final ValueChanged<String>? onRename;
+  final VoidCallback? onDelete;
+
+  String get _title {
+    if (session.name.isNotEmpty) return session.name;
+    if (session.lastMessagePreview.isNotEmpty) return session.lastMessagePreview;
+    return session.model.isNotEmpty ? session.model : 'Unknown';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,18 +42,19 @@ class SessionCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/sessions/${session.id}'),
+        onTap: onTap,
+        onLongPress: () => _showContextMenu(context),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: model name + status badge
+              // Top row: title + status badge
               Row(
                 children: [
                   Expanded(
                     child: Text(
-                      session.model.isNotEmpty ? session.model : 'Unknown',
+                      _title,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -48,8 +67,10 @@ class SessionCard extends StatelessWidget {
                 ],
               ),
 
-              // Last message preview
-              if (session.lastMessagePreview.isNotEmpty) ...[
+              // Subtitle: show model when name is used as title, or preview
+              // when model was used as title
+              if (session.name.isNotEmpty &&
+                  session.lastMessagePreview.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   session.lastMessagePreview,
@@ -57,6 +78,18 @@ class SessionCard extends StatelessWidget {
                     color: colorScheme.onSurfaceVariant,
                   ),
                   maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ] else if (session.name.isEmpty &&
+                  session.lastMessagePreview.isNotEmpty) ...[
+                // Title IS the preview — show model as subtitle instead
+                const SizedBox(height: 4),
+                Text(
+                  session.model.isNotEmpty ? session.model : 'Unknown',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -104,6 +137,31 @@ class SessionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showContextMenu(BuildContext context) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final button = context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      button.localToGlobal(Offset.zero, ancestor: overlay) & button.size,
+      Offset.zero & overlay.size,
+    );
+
+    final result = await showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        const PopupMenuItem(value: 'rename', child: Text('Rename')),
+        const PopupMenuItem(value: 'delete', child: Text('Delete')),
+      ],
+    );
+
+    if (result == 'rename') {
+      onRename?.call(session.name);
+    } else if (result == 'delete') {
+      onDelete?.call();
+    }
   }
 
   String _relativeTime(SessionSummary session) {

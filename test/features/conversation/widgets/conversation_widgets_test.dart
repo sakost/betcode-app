@@ -367,11 +367,12 @@ void main() {
   group('InputBar', () {
     testWidgets('send disabled when empty, enabled with text', (t) async {
       await t.pumpWidget(_app(InputBar(onSubmit: (_) {})));
-      expect(t.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
+      final sendFinder = find.widgetWithIcon(IconButton, Icons.send);
+      expect(t.widget<IconButton>(sendFinder).onPressed, isNull);
       await t.enterText(find.byType(TextField), 'hello');
       await t.pump();
       expect(
-        t.widget<IconButton>(find.byType(IconButton)).onPressed,
+        t.widget<IconButton>(sendFinder).onPressed,
         isNotNull,
       );
     });
@@ -380,7 +381,7 @@ void main() {
       await t.pumpWidget(_app(InputBar(onSubmit: (s) => submitted = s)));
       await t.enterText(find.byType(TextField), '  hello  ');
       await t.pump();
-      await t.tap(find.byType(IconButton));
+      await t.tap(find.widgetWithIcon(IconButton, Icons.send));
       await t.pump();
       expect(submitted, 'hello');
       expect(
@@ -391,13 +392,15 @@ void main() {
     testWidgets('disabled state prevents interaction', (t) async {
       await t.pumpWidget(_app(InputBar(onSubmit: (_) {}, enabled: false)));
       expect(t.widget<TextField>(find.byType(TextField)).enabled, isFalse);
-      expect(t.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
+      final sendFinder = find.widgetWithIcon(IconButton, Icons.send);
+      expect(t.widget<IconButton>(sendFinder).onPressed, isNull);
     });
     testWidgets('whitespace-only text keeps send disabled', (t) async {
       await t.pumpWidget(_app(InputBar(onSubmit: (_) {})));
       await t.enterText(find.byType(TextField), '   ');
       await t.pump();
-      expect(t.widget<IconButton>(find.byType(IconButton)).onPressed, isNull);
+      final sendFinder = find.widgetWithIcon(IconButton, Icons.send);
+      expect(t.widget<IconButton>(sendFinder).onPressed, isNull);
     });
     testWidgets('shows stop button when disabled with onCancel', (t) async {
       bool cancelled = false;

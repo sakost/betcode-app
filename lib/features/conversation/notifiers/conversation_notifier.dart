@@ -128,7 +128,12 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     );
 
     _requestController!.add(
-      pb.AgentRequest(message: pb.UserMessage(content: content)),
+      pb.AgentRequest(
+        message: pb.UserMessage(
+          content: content,
+          agentId: current.selectedAgentId ?? '',
+        ),
+      ),
     );
   }
 

@@ -16,8 +16,11 @@ import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart'
 import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
+import 'package:betcode_app/features/sessions/notifiers/sessions_notifier.dart';
+import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 
@@ -63,6 +66,11 @@ class _FakeAsyncWorktreesNotifier extends WorktreesNotifier {
   }
 }
 
+class _FakeSessionsNotifier extends SessionsNotifier {
+  @override
+  Future<List<SessionSummary>> build() async => [];
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -85,6 +93,7 @@ Widget _buildApp({
       worktreesProvider.overrideWith(
         () => _FakeWorktreesNotifier(defaultWorktrees),
       ),
+      sessionsProvider.overrideWith(_FakeSessionsNotifier.new),
     ],
     child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
   );
@@ -103,6 +112,7 @@ Widget _buildAppWithWorktreeState({
           .overrideWith(() => MockConversationNotifier(state)),
       worktreesProvider
           .overrideWith(() => _FakeAsyncWorktreesNotifier(worktreeState)),
+      sessionsProvider.overrideWith(_FakeSessionsNotifier.new),
     ],
     child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
   );

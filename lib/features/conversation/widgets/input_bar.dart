@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../models/conversation_state.dart';
+import '../models/input_command.dart';
+import 'agent_mention_overlay.dart';
+import 'command_palette.dart';
+
 /// The message input bar at the bottom of the conversation screen.
 ///
 /// Shows a text field and send button. Can be disabled when the agent
-/// is processing a turn.
+/// is processing a turn. Supports slash-command palette and @-mention overlay.
 class InputBar extends StatefulWidget {
   const InputBar({
     super.key,
@@ -11,6 +16,8 @@ class InputBar extends StatefulWidget {
     this.enabled = true,
     this.hintText = 'Type a message...',
     this.onCancel,
+    this.agents,
+    this.onAgentSelected,
   });
 
   final ValueChanged<String> onSubmit;
@@ -21,6 +28,12 @@ class InputBar extends StatefulWidget {
   /// instead of the disabled send button.
   final VoidCallback? onCancel;
 
+  /// Available agents for the @-mention overlay.
+  final Map<String, AgentInfo>? agents;
+
+  /// Called when an agent is selected via @-mention.
+  final ValueChanged<String?>? onAgentSelected;
+
   @override
   State<InputBar> createState() => _InputBarState();
 }
@@ -28,22 +41,65 @@ class InputBar extends StatefulWidget {
 class _InputBarState extends State<InputBar> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  bool _showCommandPalette = false;
+  String _commandQuery = '';
+  bool _showMentionOverlay = false;
+  String _mentionQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      final hasText = _controller.text.trim().isNotEmpty;
-      if (hasText != _hasText) {
-        setState(() => _hasText = hasText);
-      }
-    });
+    _controller.addListener(_onTextChanged);
   }
 
   @override
   void dispose() {
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged() {
+    final text = _controller.text;
+    final hasText = text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
+
+    // Command palette: text starts with /
+    if (text.startsWith('/')) {
+      setState(() {
+        _showCommandPalette = true;
+        _commandQuery = text.substring(1);
+        _showMentionOverlay = false;
+        _mentionQuery = '';
+      });
+      return;
+    }
+
+    // @ mention: detect @ at word boundary
+    final mentionMatch = RegExp(r'(?:^|\s)@(\w*)$').firstMatch(text);
+    if (mentionMatch != null &&
+        widget.agents != null &&
+        widget.agents!.isNotEmpty) {
+      setState(() {
+        _showMentionOverlay = true;
+        _mentionQuery = mentionMatch.group(1) ?? '';
+        _showCommandPalette = false;
+        _commandQuery = '';
+      });
+      return;
+    }
+
+    // Neither
+    if (_showCommandPalette || _showMentionOverlay) {
+      setState(() {
+        _showCommandPalette = false;
+        _commandQuery = '';
+        _showMentionOverlay = false;
+        _mentionQuery = '';
+      });
+    }
   }
 
   void _submit() {
@@ -51,6 +107,38 @@ class _InputBarState extends State<InputBar> {
     if (text.isEmpty) return;
     widget.onSubmit(text);
     _controller.clear();
+  }
+
+  void _onCommand(InputCommand cmd) {
+    _controller.clear();
+    widget.onSubmit('/${cmd.name}');
+  }
+
+  void _onMention(String agentId) {
+    final agents = widget.agents;
+    if (agents == null) return;
+    final agent = agents[agentId];
+    if (agent == null) return;
+
+    final text = _controller.text;
+    // Replace the @query with @name
+    final mentionMatch = RegExp(r'(?:^|\s)@(\w*)$').firstMatch(text);
+    if (mentionMatch != null) {
+      final start = mentionMatch.start;
+      final prefix = text.substring(0, start);
+      final separator = prefix.isNotEmpty ? ' ' : '';
+      _controller.text = '$prefix$separator@${agent.name} ';
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+    }
+
+    setState(() {
+      _showMentionOverlay = false;
+      _mentionQuery = '';
+    });
+
+    widget.onAgentSelected?.call(agentId);
   }
 
   @override
@@ -67,45 +155,66 @@ class _InputBarState extends State<InputBar> {
             top: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
           ),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                enabled: widget.enabled,
-                maxLines: 5,
-                minLines: 1,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: widget.hintText,
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
+            if (_showCommandPalette)
+              CommandPalette(
+                query: _commandQuery,
+                onCommandSelected: _onCommand,
+              ),
+            if (_showMentionOverlay)
+              AgentMentionOverlay(
+                agents: widget.agents ?? {},
+                query: _mentionQuery,
+                onAgentSelected: _onMention,
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file),
+                  onPressed: null,
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    enabled: widget.enabled,
+                    maxLines: 5,
+                    minLines: 1,
+                    textInputAction: TextInputAction.send,
+                    decoration: InputDecoration(
+                      hintText: widget.hintText,
+                      filled: true,
+                      fillColor: colorScheme.surfaceContainerHighest,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onSubmitted: widget.enabled ? (_) => _submit() : null,
                   ),
                 ),
-                onSubmitted: widget.enabled ? (_) => _submit() : null,
-              ),
+                const SizedBox(width: 8),
+                if (!widget.enabled && widget.onCancel != null)
+                  _CancelButton(onCancel: widget.onCancel!)
+                else
+                  IconButton.filled(
+                    onPressed: widget.enabled && _hasText ? _submit : null,
+                    icon: const Icon(Icons.send, size: 20),
+                    style: IconButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      disabledBackgroundColor:
+                          colorScheme.onSurface.withAlpha(30),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(width: 8),
-            if (!widget.enabled && widget.onCancel != null)
-              _CancelButton(onCancel: widget.onCancel!)
-            else
-              IconButton.filled(
-                onPressed: widget.enabled && _hasText ? _submit : null,
-                icon: const Icon(Icons.send, size: 20),
-                style: IconButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: colorScheme.onPrimary,
-                  disabledBackgroundColor: colorScheme.onSurface.withAlpha(30),
-                ),
-              ),
           ],
         ),
       ),

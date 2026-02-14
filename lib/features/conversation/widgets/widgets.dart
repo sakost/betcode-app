@@ -1,4 +1,6 @@
 export 'agent_bar.dart';
+export 'agent_mention_overlay.dart';
+export 'command_palette.dart';
 export 'input_bar.dart';
 export 'message_bubble.dart';
 export 'permission_sheet.dart';

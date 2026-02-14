@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/common.pb.dart';
+import '../../sessions/notifiers/sessions_providers.dart';
 import '../../worktrees/notifiers/worktrees_providers.dart';
 import '../models/conversation_state.dart';
 import '../notifiers/conversation_providers.dart';
@@ -284,6 +285,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     UserQuestionMessage(:final parentToolUseId) => parentToolUseId,
   };
 
+  String _resolveSessionTitle(String? sessionId) {
+    if (sessionId == null) return 'Conversation';
+    final sessions = ref.watch(sessionsProvider).value;
+    if (sessions == null) return 'Conversation';
+    for (final s in sessions) {
+      if (s.id == sessionId && s.name.isNotEmpty) return s.name;
+    }
+    return 'Conversation';
+  }
+
   Widget _buildActiveState(ConversationActive active) {
     final selectedId = active.selectedAgentId;
     final messages = selectedId == null
@@ -297,10 +308,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         active.agentStatus == AgentStatus.AGENT_STATUS_IDLE ||
         active.agentStatus == AgentStatus.AGENT_STATUS_WAITING_FOR_USER;
 
+    final title = _resolveSessionTitle(active.sessionId);
+
     return Scaffold(
       appBar: AppBar(
         leading: _buildBackButton(),
-        title: const Text('Conversation'),
+        title: Text(title),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -390,6 +403,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 : () => ref
                       .read(conversationProvider(widget.sessionId).notifier)
                       .cancelTurn(),
+            agents: active.agents,
+            onAgentSelected: (agentId) => ref
+                .read(conversationProvider(widget.sessionId).notifier)
+                .setSelectedAgent(agentId),
           ),
         ],
       ),

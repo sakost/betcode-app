@@ -80,6 +80,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(ListSessionsRequest());
+    registerFallbackValue(RenameSessionRequest());
     registerFallbackValue((Batch _) async {});
   });
 
@@ -388,6 +389,60 @@ void main() {
       await notifier.refresh();
 
       verify(() => mockClient.listSessions(any())).called(1);
+    });
+  });
+
+  group('SessionsNotifier - renameSession', () {
+    test('calls renameSession RPC with correct arguments', () async {
+      // Initial build
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [makeSession('s-1')]),
+        ),
+      );
+      await container.read(sessionsProvider.future);
+
+      when(() => mockClient.renameSession(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(RenameSessionResponse()),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.renameSession(sessionId: 's-1', name: 'My Session');
+
+      final captured =
+          verify(() => mockClient.renameSession(captureAny())).captured.single
+              as RenameSessionRequest;
+      expect(captured.sessionId, 's-1');
+      expect(captured.name, 'My Session');
+    });
+
+    test('refreshes sessions after rename', () async {
+      // Initial build
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [makeSession('s-1')]),
+        ),
+      );
+      await container.read(sessionsProvider.future);
+
+      when(() => mockClient.renameSession(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(RenameSessionResponse()),
+      );
+
+      // After rename, refresh returns session with new name
+      final renamedSession = makeSession('s-1');
+      renamedSession.name = 'Renamed';
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [renamedSession]),
+        ),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.renameSession(sessionId: 's-1', name: 'Renamed');
+
+      final state = container.read(sessionsProvider);
+      expect(state.value!.first.name, 'Renamed');
     });
   });
 }

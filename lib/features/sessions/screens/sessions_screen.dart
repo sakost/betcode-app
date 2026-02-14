@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/sessions_providers.dart';
+import '../widgets/rename_session_dialog.dart';
 import '../widgets/session_card.dart';
 
 class SessionsScreen extends ConsumerWidget {
@@ -36,12 +37,49 @@ class SessionsScreen extends ConsumerWidget {
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: sessions.length,
-              itemBuilder: (context, index) =>
-                  SessionCard(session: sessions[index]),
+              itemBuilder: (context, index) {
+                final session = sessions[index];
+                return SessionCard(
+                  session: session,
+                  onTap: () => context.go('/sessions/${session.id}'),
+                  onRename: (currentName) =>
+                      _onRename(context, ref, session.id, currentName),
+                  onDelete: () => _onDelete(context),
+                );
+              },
             ),
           );
         },
       ),
+    );
+  }
+
+  Future<void> _onRename(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+    String currentName,
+  ) async {
+    final newName = await RenameSessionDialog.show(
+      context,
+      currentName: currentName,
+    );
+    if (newName == null) return;
+    try {
+      await ref
+          .read(sessionsProvider.notifier)
+          .renameSession(sessionId: sessionId, name: newName);
+    } on Exception catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rename failed: $e')),
+      );
+    }
+  }
+
+  void _onDelete(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Delete coming soon')),
     );
   }
 }
