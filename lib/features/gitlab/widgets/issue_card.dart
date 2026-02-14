@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/gitlab.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/status_badge.dart';
+import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [IssueInfo] in the issues list.
 ///
@@ -18,138 +20,108 @@ class IssueCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+    return TappableCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: title + state badge
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: title + state badge
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Confidential icon
-                  if (issue.confidential) ...[
-                    Icon(
-                      Icons.lock,
-                      size: 16,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  Expanded(
-                    child: Text(
-                      issue.title.isNotEmpty ? issue.title : 'Untitled',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _IssueStateBadge(state: issue.state),
-                ],
-              ),
-
-              const SizedBox(height: 6),
-
-              // IID
-              Text(
-                '#${issue.iid}',
-                style: theme.textTheme.bodySmall?.copyWith(
+              // Confidential icon
+              if (issue.confidential) ...[
+                Icon(
+                  Icons.lock,
+                  size: 16,
                   color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrains Mono',
+                ),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(
+                  issue.title.isNotEmpty ? issue.title : 'Untitled',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-
-              // Author
-              if (issue.author.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.person_outline,
-                      size: 14,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      issue.author,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Labels
-              if (issue.labels.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: issue.labels
-                      .map(
-                        (label) => Chip(
-                          label: Text(label),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
+              const SizedBox(width: 8),
+              _buildIssueStateBadge(issue.state),
             ],
           ),
-        ),
+
+          const SizedBox(height: 6),
+
+          // IID
+          Text(
+            '#${issue.iid}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontFamily: 'JetBrains Mono',
+            ),
+          ),
+
+          // Author
+          if (issue.author.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  issue.author,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // Labels
+          if (issue.labels.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: issue.labels
+                  .map(
+                    (label) => Chip(
+                      label: Text(label),
+                      materialTapTargetSize:
+                          MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      labelPadding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-/// A small colored chip indicating the issue state.
-class _IssueStateBadge extends StatelessWidget {
-  const _IssueStateBadge({required this.state});
+StatusBadge _buildIssueStateBadge(IssueState state) {
+  final (color, label) = _resolveIssueState(state);
+  return StatusBadge(color: color, label: label);
+}
 
-  final IssueState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final (color, label) = _resolve(state);
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  (Color, String) _resolve(IssueState state) {
-    return switch (state) {
-      IssueState.ISSUE_STATE_OPENED => (AppColors.online, 'Opened'),
-      IssueState.ISSUE_STATE_CLOSED => (AppColors.offline, 'Closed'),
-      _ => (AppColors.agentIdle, 'Unknown'),
-    };
-  }
+(Color, String) _resolveIssueState(IssueState state) {
+  return switch (state) {
+    IssueState.ISSUE_STATE_OPENED => (AppColors.online, 'Opened'),
+    IssueState.ISSUE_STATE_CLOSED => (AppColors.offline, 'Closed'),
+    _ => (AppColors.agentIdle, 'Unknown'),
+  };
 }

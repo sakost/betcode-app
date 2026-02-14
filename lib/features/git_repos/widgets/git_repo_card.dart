@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/git_repo.pb.dart';
 import '../../../shared/utils/time_utils.dart';
+import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [GitRepoDetail] in the repositories list.
 ///
@@ -32,100 +33,93 @@ class GitRepoCard extends StatelessWidget {
               orElse: () => repo.repoPath,
             );
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return TappableCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: name + worktree mode badge + delete button
+          Row(
             children: [
-              // Top row: name + worktree mode badge + delete button
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      displayName,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 8),
-                  if (repo.worktreeMode !=
-                      WorktreeMode.WORKTREE_MODE_UNSPECIFIED)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _badgeColor(repo.worktreeMode, colorScheme),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _modeLabel(repo.worktreeMode),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 6),
-
-              // Path row (monospace)
-              Text(
-                repo.repoPath,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-
-              const SizedBox(height: 8),
-
-              // Bottom row: worktree count + relative time
-              Row(
-                children: [
-                  Icon(
-                    Icons.account_tree,
-                    size: 14,
-                    color: colorScheme.onSurfaceVariant,
+              const SizedBox(width: 8),
+              if (repo.worktreeMode !=
+                  WorktreeMode.WORKTREE_MODE_UNSPECIFIED)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${repo.worktreeCount}',
+                  decoration: BoxDecoration(
+                    color: _badgeColor(repo.worktreeMode, colorScheme),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _modeLabel(repo.worktreeMode),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                      color: colorScheme.onPrimary,
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    _relativeTime(repo),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+                ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: onDelete,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
               ),
             ],
           ),
-        ),
+
+          const SizedBox(height: 6),
+
+          // Path row (monospace)
+          Text(
+            repo.repoPath,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          const SizedBox(height: 8),
+
+          // Bottom row: worktree count + relative time
+          Row(
+            children: [
+              Icon(
+                Icons.account_tree,
+                size: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${repo.worktreeCount}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                _relativeTime(repo),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

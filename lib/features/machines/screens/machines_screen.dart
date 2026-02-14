@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/machines_providers.dart';
 import '../widgets/machine_card.dart';
@@ -24,7 +25,11 @@ class MachinesScreen extends ConsumerWidget {
         ),
         data: (machines) {
           if (machines.isEmpty) {
-            return const _EmptyState();
+            return const EmptyState(
+              icon: Icons.dns_outlined,
+              title: 'No machines connected',
+              subtitle: 'Register a machine to see it here.',
+            );
           }
 
           return RefreshIndicator(
@@ -45,47 +50,6 @@ class MachinesScreen extends ConsumerWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.dns_outlined,
-              size: 64,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No machines connected',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Register a machine to see it here.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

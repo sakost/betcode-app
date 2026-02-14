@@ -5,6 +5,8 @@ import 'package:grpc/grpc.dart';
 
 import 'package:betcode_app/core/grpc/interceptors.dart';
 
+import '../../helpers/fake_response_future.dart';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -15,30 +17,6 @@ ClientMethod<String, String> _method([String path = '/test/M']) =>
       (s) => s.codeUnits,
       (b) => String.fromCharCodes(b),
     );
-
-class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
-  FakeResponseFuture.value(T v) : _f = Future.value(v);
-  FakeResponseFuture.error(Object e) : _f = Future.error(e);
-  final Future<T> _f;
-
-  @override
-  Future<S> then<S>(FutureOr<S> Function(T) onValue, {Function? onError}) =>
-      _f.then(onValue, onError: onError);
-  @override
-  Future<T> catchError(Function onError, {bool Function(Object)? test}) =>
-      _f.catchError(onError, test: test);
-  @override
-  Future<T> whenComplete(FutureOr<void> Function() action) =>
-      _f.whenComplete(action);
-  @override
-  Stream<T> asStream() => _f.asStream();
-  @override
-  Future<T> timeout(Duration t, {FutureOr<T> Function()? onTimeout}) =>
-      _f.timeout(t, onTimeout: onTimeout);
-  @override
-  Future<void> cancel() async {}
-  bool get isCancelled => false;
-}
 
 class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
   FakeResponseStream(this._s);

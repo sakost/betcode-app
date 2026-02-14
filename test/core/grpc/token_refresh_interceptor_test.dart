@@ -12,32 +12,11 @@ import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 
+import '../../helpers/fake_response_future.dart';
+
 class MockSecureStorageService extends Mock implements SecureStorageService {}
 
 class MockAuthServiceClient extends Mock implements AuthServiceClient {}
-
-class FakeResponseFuture<T> extends Fake implements ResponseFuture<T> {
-  FakeResponseFuture.value(T v) : _f = Future.value(v);
-  final Future<T> _f;
-
-  @override
-  Future<S> then<S>(FutureOr<S> Function(T) onValue, {Function? onError}) =>
-      _f.then(onValue, onError: onError);
-  @override
-  Future<T> catchError(Function onError, {bool Function(Object)? test}) =>
-      _f.catchError(onError, test: test);
-  @override
-  Future<T> whenComplete(FutureOr<void> Function() action) =>
-      _f.whenComplete(action);
-  @override
-  Stream<T> asStream() => _f.asStream();
-  @override
-  Future<T> timeout(Duration t, {FutureOr<T> Function()? onTimeout}) =>
-      _f.timeout(t, onTimeout: onTimeout);
-  @override
-  Future<void> cancel() async {}
-  bool get isCancelled => false;
-}
 
 class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
   FakeResponseStream(this._s);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/gitlab_providers.dart';
 import '../widgets/issue_card.dart';
@@ -49,9 +50,9 @@ class _PipelinesTab extends ConsumerWidget {
       ),
       data: (pipelines) {
         if (pipelines.isEmpty) {
-          return const _EmptyState(
+          return const EmptyState(
             icon: Icons.rocket_launch_outlined,
-            message: 'No pipelines',
+            title: 'No pipelines',
           );
         }
 
@@ -85,9 +86,9 @@ class _MergeRequestsTab extends ConsumerWidget {
       ),
       data: (mergeRequests) {
         if (mergeRequests.isEmpty) {
-          return const _EmptyState(
+          return const EmptyState(
             icon: Icons.call_merge_outlined,
-            message: 'No merge requests',
+            title: 'No merge requests',
           );
         }
 
@@ -121,9 +122,9 @@ class _IssuesTab extends ConsumerWidget {
       ),
       data: (issues) {
         if (issues.isEmpty) {
-          return const _EmptyState(
+          return const EmptyState(
             icon: Icons.bug_report_outlined,
-            message: 'No issues',
+            title: 'No issues',
           );
         }
 
@@ -140,38 +141,3 @@ class _IssuesTab extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

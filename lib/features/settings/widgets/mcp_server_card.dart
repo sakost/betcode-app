@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/config.pb.dart';
+import '../../../shared/widgets/status_badge.dart';
 
 /// A card displaying a single [McpServerInfo] in the MCP servers list.
 ///
@@ -37,7 +38,7 @@ class McpServerCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _StatusBadge(status: server.status),
+                _buildMcpServerStatusBadge(server.status),
               ],
             ),
 
@@ -98,40 +99,17 @@ class McpServerCard extends StatelessWidget {
   }
 }
 
-/// A small colored chip indicating the MCP server status.
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+StatusBadge _buildMcpServerStatusBadge(McpServerStatus status) {
+  final (color, label) = _resolveMcpServerStatus(status);
+  return StatusBadge(color: color, label: label);
+}
 
-  final McpServerStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (color, label) = _resolve(status);
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  (Color, String) _resolve(McpServerStatus status) {
-    return switch (status) {
-      McpServerStatus.MCP_SERVER_STATUS_RUNNING => (Colors.green, 'Running'),
-      McpServerStatus.MCP_SERVER_STATUS_STOPPED => (Colors.grey, 'Stopped'),
-      McpServerStatus.MCP_SERVER_STATUS_STARTING => (Colors.amber, 'Starting'),
-      McpServerStatus.MCP_SERVER_STATUS_ERROR => (Colors.red, 'Error'),
-      _ => (Colors.grey, 'Unknown'),
-    };
-  }
+(Color, String) _resolveMcpServerStatus(McpServerStatus status) {
+  return switch (status) {
+    McpServerStatus.MCP_SERVER_STATUS_RUNNING => (Colors.green, 'Running'),
+    McpServerStatus.MCP_SERVER_STATUS_STOPPED => (Colors.grey, 'Stopped'),
+    McpServerStatus.MCP_SERVER_STATUS_STARTING => (Colors.amber, 'Starting'),
+    McpServerStatus.MCP_SERVER_STATUS_ERROR => (Colors.red, 'Error'),
+    _ => (Colors.grey, 'Unknown'),
+  };
 }
