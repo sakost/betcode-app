@@ -186,17 +186,11 @@ void main() {
     testWidgets('GoRouter instance is reused when auth state changes', (
       tester,
     ) async {
-      // Create a mutable auth notifier so we can change state mid-test.
-      late AuthNotifier authNotifier;
-
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             secureStorageProvider.overrideWithValue(mockStorage),
-            authNotifierProvider.overrideWith(() {
-              authNotifier = _AuthenticatedNotifier();
-              return authNotifier;
-            }),
+            authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
             relayConfigNotifierProvider
                 .overrideWith(_ConnectedRelayNotifier.new),
           ],
@@ -312,6 +306,26 @@ void main() {
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 3);
+    });
+
+    testWidgets('tab navigation uses SlideTransition for animation', (
+      tester,
+    ) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      // Navigate from Sessions (index 1) to Machines (index 0).
+      await tester.tap(find.text('Machines'));
+      // Pump a single frame so the transition is in-flight.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SlideTransition), findsWidgets);
+
+      await tester.pumpAndSettle();
     });
   });
 }

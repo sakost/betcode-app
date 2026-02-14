@@ -17,16 +17,39 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 /// Tracks the previous tab index for directional slide animations.
 ///
 /// Updated in [_AppShellState._onDestinationSelected] before navigation.
-int _previousTabIndex = 1; // default: sessions (initial route)
+final _previousTabIndexProvider =
+    NotifierProvider<_PreviousTabIndexNotifier, int>(
+      _PreviousTabIndexNotifier.new,
+    );
+
+class _PreviousTabIndexNotifier extends Notifier<int> {
+  @override
+  int build() => 1; // default: sessions (initial route)
+}
+
+/// Route paths for the bottom navigation tabs (single source of truth).
+const _tabPaths = ['/machines', '/sessions', '/code', '/settings'];
 
 /// Builds a [CustomTransitionPage] that slides in from the correct direction
 /// based on the tab index relative to the previous tab.
+///
+/// The [previousTabIndex] value is captured at navigation time, fixing the
+/// slide direction for the lifetime of the transition.
 CustomTransitionPage<void> _buildTabPage({
   required GoRouterState state,
   required int tabIndex,
+  required int previousTabIndex,
   required Widget child,
 }) {
-  final goingLeft = tabIndex < _previousTabIndex;
+  // Same tab re-selected or initial route — skip animation.
+  if (tabIndex == previousTabIndex) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionsBuilder: (_, __, ___, child) => child,
+    );
+  }
+  final goingLeft = tabIndex < previousTabIndex;
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
@@ -92,6 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
               tabIndex: 0,
+              previousTabIndex: ref.read(_previousTabIndexProvider),
               child: const MachinesScreen(),
             ),
             routes: [
@@ -106,6 +130,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
               tabIndex: 1,
+              previousTabIndex: ref.read(_previousTabIndexProvider),
               child: const SessionsScreen(),
             ),
             routes: [
@@ -126,6 +151,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
               tabIndex: 2,
+              previousTabIndex: ref.read(_previousTabIndexProvider),
               child: const GitReposScreen(),
             ),
             routes: [
@@ -142,6 +168,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
               tabIndex: 3,
+              previousTabIndex: ref.read(_previousTabIndexProvider),
               child: const SettingsScreen(),
             ),
           ),
@@ -159,16 +186,16 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   static const _destinations = [
     NavigationDestination(
       icon: Icon(Icons.computer_outlined),
@@ -192,24 +219,18 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
-  static const _routes = [
-    '/machines',
-    '/sessions',
-    '/code',
-    '/settings',
-  ];
-
-  int _currentIndex(BuildContext context) {
+  static int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    for (var i = 0; i < _routes.length; i++) {
-      if (location.startsWith(_routes[i])) return i;
+    for (var i = 0; i < _tabPaths.length; i++) {
+      if (location.startsWith(_tabPaths[i])) return i;
     }
     return 0;
   }
 
   void _onDestinationSelected(int index) {
-    _previousTabIndex = _currentIndex(context);
-    context.go(_routes[index]);
+    ref.read(_previousTabIndexProvider.notifier).state =
+        _currentIndex(context);
+    context.go(_tabPaths[index]);
   }
 
   @override
