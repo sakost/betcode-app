@@ -1,0 +1,19 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": [
+    "**/*.g.dart",
+    "**/*.freezed.dart",
+    "**/*.pb*.dart",
+    "lib/generated/**",
+    "android/**",
+    "ios/**",
+    "macos/**",
+    "build/**",
+    ".dart_tool/**"
+  ],
+  "format": ["dart"],
+  "minLines": 6,
+  "minTokens": 50,
+  "absolute": true
+}
