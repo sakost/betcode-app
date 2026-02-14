@@ -4,38 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
-import 'package:betcode_app/core/grpc/relay_config.dart';
-import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/core/router.dart';
-import 'package:betcode_app/shared/theme/app_theme.dart';
 
 import 'package:mocktail/mocktail.dart';
 
-class MockSecureStorageService extends Mock implements SecureStorageService {}
-
-/// A test notifier that always returns authenticated state.
-class _AuthenticatedNotifier extends AuthNotifier {
-  @override
-  AuthState build() {
-    return AuthState.authenticated(
-      accessToken: 'test-token',
-      refreshToken: 'test-refresh',
-      userId: 'test-user',
-      expiresAt: DateTime.now().add(const Duration(hours: 1)),
-    );
-  }
-}
-
-/// Relay notifier that returns a non-null config for testing.
-class _ConnectedRelayNotifier extends RelayConfigNotifier {
-  @override
-  RelayConfig? build() {
-    return const RelayConfig(host: 'test-relay', port: 443);
-  }
-}
+import '../helpers/pump_helpers.dart';
 
 void main() {
   late MockSecureStorageService mockStorage;
@@ -46,20 +19,7 @@ void main() {
 
   group('Auth routing guard', () {
     testWidgets('unauthenticated user is redirected to /login', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildUnauthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       expect(find.text('Login'), findsOneWidget);
@@ -68,66 +28,21 @@ void main() {
     testWidgets('authenticated user is redirected away from /login', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-            authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
-            relayConfigNotifierProvider.overrideWith(
-              _ConnectedRelayNotifier.new,
-            ),
-          ],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       expect(find.text('Login'), findsNothing);
     });
 
     testWidgets('login screen has link to register', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildUnauthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       expect(find.text("Don't have an account? Register"), findsOneWidget);
     });
 
     testWidgets('navigating to register screen works', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildUnauthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Don't have an account? Register"));
@@ -214,26 +129,7 @@ void main() {
 
   group('Bottom navigation', () {
     testWidgets('authenticated user sees navigation bar', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-            authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
-            relayConfigNotifierProvider.overrideWith(
-              _ConnectedRelayNotifier.new,
-            ),
-          ],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);

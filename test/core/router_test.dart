@@ -5,38 +5,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
-import 'package:betcode_app/core/grpc/relay_config.dart';
-import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/router.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/shared/theme/app_theme.dart';
 
-import 'package:mocktail/mocktail.dart';
-
-class MockSecureStorageService extends Mock implements SecureStorageService {}
-
-/// Always-authenticated notifier for testing protected routes.
-class _AuthenticatedNotifier extends AuthNotifier {
-  @override
-  AuthState build() {
-    return AuthState.authenticated(
-      accessToken: 'tok',
-      refreshToken: 'ref',
-      userId: 'u1',
-      expiresAt: DateTime.now().add(const Duration(hours: 1)),
-    );
-  }
-}
-
-/// Relay notifier that returns a non-null config for testing.
-class _ConnectedRelayNotifier extends RelayConfigNotifier {
-  @override
-  RelayConfig? build() {
-    return const RelayConfig(host: 'test-relay', port: 443);
-  }
-}
+import '../helpers/pump_helpers.dart';
 
 void main() {
   late MockSecureStorageService mockStorage;
@@ -45,51 +16,11 @@ void main() {
     mockStorage = MockSecureStorageService();
   });
 
-  Widget buildAuthApp({String? initialLocation}) {
-    return ProviderScope(
-      overrides: [
-        secureStorageProvider.overrideWithValue(mockStorage),
-        authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
-        relayConfigNotifierProvider.overrideWith(_ConnectedRelayNotifier.new),
-      ],
-      child: Consumer(
-        builder: (context, ref, _) {
-          final router = ref.watch(routerProvider);
-          if (initialLocation != null) {
-            router.go(initialLocation);
-          }
-          return MaterialApp.router(
-            routerConfig: router,
-            theme: AppTheme.lightTheme,
-          );
-        },
-      ),
-    );
-  }
-
-  Widget buildUnauthApp({String? initialLocation}) {
-    return ProviderScope(
-      overrides: [secureStorageProvider.overrideWithValue(mockStorage)],
-      child: Consumer(
-        builder: (context, ref, _) {
-          final router = ref.watch(routerProvider);
-          if (initialLocation != null) {
-            router.go(initialLocation);
-          }
-          return MaterialApp.router(
-            routerConfig: router,
-            theme: AppTheme.lightTheme,
-          );
-        },
-      ),
-    );
-  }
-
   group('Router - redirect logic', () {
     testWidgets('unauthenticated user accessing /sessions -> /login', (
       tester,
     ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/sessions'));
+      await tester.pumpWidget(buildUnauthApp(initialLocation: '/sessions', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
@@ -97,7 +28,7 @@ void main() {
     testWidgets('unauthenticated user accessing /machines -> /login', (
       tester,
     ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/machines'));
+      await tester.pumpWidget(buildUnauthApp(initialLocation: '/machines', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
@@ -105,7 +36,7 @@ void main() {
     testWidgets('unauthenticated user accessing /settings -> /login', (
       tester,
     ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/settings'));
+      await tester.pumpWidget(buildUnauthApp(initialLocation: '/settings', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsOneWidget);
     });
@@ -113,7 +44,7 @@ void main() {
     testWidgets('authenticated user accessing /register -> /sessions', (
       tester,
     ) async {
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/register'));
+      await tester.pumpWidget(buildAuthApp(initialLocation: '/register', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
       expect(find.text('Register'), findsNothing);
@@ -122,7 +53,7 @@ void main() {
     testWidgets('authenticated user on /login -> /sessions', (
       tester,
     ) async {
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/login'));
+      await tester.pumpWidget(buildAuthApp(initialLocation: '/login', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
     });
@@ -132,7 +63,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(800, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/sessions'));
+      await tester.pumpWidget(buildAuthApp(initialLocation: '/sessions', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -142,7 +73,7 @@ void main() {
   group('Router - deep linking', () {
     testWidgets('conversation with sessionId parameter', (tester) async {
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/sessions/sess-42'),
+        buildAuthApp(initialLocation: '/sessions/sess-42', mockStorage: mockStorage),
       );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -151,7 +82,7 @@ void main() {
     testWidgets('/sessions/new routes to ConversationScreen with null sessionId',
         (tester) async {
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/sessions/new'),
+        buildAuthApp(initialLocation: '/sessions/new', mockStorage: mockStorage),
       );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -162,7 +93,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/machines/m-1'));
+      await tester.pumpWidget(buildAuthApp(initialLocation: '/machines/m-1', mockStorage: mockStorage));
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
@@ -172,7 +103,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/code/repos/repo-42'),
+        buildAuthApp(initialLocation: '/code/repos/repo-42', mockStorage: mockStorage),
       );
       // Use pump() instead of pumpAndSettle() because RepoDetailScreen
       // shows a CircularProgressIndicator while loading worktrees, which
@@ -187,25 +118,7 @@ void main() {
     testWidgets('GoRouter instance is reused when auth state changes', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            secureStorageProvider.overrideWithValue(mockStorage),
-            authNotifierProvider.overrideWith(_AuthenticatedNotifier.new),
-            relayConfigNotifierProvider
-                .overrideWith(_ConnectedRelayNotifier.new),
-          ],
-          child: Consumer(
-            builder: (context, ref, _) {
-              final router = ref.watch(routerProvider);
-              return MaterialApp.router(
-                routerConfig: router,
-                theme: AppTheme.lightTheme,
-              );
-            },
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       // Read the router instance before state change.
@@ -241,7 +154,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
@@ -254,7 +167,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       final container =
@@ -284,7 +197,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Machines'));
@@ -298,7 +211,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       // "Sessions" appears in both the screen title and the nav bar,
@@ -317,7 +230,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Code'));
@@ -331,7 +244,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Settings'));
@@ -347,7 +260,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       // Navigate from Sessions (index 1) to Machines (index 0) — going left.
@@ -373,7 +286,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       // Navigate from Sessions (index 1) to Code (index 2) — going right.
@@ -399,7 +312,7 @@ void main() {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
       await tester.pumpAndSettle();
 
       // Step 1: Sessions (1) → Machines (0).

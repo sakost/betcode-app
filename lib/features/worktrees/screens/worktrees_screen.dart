@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../generated/betcode/v1/worktree.pb.dart';
+import '../../../shared/widgets/async_list_scaffold.dart';
 import '../notifiers/worktrees_providers.dart';
 import '../widgets/create_worktree_dialog.dart';
 import '../widgets/worktree_card.dart';
@@ -16,39 +16,21 @@ class WorktreesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Worktrees')),
-      body: worktreesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorDisplay(
-          error: error,
-          stackTrace: stackTrace,
-          onRetry: () => ref.read(worktreesProvider.notifier).refresh(),
+      body: AsyncListScaffold<WorktreeDetail>(
+        asyncValue: worktreesAsync,
+        onRefresh: () => ref.read(worktreesProvider.notifier).refresh(),
+        emptyIcon: Icons.account_tree_outlined,
+        emptyTitle: 'No worktrees',
+        emptySubtitle: 'Create a worktree to start working on a branch.',
+        itemBuilder: (context, worktree) => WorktreeCard(
+          worktree: worktree,
+          onDelete: () => _confirmDelete(
+            context,
+            ref,
+            worktree.id,
+            worktree.name,
+          ),
         ),
-        data: (worktrees) {
-          if (worktrees.isEmpty) {
-            return const EmptyState(
-              icon: Icons.account_tree_outlined,
-              title: 'No worktrees',
-              subtitle: 'Create a worktree to start working on a branch.',
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.read(worktreesProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: worktrees.length,
-              itemBuilder: (context, index) => WorktreeCard(
-                worktree: worktrees[index],
-                onDelete: () => _confirmDelete(
-                  context,
-                  ref,
-                  worktrees[index].id,
-                  worktrees[index].name,
-                ),
-              ),
-            ),
-          );
-        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, ref),

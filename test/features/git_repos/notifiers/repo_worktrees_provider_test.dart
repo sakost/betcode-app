@@ -6,12 +6,12 @@ import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -66,11 +66,8 @@ void main() {
         ),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -89,11 +86,8 @@ void main() {
         (_) => FakeResponseFuture.value(ListWorktreesResponse()),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -112,11 +106,8 @@ void main() {
         (_) => FakeResponseFuture.value(ListWorktreesResponse()),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -130,11 +121,9 @@ void main() {
 
   group('RepoWorktreesNotifier - disconnected', () {
     test('stays in loading state when disconnected', () async {
-      container = ProviderContainer(
+      container = createTestContainer(
+        status: GrpcConnectionStatus.disconnected,
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.disconnected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -149,11 +138,9 @@ void main() {
     });
 
     test('does not call gRPC when disconnected', () async {
-      container = ProviderContainer(
+      container = createTestContainer(
+        status: GrpcConnectionStatus.disconnected,
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.disconnected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -173,11 +160,8 @@ void main() {
         ),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -203,11 +187,8 @@ void main() {
         (_) => FakeResponseFuture.value(makeWorktree('wt-new')),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -255,11 +236,8 @@ void main() {
         (_) => FakeResponseFuture.value(makeWorktree('wt-1')),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );
@@ -290,11 +268,8 @@ void main() {
         ),
       );
 
-      container = ProviderContainer(
+      container = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           worktreeServiceProvider.overrideWithValue(mockClient),
         ],
       );

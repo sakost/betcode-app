@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../generated/betcode/v1/machine.pb.dart';
+import '../../../shared/widgets/async_list_scaffold.dart';
 import '../notifiers/machines_providers.dart';
 import '../widgets/machine_card.dart';
 
@@ -16,40 +16,19 @@ class MachinesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Machines')),
-      body: machinesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorDisplay(
-          error: error,
-          stackTrace: stackTrace,
-          onRetry: () => ref.read(machinesProvider.notifier).refresh(),
+      body: AsyncListScaffold<MachineInfo>(
+        asyncValue: machinesAsync,
+        onRefresh: () => ref.read(machinesProvider.notifier).refresh(),
+        emptyIcon: Icons.dns_outlined,
+        emptyTitle: 'No machines connected',
+        emptySubtitle: 'Register a machine to see it here.',
+        itemBuilder: (context, machine) => MachineCard(
+          machine: machine,
+          isSelected: machine.machineId == selectedId,
+          onTap: () => ref
+              .read(selectedMachineIdProvider.notifier)
+              .select(machine.machineId),
         ),
-        data: (machines) {
-          if (machines.isEmpty) {
-            return const EmptyState(
-              icon: Icons.dns_outlined,
-              title: 'No machines connected',
-              subtitle: 'Register a machine to see it here.',
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.read(machinesProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: machines.length,
-              itemBuilder: (context, index) {
-                final machine = machines[index];
-                return MachineCard(
-                  machine: machine,
-                  isSelected: machine.machineId == selectedId,
-                  onTap: () => ref
-                      .read(selectedMachineIdProvider.notifier)
-                      .select(machine.machineId),
-                );
-              },
-            ),
-          );
-        },
       ),
     );
   }

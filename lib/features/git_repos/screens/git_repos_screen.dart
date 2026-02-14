@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../generated/betcode/v1/git_repo.pb.dart';
+import '../../../shared/widgets/async_list_scaffold.dart';
 import '../notifiers/git_repos_providers.dart';
 import '../widgets/git_repo_card.dart';
 import '../widgets/register_repo_dialog.dart';
@@ -17,42 +17,22 @@ class GitReposScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Repositories')),
-      body: reposAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorDisplay(
-          error: error,
-          stackTrace: stackTrace,
-          onRetry: () => ref.read(gitReposProvider.notifier).refresh(),
+      body: AsyncListScaffold<GitRepoDetail>(
+        asyncValue: reposAsync,
+        onRefresh: () => ref.read(gitReposProvider.notifier).refresh(),
+        emptyIcon: Icons.folder_outlined,
+        emptyTitle: 'No repositories',
+        emptySubtitle: 'Register a git repository to manage worktrees.',
+        itemBuilder: (context, repo) => GitRepoCard(
+          repo: repo,
+          onTap: () => context.go('/code/repos/${repo.id}'),
+          onDelete: () => _confirmUnregister(
+            context,
+            ref,
+            repo.id,
+            repo.name.isNotEmpty ? repo.name : repo.repoPath,
+          ),
         ),
-        data: (repos) {
-          if (repos.isEmpty) {
-            return const EmptyState(
-              icon: Icons.folder_outlined,
-              title: 'No repositories',
-              subtitle: 'Register a git repository to manage worktrees.',
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.read(gitReposProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: repos.length,
-              itemBuilder: (context, index) => GitRepoCard(
-                repo: repos[index],
-                onTap: () => context.go('/code/repos/${repos[index].id}'),
-                onDelete: () => _confirmUnregister(
-                  context,
-                  ref,
-                  repos[index].id,
-                  repos[index].name.isNotEmpty
-                      ? repos[index].name
-                      : repos[index].repoPath,
-                ),
-              ),
-            ),
-          );
-        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showRegisterDialog(context, ref),

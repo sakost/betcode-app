@@ -1,35 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/relay_config.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/core/router.dart';
-import 'package:betcode_app/shared/theme/app_theme.dart';
 
-class MockSecureStorageService extends Mock implements SecureStorageService {}
+import '../../../helpers/pump_helpers.dart';
 
-/// Helper that builds the app routed to /login (unauthenticated default).
+/// Helper that builds the app routed to /login (unauthenticated default)
+/// with relay defaults overridden for form tests.
 Widget _buildTestApp({required MockSecureStorageService mockStorage}) {
-  return ProviderScope(
+  return buildUnauthApp(
+    mockStorage: mockStorage,
     overrides: [
-      secureStorageProvider.overrideWithValue(mockStorage),
       relayDefaultsProvider.overrideWithValue(
         const RelayConfig(host: '', port: 443),
       ),
     ],
-    child: Consumer(
-      builder: (context, ref, _) {
-        final router = ref.watch(routerProvider);
-        return MaterialApp.router(
-          routerConfig: router,
-          theme: AppTheme.lightTheme,
-        );
-      },
-    ),
   );
 }
 

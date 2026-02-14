@@ -7,7 +7,6 @@ import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
@@ -15,6 +14,7 @@ import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart'
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -60,11 +60,8 @@ void main() {
     // Database batch is a no-op in tests.
     when(() => mockDb.batch(any())).thenAnswer((_) async {});
 
-    container = ProviderContainer(
+    container = createTestContainer(
       overrides: [
-        connectionStatusProvider.overrideWithValue(
-          const AsyncData(GrpcConnectionStatus.connected),
-        ),
         agentServiceProvider.overrideWithValue(mockClient),
         appDatabaseProvider.overrideWithValue(mockDb),
       ],
@@ -163,13 +160,11 @@ void main() {
 
   group('SessionsNotifier - connection awareness', () {
     test('throws StateError when disconnected', () async {
-      final disconnectedContainer = ProviderContainer(
+      final disconnectedContainer = createTestContainer(
+        status: GrpcConnectionStatus.disconnected,
         overrides: [
           agentServiceProvider.overrideWithValue(mockClient),
           appDatabaseProvider.overrideWithValue(mockDb),
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.disconnected),
-          ),
         ],
       );
       addTearDown(disconnectedContainer.dispose);
@@ -183,13 +178,11 @@ void main() {
     });
 
     test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = ProviderContainer(
+      final disconnectedContainer = createTestContainer(
+        status: GrpcConnectionStatus.disconnected,
         overrides: [
           agentServiceProvider.overrideWithValue(mockClient),
           appDatabaseProvider.overrideWithValue(mockDb),
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.disconnected),
-          ),
         ],
       );
       addTearDown(disconnectedContainer.dispose);
@@ -203,11 +196,8 @@ void main() {
 
   group('SessionsNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
-      final errContainer = ProviderContainer(
+      final errContainer = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           agentServiceProvider.overrideWithValue(
             _FailingAgentClient(GrpcError.unavailable('connection refused')),
           ),
@@ -228,11 +218,8 @@ void main() {
     });
 
     test('gRPC error preserves error details', () async {
-      final errContainer = ProviderContainer(
+      final errContainer = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           agentServiceProvider.overrideWithValue(
             _FailingAgentClient(GrpcError.unavailable('daemon unreachable')),
           ),
@@ -312,11 +299,8 @@ void main() {
         () => errClient.listSessions(any()),
       ).thenThrow(GrpcError.unavailable());
 
-      final errContainer = ProviderContainer(
+      final errContainer = createTestContainer(
         overrides: [
-          connectionStatusProvider.overrideWithValue(
-            const AsyncData(GrpcConnectionStatus.connected),
-          ),
           agentServiceProvider.overrideWithValue(errClient),
           appDatabaseProvider.overrideWithValue(mockDb),
         ],

@@ -12,17 +12,10 @@ typedef TokenProvider = Future<String?> Function();
 /// A function that returns the currently selected machine ID, or null.
 typedef MachineIdProvider = Future<String?> Function();
 
-/// Injects a JWT bearer token into every outgoing gRPC call's metadata.
-///
-/// The token is fetched lazily via [tokenProvider] so it always reflects
-/// the latest value (e.g. after a refresh). If the provider returns null
-/// the authorization header is omitted and the call proceeds unauthenticated.
-class AuthInterceptor extends ClientInterceptor {
-  AuthInterceptor({required this.tokenProvider});
-
-  final TokenProvider tokenProvider;
-
-  static const _authHeader = 'authorization';
+/// Base class for interceptors that inject a single header into every gRPC call.
+abstract class HeaderInterceptor extends ClientInterceptor {
+  /// Returns the [CallOptions] with the header added.
+  CallOptions _addHeader(CallOptions options);
 
   @override
   ResponseFuture<R> interceptUnary<Q, R>(
@@ -31,7 +24,7 @@ class AuthInterceptor extends ClientInterceptor {
     CallOptions options,
     ClientUnaryInvoker<Q, R> invoker,
   ) {
-    return invoker(method, request, _withAuth(options));
+    return invoker(method, request, _addHeader(options));
   }
 
   @override
@@ -41,10 +34,24 @@ class AuthInterceptor extends ClientInterceptor {
     CallOptions options,
     ClientStreamingInvoker<Q, R> invoker,
   ) {
-    return invoker(method, requests, _withAuth(options));
+    return invoker(method, requests, _addHeader(options));
   }
+}
 
-  CallOptions _withAuth(CallOptions options) {
+/// Injects a JWT bearer token into every outgoing gRPC call's metadata.
+///
+/// The token is fetched lazily via [tokenProvider] so it always reflects
+/// the latest value (e.g. after a refresh). If the provider returns null
+/// the authorization header is omitted and the call proceeds unauthenticated.
+class AuthInterceptor extends HeaderInterceptor {
+  AuthInterceptor({required this.tokenProvider});
+
+  final TokenProvider tokenProvider;
+
+  static const _authHeader = 'authorization';
+
+  @override
+  CallOptions _addHeader(CallOptions options) {
     return options.mergedWith(
       CallOptions(
         providers: [
@@ -65,7 +72,7 @@ class AuthInterceptor extends ClientInterceptor {
 /// The machine ID is fetched lazily via [machineIdProvider] so it always
 /// reflects the latest selection. If the provider returns null the header is
 /// omitted.
-class MachineIdInterceptor extends ClientInterceptor {
+class MachineIdInterceptor extends HeaderInterceptor {
   MachineIdInterceptor({required this.machineIdProvider});
 
   final MachineIdProvider machineIdProvider;
@@ -73,26 +80,7 @@ class MachineIdInterceptor extends ClientInterceptor {
   static const _machineIdHeader = 'x-machine-id';
 
   @override
-  ResponseFuture<R> interceptUnary<Q, R>(
-    ClientMethod<Q, R> method,
-    Q request,
-    CallOptions options,
-    ClientUnaryInvoker<Q, R> invoker,
-  ) {
-    return invoker(method, request, _withMachineId(options));
-  }
-
-  @override
-  ResponseStream<R> interceptStreaming<Q, R>(
-    ClientMethod<Q, R> method,
-    Stream<Q> requests,
-    CallOptions options,
-    ClientStreamingInvoker<Q, R> invoker,
-  ) {
-    return invoker(method, requests, _withMachineId(options));
-  }
-
-  CallOptions _withMachineId(CallOptions options) {
+  CallOptions _addHeader(CallOptions options) {
     return options.mergedWith(
       CallOptions(
         providers: [

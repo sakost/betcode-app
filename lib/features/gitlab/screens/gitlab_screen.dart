@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../generated/betcode/v1/gitlab.pb.dart';
+import '../../../shared/widgets/async_list_scaffold.dart';
 import '../notifiers/gitlab_providers.dart';
 import '../widgets/issue_card.dart';
 import '../widgets/merge_request_card.dart';
@@ -41,31 +41,12 @@ class _PipelinesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pipelinesAsync = ref.watch(pipelinesProvider);
 
-    return pipelinesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => ErrorDisplay(
-        error: error,
-        stackTrace: stackTrace,
-        onRetry: () => ref.read(pipelinesProvider.notifier).refresh(),
-      ),
-      data: (pipelines) {
-        if (pipelines.isEmpty) {
-          return const EmptyState(
-            icon: Icons.rocket_launch_outlined,
-            title: 'No pipelines',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => ref.read(pipelinesProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: pipelines.length,
-            itemBuilder: (context, index) =>
-                PipelineCard(pipeline: pipelines[index]),
-          ),
-        );
-      },
+    return AsyncListScaffold<PipelineInfo>(
+      asyncValue: pipelinesAsync,
+      onRefresh: () => ref.read(pipelinesProvider.notifier).refresh(),
+      emptyIcon: Icons.rocket_launch_outlined,
+      emptyTitle: 'No pipelines',
+      itemBuilder: (context, pipeline) => PipelineCard(pipeline: pipeline),
     );
   }
 }
@@ -77,31 +58,13 @@ class _MergeRequestsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mergeRequestsAsync = ref.watch(mergeRequestsProvider);
 
-    return mergeRequestsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => ErrorDisplay(
-        error: error,
-        stackTrace: stackTrace,
-        onRetry: () => ref.read(mergeRequestsProvider.notifier).refresh(),
-      ),
-      data: (mergeRequests) {
-        if (mergeRequests.isEmpty) {
-          return const EmptyState(
-            icon: Icons.call_merge_outlined,
-            title: 'No merge requests',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => ref.read(mergeRequestsProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: mergeRequests.length,
-            itemBuilder: (context, index) =>
-                MergeRequestCard(mergeRequest: mergeRequests[index]),
-          ),
-        );
-      },
+    return AsyncListScaffold<MergeRequestInfo>(
+      asyncValue: mergeRequestsAsync,
+      onRefresh: () => ref.read(mergeRequestsProvider.notifier).refresh(),
+      emptyIcon: Icons.call_merge_outlined,
+      emptyTitle: 'No merge requests',
+      itemBuilder: (context, mergeRequest) =>
+          MergeRequestCard(mergeRequest: mergeRequest),
     );
   }
 }
@@ -113,31 +76,12 @@ class _IssuesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final issuesAsync = ref.watch(issuesProvider);
 
-    return issuesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => ErrorDisplay(
-        error: error,
-        stackTrace: stackTrace,
-        onRetry: () => ref.read(issuesProvider.notifier).refresh(),
-      ),
-      data: (issues) {
-        if (issues.isEmpty) {
-          return const EmptyState(
-            icon: Icons.bug_report_outlined,
-            title: 'No issues',
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: () => ref.read(issuesProvider.notifier).refresh(),
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: issues.length,
-            itemBuilder: (context, index) => IssueCard(issue: issues[index]),
-          ),
-        );
-      },
+    return AsyncListScaffold<IssueInfo>(
+      asyncValue: issuesAsync,
+      onRefresh: () => ref.read(issuesProvider.notifier).refresh(),
+      emptyIcon: Icons.bug_report_outlined,
+      emptyTitle: 'No issues',
+      itemBuilder: (context, issue) => IssueCard(issue: issue),
     );
   }
 }
-

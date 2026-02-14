@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/grpc/connection_state.dart';
 import '../../../core/grpc/grpc_providers.dart';
 import '../../../core/grpc/service_providers.dart';
+import '../../../core/grpc/worktree_helpers.dart';
 import '../../../generated/betcode/v1/worktree.pb.dart';
 
 /// Provides the list of [WorktreeDetail] objects for a specific repo.
@@ -45,16 +46,13 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     String? setupScript,
   }) async {
     final client = ref.read(worktreeServiceProvider);
-    await client
-        .createWorktree(
-          CreateWorktreeRequest(
-            name: name,
-            repoId: repoId,
-            branch: branch,
-            setupScript: setupScript ?? '',
-          ),
-        )
-        .timeout(_rpcTimeout);
+    await createWorktreeRpc(
+      client,
+      name: name,
+      repoId: repoId,
+      branch: branch,
+      setupScript: setupScript,
+    ).timeout(_rpcTimeout);
     await refresh();
   }
 

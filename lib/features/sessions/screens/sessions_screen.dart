@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
+import '../../../generated/betcode/v1/agent.pb.dart';
+import '../../../shared/widgets/async_list_scaffold.dart';
 import '../notifiers/sessions_providers.dart';
 import '../widgets/rename_session_dialog.dart';
 import '../widgets/session_card.dart';
@@ -21,40 +21,19 @@ class SessionsScreen extends ConsumerWidget {
         onPressed: () => context.go('/sessions/new'),
         child: const Icon(Icons.add),
       ),
-      body: sessionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => ErrorDisplay(
-          error: error,
-          stackTrace: stackTrace,
-          onRetry: () => ref.read(sessionsProvider.notifier).refresh(),
+      body: AsyncListScaffold<SessionSummary>(
+        asyncValue: sessionsAsync,
+        onRefresh: () => ref.read(sessionsProvider.notifier).refresh(),
+        emptyIcon: Icons.history,
+        emptyTitle: 'No sessions yet',
+        emptySubtitle: 'Start a conversation to see your sessions here.',
+        itemBuilder: (context, session) => SessionCard(
+          session: session,
+          onTap: () => context.go('/sessions/${session.id}'),
+          onRename: (currentName) =>
+              _onRename(context, ref, session.id, currentName),
+          onDelete: () => _onDelete(context),
         ),
-        data: (sessions) {
-          if (sessions.isEmpty) {
-            return const EmptyState(
-              icon: Icons.history,
-              title: 'No sessions yet',
-              subtitle: 'Start a conversation to see your sessions here.',
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.read(sessionsProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: sessions.length,
-              itemBuilder: (context, index) {
-                final session = sessions[index];
-                return SessionCard(
-                  session: session,
-                  onTap: () => context.go('/sessions/${session.id}'),
-                  onRename: (currentName) =>
-                      _onRename(context, ref, session.id, currentName),
-                  onDelete: () => _onDelete(context),
-                );
-              },
-            ),
-          );
-        },
       ),
     );
   }
