@@ -151,13 +151,15 @@ const UserMessage$json = {
       '6': '.betcode.v1.Attachment',
       '10': 'attachments'
     },
+    {'1': 'agent_id', '3': 3, '4': 1, '5': 9, '10': 'agentId'},
   ],
 };
 
 /// Descriptor for `UserMessage`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List userMessageDescriptor = $convert.base64Decode(
     'CgtVc2VyTWVzc2FnZRIYCgdjb250ZW50GAEgASgJUgdjb250ZW50EjgKC2F0dGFjaG1lbnRzGA'
-    'IgAygLMhYuYmV0Y29kZS52MS5BdHRhY2htZW50UgthdHRhY2htZW50cw==');
+    'IgAygLMhYuYmV0Y29kZS52MS5BdHRhY2htZW50UgthdHRhY2htZW50cxIZCghhZ2VudF9pZBgD'
+    'IAEoCVIHYWdlbnRJZA==');
 
 @$core.Deprecated('Use permissionResponseDescriptor instead')
 const PermissionResponse$json = {
@@ -811,6 +813,7 @@ const SessionSummary$json = {
       '5': 9,
       '10': 'lastMessagePreview'
     },
+    {'1': 'name', '3': 13, '4': 1, '5': 9, '10': 'name'},
   ],
 };
 
@@ -824,7 +827,8 @@ final $typed_data.Uint8List sessionSummaryDescriptor = $convert.base64Decode(
     'RwdXRUb2tlbnMSJAoOdG90YWxfY29zdF91c2QYCSABKAFSDHRvdGFsQ29zdFVzZBI5CgpjcmVh'
     'dGVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcFIJY3JlYXRlZEF0EjkKCn'
     'VwZGF0ZWRfYXQYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgl1cGRhdGVkQXQS'
-    'MAoUbGFzdF9tZXNzYWdlX3ByZXZpZXcYDCABKAlSEmxhc3RNZXNzYWdlUHJldmlldw==');
+    'MAoUbGFzdF9tZXNzYWdlX3ByZXZpZXcYDCABKAlSEmxhc3RNZXNzYWdlUHJldmlldxISCgRuYW'
+    '1lGA0gASgJUgRuYW1l');
 
 @$core.Deprecated('Use resumeSessionRequestDescriptor instead')
 const ResumeSessionRequest$json = {
@@ -918,3 +922,123 @@ const InputLockResponse$json = {
 final $typed_data.Uint8List inputLockResponseDescriptor = $convert.base64Decode(
     'ChFJbnB1dExvY2tSZXNwb25zZRIYCgdncmFudGVkGAEgASgIUgdncmFudGVkEicKD3ByZXZpb3'
     'VzX2hvbGRlchgCIAEoCVIOcHJldmlvdXNIb2xkZXI=');
+
+@$core.Deprecated('Use sessionGrantEntryDescriptor instead')
+const SessionGrantEntry$json = {
+  '1': 'SessionGrantEntry',
+  '2': [
+    {'1': 'tool_name', '3': 1, '4': 1, '5': 9, '10': 'toolName'},
+    {'1': 'granted', '3': 2, '4': 1, '5': 8, '10': 'granted'},
+  ],
+};
+
+/// Descriptor for `SessionGrantEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List sessionGrantEntryDescriptor = $convert.base64Decode(
+    'ChFTZXNzaW9uR3JhbnRFbnRyeRIbCgl0b29sX25hbWUYASABKAlSCHRvb2xOYW1lEhgKB2dyYW'
+    '50ZWQYAiABKAhSB2dyYW50ZWQ=');
+
+@$core.Deprecated('Use listSessionGrantsRequestDescriptor instead')
+const ListSessionGrantsRequest$json = {
+  '1': 'ListSessionGrantsRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
+};
+
+/// Descriptor for `ListSessionGrantsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSessionGrantsRequestDescriptor =
+    $convert.base64Decode(
+        'ChhMaXN0U2Vzc2lvbkdyYW50c1JlcXVlc3QSHQoKc2Vzc2lvbl9pZBgBIAEoCVIJc2Vzc2lvbk'
+        'lk');
+
+@$core.Deprecated('Use listSessionGrantsResponseDescriptor instead')
+const ListSessionGrantsResponse$json = {
+  '1': 'ListSessionGrantsResponse',
+  '2': [
+    {
+      '1': 'grants',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.betcode.v1.SessionGrantEntry',
+      '10': 'grants'
+    },
+  ],
+};
+
+/// Descriptor for `ListSessionGrantsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listSessionGrantsResponseDescriptor =
+    $convert.base64Decode(
+        'ChlMaXN0U2Vzc2lvbkdyYW50c1Jlc3BvbnNlEjUKBmdyYW50cxgBIAMoCzIdLmJldGNvZGUudj'
+        'EuU2Vzc2lvbkdyYW50RW50cnlSBmdyYW50cw==');
+
+@$core.Deprecated('Use clearSessionGrantsRequestDescriptor instead')
+const ClearSessionGrantsRequest$json = {
+  '1': 'ClearSessionGrantsRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'tool_name', '3': 2, '4': 1, '5': 9, '10': 'toolName'},
+  ],
+};
+
+/// Descriptor for `ClearSessionGrantsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearSessionGrantsRequestDescriptor =
+    $convert.base64Decode(
+        'ChlDbGVhclNlc3Npb25HcmFudHNSZXF1ZXN0Eh0KCnNlc3Npb25faWQYASABKAlSCXNlc3Npb2'
+        '5JZBIbCgl0b29sX25hbWUYAiABKAlSCHRvb2xOYW1l');
+
+@$core.Deprecated('Use clearSessionGrantsResponseDescriptor instead')
+const ClearSessionGrantsResponse$json = {
+  '1': 'ClearSessionGrantsResponse',
+};
+
+/// Descriptor for `ClearSessionGrantsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clearSessionGrantsResponseDescriptor =
+    $convert.base64Decode('ChpDbGVhclNlc3Npb25HcmFudHNSZXNwb25zZQ==');
+
+@$core.Deprecated('Use setSessionGrantRequestDescriptor instead')
+const SetSessionGrantRequest$json = {
+  '1': 'SetSessionGrantRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'tool_name', '3': 2, '4': 1, '5': 9, '10': 'toolName'},
+    {'1': 'granted', '3': 3, '4': 1, '5': 8, '10': 'granted'},
+  ],
+};
+
+/// Descriptor for `SetSessionGrantRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setSessionGrantRequestDescriptor = $convert.base64Decode(
+    'ChZTZXRTZXNzaW9uR3JhbnRSZXF1ZXN0Eh0KCnNlc3Npb25faWQYASABKAlSCXNlc3Npb25JZB'
+    'IbCgl0b29sX25hbWUYAiABKAlSCHRvb2xOYW1lEhgKB2dyYW50ZWQYAyABKAhSB2dyYW50ZWQ=');
+
+@$core.Deprecated('Use setSessionGrantResponseDescriptor instead')
+const SetSessionGrantResponse$json = {
+  '1': 'SetSessionGrantResponse',
+};
+
+/// Descriptor for `SetSessionGrantResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setSessionGrantResponseDescriptor =
+    $convert.base64Decode('ChdTZXRTZXNzaW9uR3JhbnRSZXNwb25zZQ==');
+
+@$core.Deprecated('Use renameSessionRequestDescriptor instead')
+const RenameSessionRequest$json = {
+  '1': 'RenameSessionRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+  ],
+};
+
+/// Descriptor for `RenameSessionRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List renameSessionRequestDescriptor = $convert.base64Decode(
+    'ChRSZW5hbWVTZXNzaW9uUmVxdWVzdBIdCgpzZXNzaW9uX2lkGAEgASgJUglzZXNzaW9uSWQSEg'
+    'oEbmFtZRgCIAEoCVIEbmFtZQ==');
+
+@$core.Deprecated('Use renameSessionResponseDescriptor instead')
+const RenameSessionResponse$json = {
+  '1': 'RenameSessionResponse',
+};
+
+/// Descriptor for `RenameSessionResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List renameSessionResponseDescriptor =
+    $convert.base64Decode('ChVSZW5hbWVTZXNzaW9uUmVzcG9uc2U=');

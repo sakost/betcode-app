@@ -92,6 +92,38 @@ class AgentServiceClient extends $grpc.Client {
     return $createUnaryCall(_$exchangeKeys, request, options: options);
   }
 
+  /// List session-scoped permission grants for a session.
+  $grpc.ResponseFuture<$0.ListSessionGrantsResponse> listSessionGrants(
+    $0.ListSessionGrantsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listSessionGrants, request, options: options);
+  }
+
+  /// Clear session-scoped permission grants for a session.
+  $grpc.ResponseFuture<$0.ClearSessionGrantsResponse> clearSessionGrants(
+    $0.ClearSessionGrantsRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$clearSessionGrants, request, options: options);
+  }
+
+  /// Set or update a session-scoped permission grant.
+  $grpc.ResponseFuture<$0.SetSessionGrantResponse> setSessionGrant(
+    $0.SetSessionGrantRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$setSessionGrant, request, options: options);
+  }
+
+  /// Rename a session.
+  $grpc.ResponseFuture<$0.RenameSessionResponse> renameSession(
+    $0.RenameSessionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$renameSession, request, options: options);
+  }
+
   // method descriptors
 
   static final _$converse = $grpc.ClientMethod<$0.AgentRequest, $0.AgentEvent>(
@@ -128,6 +160,26 @@ class AgentServiceClient extends $grpc.Client {
           '/betcode.v1.AgentService/ExchangeKeys',
           ($1.KeyExchangeRequest value) => value.writeToBuffer(),
           $1.KeyExchangeResponse.fromBuffer);
+  static final _$listSessionGrants = $grpc.ClientMethod<
+          $0.ListSessionGrantsRequest, $0.ListSessionGrantsResponse>(
+      '/betcode.v1.AgentService/ListSessionGrants',
+      ($0.ListSessionGrantsRequest value) => value.writeToBuffer(),
+      $0.ListSessionGrantsResponse.fromBuffer);
+  static final _$clearSessionGrants = $grpc.ClientMethod<
+          $0.ClearSessionGrantsRequest, $0.ClearSessionGrantsResponse>(
+      '/betcode.v1.AgentService/ClearSessionGrants',
+      ($0.ClearSessionGrantsRequest value) => value.writeToBuffer(),
+      $0.ClearSessionGrantsResponse.fromBuffer);
+  static final _$setSessionGrant =
+      $grpc.ClientMethod<$0.SetSessionGrantRequest, $0.SetSessionGrantResponse>(
+          '/betcode.v1.AgentService/SetSessionGrant',
+          ($0.SetSessionGrantRequest value) => value.writeToBuffer(),
+          $0.SetSessionGrantResponse.fromBuffer);
+  static final _$renameSession =
+      $grpc.ClientMethod<$0.RenameSessionRequest, $0.RenameSessionResponse>(
+          '/betcode.v1.AgentService/RenameSession',
+          ($0.RenameSessionRequest value) => value.writeToBuffer(),
+          $0.RenameSessionResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('betcode.v1.AgentService')
@@ -191,6 +243,42 @@ abstract class AgentServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $1.KeyExchangeRequest.fromBuffer(value),
             ($1.KeyExchangeResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ListSessionGrantsRequest,
+            $0.ListSessionGrantsResponse>(
+        'ListSessionGrants',
+        listSessionGrants_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ListSessionGrantsRequest.fromBuffer(value),
+        ($0.ListSessionGrantsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.ClearSessionGrantsRequest,
+            $0.ClearSessionGrantsResponse>(
+        'ClearSessionGrants',
+        clearSessionGrants_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.ClearSessionGrantsRequest.fromBuffer(value),
+        ($0.ClearSessionGrantsResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.SetSessionGrantRequest,
+            $0.SetSessionGrantResponse>(
+        'SetSessionGrant',
+        setSessionGrant_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.SetSessionGrantRequest.fromBuffer(value),
+        ($0.SetSessionGrantResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.RenameSessionRequest, $0.RenameSessionResponse>(
+            'RenameSession',
+            renameSession_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.RenameSessionRequest.fromBuffer(value),
+            ($0.RenameSessionResponse value) => value.writeToBuffer()));
   }
 
   $async.Stream<$0.AgentEvent> converse(
@@ -247,4 +335,40 @@ abstract class AgentServiceBase extends $grpc.Service {
 
   $async.Future<$1.KeyExchangeResponse> exchangeKeys(
       $grpc.ServiceCall call, $1.KeyExchangeRequest request);
+
+  $async.Future<$0.ListSessionGrantsResponse> listSessionGrants_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListSessionGrantsRequest> $request) async {
+    return listSessionGrants($call, await $request);
+  }
+
+  $async.Future<$0.ListSessionGrantsResponse> listSessionGrants(
+      $grpc.ServiceCall call, $0.ListSessionGrantsRequest request);
+
+  $async.Future<$0.ClearSessionGrantsResponse> clearSessionGrants_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ClearSessionGrantsRequest> $request) async {
+    return clearSessionGrants($call, await $request);
+  }
+
+  $async.Future<$0.ClearSessionGrantsResponse> clearSessionGrants(
+      $grpc.ServiceCall call, $0.ClearSessionGrantsRequest request);
+
+  $async.Future<$0.SetSessionGrantResponse> setSessionGrant_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.SetSessionGrantRequest> $request) async {
+    return setSessionGrant($call, await $request);
+  }
+
+  $async.Future<$0.SetSessionGrantResponse> setSessionGrant(
+      $grpc.ServiceCall call, $0.SetSessionGrantRequest request);
+
+  $async.Future<$0.RenameSessionResponse> renameSession_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.RenameSessionRequest> $request) async {
+    return renameSession($call, await $request);
+  }
+
+  $async.Future<$0.RenameSessionResponse> renameSession(
+      $grpc.ServiceCall call, $0.RenameSessionRequest request);
 }

@@ -316,10 +316,12 @@ class UserMessage extends $pb.GeneratedMessage {
   factory UserMessage({
     $core.String? content,
     $core.Iterable<$2.Attachment>? attachments,
+    $core.String? agentId,
   }) {
     final result = create();
     if (content != null) result.content = content;
     if (attachments != null) result.attachments.addAll(attachments);
+    if (agentId != null) result.agentId = agentId;
     return result;
   }
 
@@ -339,6 +341,7 @@ class UserMessage extends $pb.GeneratedMessage {
     ..aOS(1, _omitFieldNames ? '' : 'content')
     ..pPM<$2.Attachment>(2, _omitFieldNames ? '' : 'attachments',
         subBuilder: $2.Attachment.create)
+    ..aOS(3, _omitFieldNames ? '' : 'agentId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -371,6 +374,17 @@ class UserMessage extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(2)
   $pb.PbList<$2.Attachment> get attachments => $_getList(1);
+
+  /// Optional target agent ID. When set, the message is routed to a
+  /// specific agent instance instead of the default session agent.
+  @$pb.TagNumber(3)
+  $core.String get agentId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set agentId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAgentId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAgentId() => $_clearField(3);
 }
 
 /// PermissionResponse is the user's decision on a permission request.
@@ -2272,6 +2286,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     $4.Timestamp? createdAt,
     $4.Timestamp? updatedAt,
     $core.String? lastMessagePreview,
+    $core.String? name,
   }) {
     final result = create();
     if (id != null) result.id = id;
@@ -2287,6 +2302,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     if (updatedAt != null) result.updatedAt = updatedAt;
     if (lastMessagePreview != null)
       result.lastMessagePreview = lastMessagePreview;
+    if (name != null) result.name = name;
     return result;
   }
 
@@ -2320,6 +2336,7 @@ class SessionSummary extends $pb.GeneratedMessage {
     ..aOM<$4.Timestamp>(11, _omitFieldNames ? '' : 'updatedAt',
         subBuilder: $4.Timestamp.create)
     ..aOS(12, _omitFieldNames ? '' : 'lastMessagePreview')
+    ..aOS(13, _omitFieldNames ? '' : 'name')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2452,6 +2469,15 @@ class SessionSummary extends $pb.GeneratedMessage {
   $core.bool hasLastMessagePreview() => $_has(11);
   @$pb.TagNumber(12)
   void clearLastMessagePreview() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.String get name => $_getSZ(12);
+  @$pb.TagNumber(13)
+  set name($core.String value) => $_setString(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasName() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearName() => $_clearField(13);
 }
 
 class ResumeSessionRequest extends $pb.GeneratedMessage {
@@ -2885,6 +2911,508 @@ class InputLockResponse extends $pb.GeneratedMessage {
   $core.bool hasPreviousHolder() => $_has(1);
   @$pb.TagNumber(2)
   void clearPreviousHolder() => $_clearField(2);
+}
+
+class SessionGrantEntry extends $pb.GeneratedMessage {
+  factory SessionGrantEntry({
+    $core.String? toolName,
+    $core.bool? granted,
+  }) {
+    final result = create();
+    if (toolName != null) result.toolName = toolName;
+    if (granted != null) result.granted = granted;
+    return result;
+  }
+
+  SessionGrantEntry._();
+
+  factory SessionGrantEntry.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SessionGrantEntry.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SessionGrantEntry',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'toolName')
+    ..aOB(2, _omitFieldNames ? '' : 'granted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SessionGrantEntry clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SessionGrantEntry copyWith(void Function(SessionGrantEntry) updates) =>
+      super.copyWith((message) => updates(message as SessionGrantEntry))
+          as SessionGrantEntry;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SessionGrantEntry create() => SessionGrantEntry._();
+  @$core.override
+  SessionGrantEntry createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SessionGrantEntry getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SessionGrantEntry>(create);
+  static SessionGrantEntry? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get toolName => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set toolName($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasToolName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearToolName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get granted => $_getBF(1);
+  @$pb.TagNumber(2)
+  set granted($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasGranted() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearGranted() => $_clearField(2);
+}
+
+class ListSessionGrantsRequest extends $pb.GeneratedMessage {
+  factory ListSessionGrantsRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  ListSessionGrantsRequest._();
+
+  factory ListSessionGrantsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListSessionGrantsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSessionGrantsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionGrantsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionGrantsRequest copyWith(
+          void Function(ListSessionGrantsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListSessionGrantsRequest))
+          as ListSessionGrantsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSessionGrantsRequest create() => ListSessionGrantsRequest._();
+  @$core.override
+  ListSessionGrantsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListSessionGrantsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSessionGrantsRequest>(create);
+  static ListSessionGrantsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+class ListSessionGrantsResponse extends $pb.GeneratedMessage {
+  factory ListSessionGrantsResponse({
+    $core.Iterable<SessionGrantEntry>? grants,
+  }) {
+    final result = create();
+    if (grants != null) result.grants.addAll(grants);
+    return result;
+  }
+
+  ListSessionGrantsResponse._();
+
+  factory ListSessionGrantsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListSessionGrantsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListSessionGrantsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..pPM<SessionGrantEntry>(1, _omitFieldNames ? '' : 'grants',
+        subBuilder: SessionGrantEntry.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionGrantsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListSessionGrantsResponse copyWith(
+          void Function(ListSessionGrantsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListSessionGrantsResponse))
+          as ListSessionGrantsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListSessionGrantsResponse create() => ListSessionGrantsResponse._();
+  @$core.override
+  ListSessionGrantsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListSessionGrantsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListSessionGrantsResponse>(create);
+  static ListSessionGrantsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<SessionGrantEntry> get grants => $_getList(0);
+}
+
+class ClearSessionGrantsRequest extends $pb.GeneratedMessage {
+  factory ClearSessionGrantsRequest({
+    $core.String? sessionId,
+    $core.String? toolName,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (toolName != null) result.toolName = toolName;
+    return result;
+  }
+
+  ClearSessionGrantsRequest._();
+
+  factory ClearSessionGrantsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClearSessionGrantsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClearSessionGrantsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'toolName')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearSessionGrantsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearSessionGrantsRequest copyWith(
+          void Function(ClearSessionGrantsRequest) updates) =>
+      super.copyWith((message) => updates(message as ClearSessionGrantsRequest))
+          as ClearSessionGrantsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClearSessionGrantsRequest create() => ClearSessionGrantsRequest._();
+  @$core.override
+  ClearSessionGrantsRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClearSessionGrantsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClearSessionGrantsRequest>(create);
+  static ClearSessionGrantsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  /// Optional: clear only this tool's grant. Empty = clear all.
+  @$pb.TagNumber(2)
+  $core.String get toolName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set toolName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasToolName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearToolName() => $_clearField(2);
+}
+
+class ClearSessionGrantsResponse extends $pb.GeneratedMessage {
+  factory ClearSessionGrantsResponse() => create();
+
+  ClearSessionGrantsResponse._();
+
+  factory ClearSessionGrantsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ClearSessionGrantsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ClearSessionGrantsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearSessionGrantsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ClearSessionGrantsResponse copyWith(
+          void Function(ClearSessionGrantsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ClearSessionGrantsResponse))
+          as ClearSessionGrantsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ClearSessionGrantsResponse create() => ClearSessionGrantsResponse._();
+  @$core.override
+  ClearSessionGrantsResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ClearSessionGrantsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ClearSessionGrantsResponse>(create);
+  static ClearSessionGrantsResponse? _defaultInstance;
+}
+
+class SetSessionGrantRequest extends $pb.GeneratedMessage {
+  factory SetSessionGrantRequest({
+    $core.String? sessionId,
+    $core.String? toolName,
+    $core.bool? granted,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (toolName != null) result.toolName = toolName;
+    if (granted != null) result.granted = granted;
+    return result;
+  }
+
+  SetSessionGrantRequest._();
+
+  factory SetSessionGrantRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetSessionGrantRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetSessionGrantRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'toolName')
+    ..aOB(3, _omitFieldNames ? '' : 'granted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetSessionGrantRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetSessionGrantRequest copyWith(
+          void Function(SetSessionGrantRequest) updates) =>
+      super.copyWith((message) => updates(message as SetSessionGrantRequest))
+          as SetSessionGrantRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetSessionGrantRequest create() => SetSessionGrantRequest._();
+  @$core.override
+  SetSessionGrantRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetSessionGrantRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetSessionGrantRequest>(create);
+  static SetSessionGrantRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get toolName => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set toolName($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasToolName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearToolName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get granted => $_getBF(2);
+  @$pb.TagNumber(3)
+  set granted($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasGranted() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearGranted() => $_clearField(3);
+}
+
+class SetSessionGrantResponse extends $pb.GeneratedMessage {
+  factory SetSessionGrantResponse() => create();
+
+  SetSessionGrantResponse._();
+
+  factory SetSessionGrantResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory SetSessionGrantResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SetSessionGrantResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetSessionGrantResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SetSessionGrantResponse copyWith(
+          void Function(SetSessionGrantResponse) updates) =>
+      super.copyWith((message) => updates(message as SetSessionGrantResponse))
+          as SetSessionGrantResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static SetSessionGrantResponse create() => SetSessionGrantResponse._();
+  @$core.override
+  SetSessionGrantResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static SetSessionGrantResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SetSessionGrantResponse>(create);
+  static SetSessionGrantResponse? _defaultInstance;
+}
+
+class RenameSessionRequest extends $pb.GeneratedMessage {
+  factory RenameSessionRequest({
+    $core.String? sessionId,
+    $core.String? name,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    if (name != null) result.name = name;
+    return result;
+  }
+
+  RenameSessionRequest._();
+
+  factory RenameSessionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RenameSessionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RenameSessionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenameSessionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenameSessionRequest copyWith(void Function(RenameSessionRequest) updates) =>
+      super.copyWith((message) => updates(message as RenameSessionRequest))
+          as RenameSessionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RenameSessionRequest create() => RenameSessionRequest._();
+  @$core.override
+  RenameSessionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RenameSessionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RenameSessionRequest>(create);
+  static RenameSessionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+}
+
+class RenameSessionResponse extends $pb.GeneratedMessage {
+  factory RenameSessionResponse() => create();
+
+  RenameSessionResponse._();
+
+  factory RenameSessionResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory RenameSessionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RenameSessionResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenameSessionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RenameSessionResponse copyWith(
+          void Function(RenameSessionResponse) updates) =>
+      super.copyWith((message) => updates(message as RenameSessionResponse))
+          as RenameSessionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static RenameSessionResponse create() => RenameSessionResponse._();
+  @$core.override
+  RenameSessionResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static RenameSessionResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RenameSessionResponse>(create);
+  static RenameSessionResponse? _defaultInstance;
 }
 
 const $core.bool _omitFieldNames =
