@@ -78,6 +78,9 @@ class TunnelErrorCode extends $pb.ProtobufEnum {
   static const TunnelErrorCode TUNNEL_ERROR_CODE_UNAVAILABLE =
       TunnelErrorCode._(
           5, _omitEnumNames ? '' : 'TUNNEL_ERROR_CODE_UNAVAILABLE');
+  static const TunnelErrorCode TUNNEL_ERROR_CODE_INVALID_ARGUMENT =
+      TunnelErrorCode._(
+          6, _omitEnumNames ? '' : 'TUNNEL_ERROR_CODE_INVALID_ARGUMENT');
 
   static const $core.List<TunnelErrorCode> values = <TunnelErrorCode>[
     TUNNEL_ERROR_CODE_UNSPECIFIED,
@@ -86,10 +89,11 @@ class TunnelErrorCode extends $pb.ProtobufEnum {
     TUNNEL_ERROR_CODE_NOT_FOUND,
     TUNNEL_ERROR_CODE_UNAUTHORIZED,
     TUNNEL_ERROR_CODE_UNAVAILABLE,
+    TUNNEL_ERROR_CODE_INVALID_ARGUMENT,
   ];
 
   static final $core.List<TunnelErrorCode?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 5);
+      $pb.ProtobufEnum.$_initByValueList(values, 6);
   static TunnelErrorCode? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 
