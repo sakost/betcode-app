@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
@@ -247,6 +248,38 @@ void main() {
       expect(navBar.destinations, hasLength(4));
     });
 
+    testWidgets('shell route paths match navigation destinations', (
+      tester,
+    ) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      final container =
+          ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      final router = container.read(routerProvider);
+
+      // Extract shell route tab paths from the route configuration.
+      final shellRoute = router.configuration.routes
+          .whereType<ShellRoute>()
+          .first;
+      final tabPaths = shellRoute.routes
+          .whereType<GoRoute>()
+          .map((r) => r.path)
+          .toList();
+
+      // Extract nav destination labels.
+      final navBar =
+          tester.widget<NavigationBar>(find.byType(NavigationBar));
+
+      // Same count — routes and destinations stay in sync.
+      expect(tabPaths, hasLength(navBar.destinations.length),
+          reason: 'Shell route count must match navigation destination count');
+      expect(tabPaths, ['/machines', '/sessions', '/code', '/settings']);
+    });
+
     testWidgets('tapping Machines navigates to /machines', (tester) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
@@ -308,22 +341,50 @@ void main() {
       expect(navBar.selectedIndex, 3);
     });
 
-    testWidgets('tab navigation uses SlideTransition for animation', (
-      tester,
-    ) async {
+    testWidgets('navigating left slides in from the left', (tester) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       await tester.pumpWidget(buildAuthApp());
       await tester.pumpAndSettle();
 
-      // Navigate from Sessions (index 1) to Machines (index 0).
+      // Navigate from Sessions (index 1) to Machines (index 0) — going left.
       await tester.tap(find.text('Machines'));
-      // Pump a single frame so the transition is in-flight.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.byType(SlideTransition), findsWidgets);
+      final slides = tester.widgetList<SlideTransition>(
+        find.byType(SlideTransition),
+      );
+      expect(slides, isNotEmpty);
+
+      // The incoming page should slide in from the left (negative dx).
+      final incomingSlide = slides.last;
+      expect(incomingSlide.position.value.dx, isNegative);
+
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('navigating right slides in from the right', (tester) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      // Navigate from Sessions (index 1) to Code (index 2) — going right.
+      await tester.tap(find.text('Code'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final slides = tester.widgetList<SlideTransition>(
+        find.byType(SlideTransition),
+      );
+      expect(slides, isNotEmpty);
+
+      // The incoming page should slide in from the right (positive dx).
+      final incomingSlide = slides.last;
+      expect(incomingSlide.position.value.dx, isPositive);
 
       await tester.pumpAndSettle();
     });
