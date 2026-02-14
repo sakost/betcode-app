@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/worktree.pb.dart';
+import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../worktrees/widgets/create_worktree_dialog.dart';
 import '../notifiers/git_repos_providers.dart';
@@ -206,8 +207,8 @@ class _RepoWorktreeCard extends StatelessWidget {
                   worktree.existsOnDisk ? Icons.check_circle : Icons.cancel,
                   size: 18,
                   color: worktree.existsOnDisk
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFFE53935),
+                      ? AppColors.online
+                      : AppColors.offline,
                 ),
               ],
             ),

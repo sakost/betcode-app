@@ -8,8 +8,6 @@ import '../features/machines/machines.dart';
 import '../features/sessions/sessions.dart';
 import '../features/settings/settings.dart';
 import '../features/git_repos/git_repos.dart';
-import '../features/git_repos/screens/repo_detail_screen.dart';
-import '../features/worktrees/worktrees.dart';
 import 'auth/auth.dart';
 import 'grpc/grpc_providers.dart';
 

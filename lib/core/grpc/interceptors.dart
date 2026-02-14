@@ -181,8 +181,11 @@ class TokenRefreshInterceptor extends ClientInterceptor {
     _refreshing = Completer<void>();
     try {
       await authNotifier.refreshTokens(authClientFactory());
-    } finally {
       _refreshing!.complete();
+    } on Exception catch (e) {
+      _refreshing!.completeError(e);
+      rethrow;
+    } finally {
       _refreshing = null;
     }
   }

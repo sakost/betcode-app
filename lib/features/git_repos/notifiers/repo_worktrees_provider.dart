@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/grpc/connection_state.dart';
@@ -26,10 +24,7 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   Future<List<WorktreeDetail>> build() async {
     final status = await ref.watch(connectionStatusProvider.future);
     if (status != GrpcConnectionStatus.connected) {
-      // Stay in loading state until connected; the reactive watch on
-      // connectionStatusProvider will rebuild this provider automatically
-      // when the connection resumes.
-      return Completer<List<WorktreeDetail>>().future;
+      throw StateError('Not connected to daemon');
     }
     return _fetchWorktrees();
   }

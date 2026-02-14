@@ -169,14 +169,13 @@ void main() {
         ],
       );
 
-      // Read the provider - it should stay in loading since
-      // the disconnected path returns a never-completing future.
+      // Read the provider - it should throw StateError when disconnected.
       container.read(repoWorktreesProvider('repo-1'));
       await Future<void>.delayed(Duration.zero);
 
       final state = container.read(repoWorktreesProvider('repo-1'));
-      expect(state.isLoading, isTrue);
-      expect(state.hasError, isFalse);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<StateError>());
     });
 
     test('does not call gRPC when disconnected', () async {
