@@ -305,41 +305,31 @@ void main() {
   // -----------------------------------------------------------------------
 
   group('providers', () {
-    test('syncEngineProvider creates engine', () {
-      final container = ProviderContainer(
+    ProviderContainer createSyncContainer() {
+      final c = ProviderContainer(
         overrides: [
           appDatabaseProvider.overrideWithValue(mockDb),
           connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
           syncDispatcherProvider.overrideWithValue(mockDispatcher),
         ],
       );
-      addTearDown(container.dispose);
+      addTearDown(c.dispose);
+      return c;
+    }
 
+    test('syncEngineProvider creates engine', () {
+      final container = createSyncContainer();
       expect(container.read(syncEngineProvider), isA<SyncEngine>());
     });
 
     test('syncStatusProvider is initially loading', () {
-      final container = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(mockDb),
-          connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
-          syncDispatcherProvider.overrideWithValue(mockDispatcher),
-        ],
-      );
-      addTearDown(container.dispose);
-
+      final container = createSyncContainer();
       final state = container.read(syncStatusProvider);
       expect(state, isA<AsyncLoading<SyncStatus>>());
     });
 
     test('dispose tears down engine stream', () async {
-      final container = ProviderContainer(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(mockDb),
-          connectivityMonitorProvider.overrideWithValue(fakeConnectivity),
-          syncDispatcherProvider.overrideWithValue(mockDispatcher),
-        ],
-      );
+      final container = createSyncContainer();
 
       final eng = container.read(syncEngineProvider);
       var done = false;

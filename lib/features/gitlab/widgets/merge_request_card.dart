@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/gitlab.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/icon_label_row.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/tappable_card.dart';
 
@@ -62,46 +63,20 @@ class MergeRequestCard extends StatelessWidget {
           if (mergeRequest.sourceBranch.isNotEmpty ||
               mergeRequest.targetBranch.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.call_merge,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    '${mergeRequest.sourceBranch} \u2192 ${mergeRequest.targetBranch}',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            IconLabelRow(
+              icon: Icons.call_merge,
+              label:
+                  '${mergeRequest.sourceBranch} \u2192 ${mergeRequest.targetBranch}',
+              expanded: true,
             ),
           ],
 
           // Author
           if (mergeRequest.author.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  mergeRequest.author,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            IconLabelRow(
+              icon: Icons.person_outline,
+              label: mergeRequest.author,
             ),
           ],
 

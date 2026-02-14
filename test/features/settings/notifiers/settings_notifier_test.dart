@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -160,88 +158,60 @@ void main() {
 
   group('SettingsNotifier - connection awareness', () {
     test('throws StateError when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          configServiceProvider.overrideWithValue(mockClient),
-        ],
+      final dc = await createDisconnectedContainer(
+        provider: settingsProvider,
+        overrides: [configServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(settingsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = disconnectedContainer.read(settingsProvider);
+      final state = dc.read(settingsProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
 
     test('throws StateError when connecting', () async {
-      final connectingContainer = createTestContainer(
+      final dc = await createDisconnectedContainer(
+        provider: settingsProvider,
+        overrides: [configServiceProvider.overrideWithValue(mockClient)],
         status: GrpcConnectionStatus.connecting,
-        overrides: [
-          configServiceProvider.overrideWithValue(mockClient),
-        ],
       );
-      addTearDown(connectingContainer.dispose);
-
-      connectingContainer.read(settingsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = connectingContainer.read(settingsProvider);
+      final state = dc.read(settingsProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
 
     test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          configServiceProvider.overrideWithValue(mockClient),
-        ],
+      await createDisconnectedContainer(
+        provider: settingsProvider,
+        overrides: [configServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(settingsProvider);
-      await Future<void>.delayed(Duration.zero);
-
       verifyNever(() => mockClient.getSettings(any()));
     });
   });
 
   group('SettingsNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
-      final errContainer = createTestContainer(
+      final ec = await createErrorContainer(
+        provider: settingsProvider,
         overrides: [
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('connection refused')),
           ),
         ],
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(settingsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(settingsProvider);
+      final state = ec.read(settingsProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<GrpcError>());
     });
 
     test('gRPC error preserves error details', () async {
-      final errContainer = createTestContainer(
+      final ec = await createErrorContainer(
+        provider: settingsProvider,
         overrides: [
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('daemon unreachable')),
           ),
         ],
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(settingsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(settingsProvider);
+      final state = ec.read(settingsProvider);
       expect(state.hasError, isTrue);
       expect((state.error! as GrpcError).message, 'daemon unreachable');
     });
@@ -406,53 +376,35 @@ void main() {
 
   group('McpServersNotifier - connection awareness', () {
     test('throws StateError when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          configServiceProvider.overrideWithValue(mockClient),
-        ],
+      final dc = await createDisconnectedContainer(
+        provider: mcpServersProvider,
+        overrides: [configServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(mcpServersProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = disconnectedContainer.read(mcpServersProvider);
+      final state = dc.read(mcpServersProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
 
     test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          configServiceProvider.overrideWithValue(mockClient),
-        ],
+      await createDisconnectedContainer(
+        provider: mcpServersProvider,
+        overrides: [configServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(mcpServersProvider);
-      await Future<void>.delayed(Duration.zero);
-
       verifyNever(() => mockClient.listMcpServers(any()));
     });
   });
 
   group('McpServersNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
-      final errContainer = createTestContainer(
+      final ec = await createErrorContainer(
+        provider: mcpServersProvider,
         overrides: [
           configServiceProvider.overrideWithValue(
             _FailingConfigClient(GrpcError.unavailable('connection refused')),
           ),
         ],
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(mcpServersProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(mcpServersProvider);
+      final state = ec.read(mcpServersProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<GrpcError>());
     });

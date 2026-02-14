@@ -1,7 +1,10 @@
 export 'async_list_scaffold.dart';
+export 'confirm_dialog.dart';
 export 'connection_indicator.dart';
+export 'dialog_actions.dart';
 export 'empty_state.dart';
 export 'error_display.dart';
+export 'icon_label_row.dart';
 export 'loading_scaffold.dart';
 export 'status_badge.dart';
 export 'tappable_card.dart';

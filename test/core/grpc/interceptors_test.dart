@@ -45,6 +45,50 @@ Future<Map<String, String>> _resolveMetadata(CallOptions options) async {
 }
 
 // ---------------------------------------------------------------------------
+// Intercept helpers - capture CallOptions from unary/streaming calls
+// ---------------------------------------------------------------------------
+
+/// Calls [interceptor.interceptUnary] with boilerplate args, captures and
+/// returns the [CallOptions] passed to the invoker.
+CallOptions captureUnaryOptions(
+  ClientInterceptor interceptor, {
+  String request = 'req',
+  CallOptions? options,
+  ClientMethod<String, String>? method,
+}) {
+  late CallOptions captured;
+  interceptor.interceptUnary<String, String>(
+    method ?? _method(),
+    request,
+    options ?? CallOptions(),
+    (m, r, o) {
+      captured = o;
+      return FakeResponseFuture.value('ok');
+    },
+  );
+  return captured;
+}
+
+/// Calls [interceptor.interceptStreaming] with boilerplate args, captures and
+/// returns the [CallOptions] passed to the invoker.
+CallOptions captureStreamingOptions(
+  ClientInterceptor interceptor, {
+  CallOptions? options,
+}) {
+  late CallOptions captured;
+  interceptor.interceptStreaming<String, String>(
+    _method(),
+    const Stream.empty(),
+    options ?? CallOptions(),
+    (m, r, o) {
+      captured = o;
+      return FakeResponseStream(const Stream.empty());
+    },
+  );
+  return captured;
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -52,49 +96,24 @@ void main() {
   group('AuthInterceptor - unary', () {
     test('adds Bearer token when token is available', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'my-jwt');
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
       expect(md['authorization'], 'Bearer my-jwt');
     });
 
     test('omits authorization when token is null', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
       expect(md.containsKey('authorization'), isFalse);
     });
 
     test('preserves existing metadata', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(metadata: {'x-custom': 'v'}),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
+      final md = await _resolveMetadata(
+        captureUnaryOptions(
+          interceptor,
+          options: CallOptions(metadata: {'x-custom': 'v'}),
+        ),
       );
-      final md = await _resolveMetadata(captured);
       expect(md['authorization'], 'Bearer tok');
       expect(md['x-custom'], 'v');
     });
@@ -162,36 +181,14 @@ void main() {
       final interceptor = AuthInterceptor(
         tokenProvider: () async => 'stream-tok',
       );
-      late CallOptions captured;
-      interceptor.interceptStreaming<String, String>(
-        _method(),
-        const Stream.empty(),
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseStream(const Stream.empty());
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
       expect(md['authorization'], 'Bearer stream-tok');
     });
 
     test('omits authorization when token is null', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
-      late CallOptions captured;
-      interceptor.interceptStreaming<String, String>(
-        _method(),
-        const Stream.empty(),
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseStream(const Stream.empty());
-        },
-      );
-      expect(
-        (await _resolveMetadata(captured)).containsKey('authorization'),
-        isFalse,
-      );
+      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
+      expect(md.containsKey('authorization'), isFalse);
     });
 
     test('forwards request stream unchanged', () {
@@ -227,15 +224,7 @@ void main() {
     test('passes options through unmodified', () {
       final interceptor = LoggingInterceptor();
       final opts = CallOptions(metadata: {'k': 'v'});
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(_method(), 'req', opts, (
-        m,
-        r,
-        o,
-      ) {
-        captured = o;
-        return FakeResponseFuture.value('ok');
-      });
+      final captured = captureUnaryOptions(interceptor, options: opts);
       expect(captured, same(opts));
     });
 
@@ -277,16 +266,7 @@ void main() {
     test('passes options through unmodified', () {
       final interceptor = LoggingInterceptor();
       final opts = CallOptions(metadata: {'k': 'v'});
-      late CallOptions captured;
-      interceptor.interceptStreaming<String, String>(
-        _method(),
-        const Stream.empty(),
-        opts,
-        (m, r, o) {
-          captured = o;
-          return FakeResponseStream(const Stream.empty());
-        },
-      );
+      final captured = captureStreamingOptions(interceptor, options: opts);
       expect(captured, same(opts));
     });
 
@@ -308,17 +288,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'mach-42',
       );
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
       expect(md['x-machine-id'], 'mach-42');
     });
 
@@ -326,17 +296,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => null,
       );
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
       expect(md.containsKey('x-machine-id'), isFalse);
     });
 
@@ -344,17 +304,12 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'mach-1',
       );
-      late CallOptions captured;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(metadata: {'x-custom': 'v'}),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseFuture.value('ok');
-        },
+      final md = await _resolveMetadata(
+        captureUnaryOptions(
+          interceptor,
+          options: CallOptions(metadata: {'x-custom': 'v'}),
+        ),
       );
-      final md = await _resolveMetadata(captured);
       expect(md['x-machine-id'], 'mach-1');
       expect(md['x-custom'], 'v');
     });
@@ -365,17 +320,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'stream-mach',
       );
-      late CallOptions captured;
-      interceptor.interceptStreaming<String, String>(
-        _method(),
-        const Stream.empty(),
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseStream(const Stream.empty());
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
       expect(md['x-machine-id'], 'stream-mach');
     });
 
@@ -383,17 +328,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => null,
       );
-      late CallOptions captured;
-      interceptor.interceptStreaming<String, String>(
-        _method(),
-        const Stream.empty(),
-        CallOptions(),
-        (m, r, o) {
-          captured = o;
-          return FakeResponseStream(const Stream.empty());
-        },
-      );
-      final md = await _resolveMetadata(captured);
+      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
       expect(md.containsKey('x-machine-id'), isFalse);
     });
   });

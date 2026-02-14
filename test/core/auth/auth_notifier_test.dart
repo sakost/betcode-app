@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:fixnum/fixnum.dart';
@@ -13,33 +12,11 @@ import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 
+import '../../helpers/fake_response_future.dart';
+
 class MockSecureStorageService extends Mock implements SecureStorageService {}
 
 class MockAuthServiceClient extends Mock implements AuthServiceClient {}
-
-class MockResponseFuture<T> extends Fake implements ResponseFuture<T> {
-  MockResponseFuture.value(T v) : _f = Future.value(v);
-  MockResponseFuture.error(Object e) : _f = Future.error(e);
-  final Future<T> _f;
-
-  @override
-  Future<S> then<S>(FutureOr<S> Function(T) onValue, {Function? onError}) =>
-      _f.then(onValue, onError: onError);
-  @override
-  Future<T> catchError(Function onError, {bool Function(Object)? test}) =>
-      _f.catchError(onError, test: test);
-  @override
-  Future<T> whenComplete(FutureOr<void> Function() action) =>
-      _f.whenComplete(action);
-  @override
-  Stream<T> asStream() => _f.asStream();
-  @override
-  Future<T> timeout(Duration t, {FutureOr<T> Function()? onTimeout}) =>
-      _f.timeout(t, onTimeout: onTimeout);
-  @override
-  Future<void> cancel() async {}
-  bool get isCancelled => false;
-}
 
 /// Creates a test JWT with the given claims.
 String createTestJwt({required String sub, int? exp}) {
@@ -78,6 +55,28 @@ void main() {
 
   AuthNotifier readNotifier() => container.read(authNotifierProvider.notifier);
   AuthState readState() => container.read(authNotifierProvider);
+
+  /// Stubs storage to accept token writes (used by most setTokens tests).
+  void stubStorageWrites() {
+    when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
+    when(() => mockStorage.writeRefreshToken(any())).thenAnswer((_) async {});
+  }
+
+  /// Stubs storage writes and calls setTokens with given (or default) values.
+  Future<void> authenticateNotifier({
+    String accessToken = 'token',
+    String refreshToken = 'refresh',
+    String userId = 'uid',
+    int expiresInSecs = 3600,
+  }) async {
+    stubStorageWrites();
+    await readNotifier().setTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userId: userId,
+      expiresInSecs: expiresInSecs,
+    );
+  }
 
   group('AuthNotifier', () {
     test('initial state is AuthUnauthenticated', () {
@@ -237,12 +236,7 @@ void main() {
 
     group('setTokens', () {
       test('stores tokens and transitions to AuthAuthenticated', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
+        await authenticateNotifier(
           accessToken: 'new-access',
           refreshToken: 'new-refresh',
           userId: 'user-42',
@@ -266,19 +260,8 @@ void main() {
 
     group('logout', () {
       test('clears storage and transitions to AuthUnauthenticated', () async {
-        // First authenticate
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
+        await authenticateNotifier(expiresInSecs: 300);
         when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 300,
-        );
         expect(readState(), isA<AuthAuthenticated>());
 
         await readNotifier().logout();
@@ -294,34 +277,13 @@ void main() {
       });
 
       test('returns true when authenticated', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 600,
-        );
-
+        await authenticateNotifier(expiresInSecs: 600);
         expect(readNotifier().isAuthenticated, isTrue);
       });
 
       test('returns false after logout', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
+        await authenticateNotifier(expiresInSecs: 600);
         when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 600,
-        );
         await readNotifier().logout();
 
         expect(readNotifier().isAuthenticated, isFalse);
@@ -334,34 +296,13 @@ void main() {
       });
 
       test('returns token when authenticated', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'my-jwt',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 600,
-        );
-
+        await authenticateNotifier(accessToken: 'my-jwt', expiresInSecs: 600);
         expect(readNotifier().accessToken, 'my-jwt');
       });
 
       test('returns null after logout', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
+        await authenticateNotifier(accessToken: 'my-jwt', expiresInSecs: 600);
         when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'my-jwt',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 600,
-        );
         await readNotifier().logout();
 
         expect(readNotifier().accessToken, isNull);
@@ -374,85 +315,30 @@ void main() {
       });
 
       test('returns false when token has plenty of time remaining', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 3600, // 1 hour
-        );
-
+        await authenticateNotifier(expiresInSecs: 3600); // 1 hour
         expect(readNotifier().isTokenExpiringSoon, isFalse);
       });
 
       test('returns true when less than 2 minutes remaining', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 60, // 1 minute - less than 2 min threshold
-        );
-
+        await authenticateNotifier(expiresInSecs: 60); // 1 minute
         expect(readNotifier().isTokenExpiringSoon, isTrue);
       });
 
       test('returns true when token is already expired', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 0, // expires now
-        );
-
+        await authenticateNotifier(expiresInSecs: 0);
         expect(readNotifier().isTokenExpiringSoon, isTrue);
       });
 
       test('returns true at exactly 1 minute remaining', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
         // 119 seconds is less than 2 minutes (inMinutes truncates, so 119s = 1 minute)
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 119,
-        );
-
+        await authenticateNotifier(expiresInSecs: 119);
         expect(readNotifier().isTokenExpiringSoon, isTrue);
       });
 
       test('returns false at exactly 2 minutes remaining', () async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-
         // 120 seconds = 2 minutes exactly, inMinutes truncates so 120s = 2 min
         // The check is `< 2`, so 2 is NOT expiring soon
-        await readNotifier().setTokens(
-          accessToken: 'token',
-          refreshToken: 'refresh',
-          userId: 'uid',
-          expiresInSecs: 125, // small buffer to account for test execution time
-        );
-
+        await authenticateNotifier(expiresInSecs: 125); // small buffer
         expect(readNotifier().isTokenExpiringSoon, isFalse);
       });
     });
@@ -464,24 +350,15 @@ void main() {
         mockAuthClient = MockAuthServiceClient();
       });
 
-      Future<void> authenticateNotifier() async {
-        when(() => mockStorage.writeToken(any())).thenAnswer((_) async {});
-        when(
-          () => mockStorage.writeRefreshToken(any()),
-        ).thenAnswer((_) async {});
-        await readNotifier().setTokens(
+      test('updates state with new tokens', () async {
+        await authenticateNotifier(
           accessToken: 'old-access',
           refreshToken: 'old-refresh',
           userId: 'user-1',
-          expiresInSecs: 3600,
         );
-      }
-
-      test('updates state with new tokens', () async {
-        await authenticateNotifier();
 
         when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-          (_) => MockResponseFuture.value(
+          (_) => FakeResponseFuture.value(
             RefreshTokenResponse(
               accessToken: 'new-access',
               refreshToken: 'new-refresh',
@@ -501,10 +378,14 @@ void main() {
       });
 
       test('stores new tokens to secure storage', () async {
-        await authenticateNotifier();
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
 
         when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-          (_) => MockResponseFuture.value(
+          (_) => FakeResponseFuture.value(
             RefreshTokenResponse(
               accessToken: 'new-access',
               refreshToken: 'new-refresh',
@@ -520,7 +401,11 @@ void main() {
       });
 
       test('logs out on refresh failure', () async {
-        await authenticateNotifier();
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
         when(() => mockStorage.clearAll()).thenAnswer((_) async {});
 
         when(

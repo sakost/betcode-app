@@ -17,29 +17,15 @@ void main() {
   });
 
   group('Router - redirect logic', () {
-    testWidgets('unauthenticated user accessing /sessions -> /login', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/sessions', mockStorage: mockStorage));
-      await tester.pumpAndSettle();
-      expect(find.text('Login'), findsOneWidget);
-    });
-
-    testWidgets('unauthenticated user accessing /machines -> /login', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/machines', mockStorage: mockStorage));
-      await tester.pumpAndSettle();
-      expect(find.text('Login'), findsOneWidget);
-    });
-
-    testWidgets('unauthenticated user accessing /settings -> /login', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildUnauthApp(initialLocation: '/settings', mockStorage: mockStorage));
-      await tester.pumpAndSettle();
-      expect(find.text('Login'), findsOneWidget);
-    });
+    for (final route in ['/sessions', '/machines', '/settings']) {
+      testWidgets('unauthenticated user accessing $route -> /login', (
+        tester,
+      ) async {
+        await tester.pumpWidget(buildUnauthApp(initialLocation: route, mockStorage: mockStorage));
+        await tester.pumpAndSettle();
+        expect(find.text('Login'), findsOneWidget);
+      });
+    }
 
     testWidgets('authenticated user accessing /register -> /sessions', (
       tester,
@@ -144,18 +130,16 @@ void main() {
   });
 
   group('Router - AppShell navigation', () {
-    // Use a large surface to avoid overflow from nav destinations
-    // (width) and ErrorDisplay content in screens that lack gRPC (height).
-    Future<void> setLargeSize(WidgetTester tester) async {
+    /// Sets up large surface, pumps the auth app, and settles.
+    Future<void> pumpLargeAuthApp(WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
+      await tester.pumpAndSettle();
     }
 
     testWidgets('has exactly 4 navigation destinations', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.destinations, hasLength(4));
@@ -164,11 +148,7 @@ void main() {
     testWidgets('shell route paths match navigation destinations', (
       tester,
     ) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       final container =
           ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
@@ -194,11 +174,7 @@ void main() {
     });
 
     testWidgets('tapping Machines navigates to /machines', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       await tester.tap(find.text('Machines'));
       await tester.pumpAndSettle();
@@ -208,11 +184,7 @@ void main() {
     });
 
     testWidgets('tapping Sessions navigates to /sessions', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       // "Sessions" appears in both the screen title and the nav bar,
       // so target the one inside NavigationBar.
@@ -227,11 +199,7 @@ void main() {
     });
 
     testWidgets('tapping Code navigates to /code', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       await tester.tap(find.text('Code'));
       await tester.pumpAndSettle();
@@ -241,11 +209,7 @@ void main() {
     });
 
     testWidgets('tapping Settings navigates to /settings', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
@@ -257,11 +221,7 @@ void main() {
     testWidgets('navigating left slides incoming page from the left', (
       tester,
     ) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       // Navigate from Sessions (index 1) to Machines (index 0) — going left.
       await tester.tap(find.text('Machines'));
@@ -283,11 +243,7 @@ void main() {
     testWidgets('navigating right slides incoming page from the right', (
       tester,
     ) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       // Navigate from Sessions (index 1) to Code (index 2) — going right.
       await tester.tap(find.text('Code'));
@@ -309,11 +265,7 @@ void main() {
     testWidgets('multi-step navigation: exit direction matches target', (
       tester,
     ) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp(mockStorage: mockStorage));
-      await tester.pumpAndSettle();
+      await pumpLargeAuthApp(tester);
 
       // Step 1: Sessions (1) → Machines (0).
       await tester.tap(find.text('Machines'));

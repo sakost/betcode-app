@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../generated/betcode/v1/worktree.pb.dart';
-import '../../../shared/theme/app_colors.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
-import '../../../shared/widgets/tappable_card.dart';
 import '../../worktrees/widgets/create_worktree_dialog.dart';
+import '../../worktrees/widgets/worktree_card.dart';
 import '../notifiers/git_repos_providers.dart';
 import '../notifiers/repo_worktrees_provider.dart';
 
@@ -127,7 +125,7 @@ class _WorktreesTab extends ConsumerWidget {
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: worktrees.length,
-            itemBuilder: (context, index) => _RepoWorktreeCard(
+            itemBuilder: (context, index) => WorktreeCard(
               worktree: worktrees[index],
               onStartConversation: () => context.go(
                 '/sessions/new',
@@ -174,111 +172,3 @@ class _PlaceholderTab extends StatelessWidget {
   }
 }
 
-class _RepoWorktreeCard extends StatelessWidget {
-  const _RepoWorktreeCard({
-    required this.worktree,
-    required this.onStartConversation,
-  });
-
-  final WorktreeDetail worktree;
-  final VoidCallback onStartConversation;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return TappableCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top row: name + disk status
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  worktree.name,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                worktree.existsOnDisk ? Icons.check_circle : Icons.cancel,
-                size: 18,
-                color: worktree.existsOnDisk
-                    ? AppColors.online
-                    : AppColors.offline,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 6),
-
-          // Branch row
-          Row(
-            children: [
-              Icon(
-                Icons.fork_right,
-                size: 14,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  worktree.branch,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 4),
-
-          // Path row
-          Text(
-            worktree.path,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-
-          const SizedBox(height: 8),
-
-          // Bottom row: session count + start conversation button
-          Row(
-            children: [
-              Icon(
-                Icons.terminal,
-                size: 14,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '${worktree.sessionCount}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: onStartConversation,
-                icon: const Icon(Icons.chat_outlined, size: 16),
-                label: const Text('Start Conversation'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}

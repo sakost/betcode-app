@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/gitlab.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/icon_label_row.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/tappable_card.dart';
 
@@ -67,21 +68,9 @@ class IssueCard extends StatelessWidget {
           // Author
           if (issue.author.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.person_outline,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  issue.author,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            IconLabelRow(
+              icon: Icons.person_outline,
+              label: issue.author,
             ),
           ],
 

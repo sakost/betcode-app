@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/git_repo.pbgrpc.dart';
@@ -135,71 +132,49 @@ void main() {
 
   group('GitReposNotifier - connection awareness', () {
     test('throws StateError when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          gitRepoServiceProvider.overrideWithValue(mockClient),
-        ],
+      final dc = await createDisconnectedContainer(
+        provider: gitReposProvider,
+        overrides: [gitRepoServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(gitReposProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = disconnectedContainer.read(gitReposProvider);
+      final state = dc.read(gitReposProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
 
     test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          gitRepoServiceProvider.overrideWithValue(mockClient),
-        ],
+      await createDisconnectedContainer(
+        provider: gitReposProvider,
+        overrides: [gitRepoServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(gitReposProvider);
-      await Future<void>.delayed(Duration.zero);
-
       verifyNever(() => mockClient.listRepos(any()));
     });
   });
 
   group('GitReposNotifier - error handling', () {
     test('gRPC error is captured in state', () async {
-      final errContainer = createTestContainer(
+      final ec = await createErrorContainer(
+        provider: gitReposProvider,
         overrides: [
           gitRepoServiceProvider.overrideWithValue(
             _FailingGitRepoClient(GrpcError.unavailable('connection refused')),
           ),
         ],
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(gitReposProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(gitReposProvider);
+      final state = ec.read(gitReposProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<GrpcError>());
     });
 
     test('gRPC error preserves error details', () async {
-      final errContainer = createTestContainer(
+      final ec = await createErrorContainer(
+        provider: gitReposProvider,
         overrides: [
           gitRepoServiceProvider.overrideWithValue(
             _FailingGitRepoClient(GrpcError.unavailable('daemon unreachable')),
           ),
         ],
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(gitReposProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(gitReposProvider);
+      final state = ec.read(gitReposProvider);
       expect(state.hasError, isTrue);
       expect((state.error! as GrpcError).message, 'daemon unreachable');
     });

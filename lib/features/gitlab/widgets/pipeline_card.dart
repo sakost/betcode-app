@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/gitlab.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/widgets/icon_label_row.dart';
 import '../../../shared/widgets/status_badge.dart';
 import '../../../shared/widgets/tappable_card.dart';
 
@@ -70,21 +71,9 @@ class PipelineCard extends StatelessWidget {
           // Source
           if (pipeline.source.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.source_outlined,
-                  size: 14,
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  pipeline.source,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+            IconLabelRow(
+              icon: Icons.source_outlined,
+              label: pipeline.source,
             ),
           ],
         ],

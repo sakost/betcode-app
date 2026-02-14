@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/widgets/dialog_actions.dart';
 import '../../git_repos/notifiers/git_repos_providers.dart';
 
 /// The result returned from [CreateWorktreeDialog] when the user presses
@@ -118,13 +119,11 @@ class _CreateWorktreeDialogState extends ConsumerState<CreateWorktreeDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Create')),
-      ],
+      actions: buildDialogActions(
+        context,
+        onConfirm: _submit,
+        confirmLabel: 'Create',
+      ),
     );
   }
 }

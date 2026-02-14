@@ -102,6 +102,20 @@ ProviderScope _withProviders(
   );
 }
 
+/// Shorthand to pump [RepoDetailScreen] with default repo and worktrees.
+Widget _repoDetailApp({
+  GitRepoDetail? repo,
+  AsyncValue<List<WorktreeDetail>> worktrees = const AsyncData([]),
+  String repoId = 'repo-1',
+}) {
+  return _withProviders(
+    _app(RepoDetailScreen(repoId: repoId)),
+    repos: AsyncData([repo ?? _makeRepo()]),
+    worktrees: worktrees,
+    repoId: repoId,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -109,13 +123,7 @@ ProviderScope _withProviders(
 void main() {
   group('RepoDetailScreen - tabs', () {
     testWidgets('shows 4 tabs in the AppBar', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
       expect(find.byType(TabBar), findsOneWidget);
@@ -126,30 +134,16 @@ void main() {
     });
 
     testWidgets('shows Worktrees tab content by default', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
-      // Empty worktrees state should be visible by default
       expect(find.text('No worktrees'), findsOneWidget);
     });
 
     testWidgets('Pipelines tab shows placeholder', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
-      // Tap Pipelines tab
       await t.tap(find.text('Pipelines'));
       await t.pumpAndSettle();
 
@@ -157,13 +151,7 @@ void main() {
     });
 
     testWidgets('Merge Requests tab shows placeholder', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
       await t.tap(find.text('Merge Requests'));
@@ -173,13 +161,7 @@ void main() {
     });
 
     testWidgets('Issues tab shows placeholder', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
       await t.tap(find.text('Issues'));
@@ -191,13 +173,7 @@ void main() {
 
   group('RepoDetailScreen - worktrees tab', () {
     testWidgets('shows loading indicator while fetching worktrees', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncLoading(),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp(worktrees: const AsyncLoading()));
       await t.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -205,11 +181,7 @@ void main() {
 
     testWidgets('shows repo name in app bar', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo(name: 'payments-api')]),
-          worktrees: const AsyncData([]),
-        ),
+        _repoDetailApp(repo: _makeRepo(name: 'payments-api')),
       );
       await t.pumpAndSettle();
 
@@ -217,17 +189,10 @@ void main() {
     });
 
     testWidgets('shows empty state when no worktrees exist', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
       expect(find.text('No worktrees'), findsOneWidget);
-      // The icon appears in both the tab and the empty state
       expect(find.byIcon(Icons.account_tree_outlined), findsWidgets);
     });
 
@@ -237,13 +202,7 @@ void main() {
         _makeWorktree(id: 'wt-2', name: 'feature-b', branch: 'feat/b'),
       ];
 
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: AsyncData(worktrees),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp(worktrees: AsyncData(worktrees)));
       await t.pumpAndSettle();
 
       expect(find.text('feature-a'), findsOneWidget);
@@ -254,9 +213,7 @@ void main() {
 
     testWidgets('shows error state on failure', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
+        _repoDetailApp(
           worktrees: AsyncError(
             Exception('connection refused'),
             StackTrace.empty,
@@ -272,9 +229,7 @@ void main() {
 
     testWidgets('worktree card shows branch and path', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
+        _repoDetailApp(
           worktrees: AsyncData([
             _makeWorktree(
               branch: 'main',
@@ -291,9 +246,7 @@ void main() {
 
     testWidgets('worktree card shows session count', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
+        _repoDetailApp(
           worktrees: AsyncData([_makeWorktree(sessionCount: 5)]),
         ),
       );
@@ -304,9 +257,7 @@ void main() {
 
     testWidgets('worktree card shows disk status icon', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
+        _repoDetailApp(
           worktrees: AsyncData([_makeWorktree(existsOnDisk: true)]),
         ),
       );
@@ -317,11 +268,7 @@ void main() {
 
     testWidgets('worktree card shows Start Conversation button', (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: AsyncData([_makeWorktree()]),
-        ),
+        _repoDetailApp(worktrees: AsyncData([_makeWorktree()])),
       );
       await t.pumpAndSettle();
 
@@ -330,13 +277,7 @@ void main() {
     });
 
     testWidgets('has FAB for creating worktrees', (t) async {
-      await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([_makeRepo()]),
-          worktrees: const AsyncData([]),
-        ),
-      );
+      await t.pumpWidget(_repoDetailApp());
       await t.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -346,15 +287,11 @@ void main() {
     testWidgets('falls back to path-derived name when repo name is empty',
         (t) async {
       await t.pumpWidget(
-        _withProviders(
-          _app(const RepoDetailScreen(repoId: 'repo-1')),
-          repos: AsyncData([
-            _makeRepo(
-              name: '',
-              repoPath: '/home/user/projects/awesome-tool',
-            ),
-          ]),
-          worktrees: const AsyncData([]),
+        _repoDetailApp(
+          repo: _makeRepo(
+            name: '',
+            repoPath: '/home/user/projects/awesome-tool',
+          ),
         ),
       );
       await t.pumpAndSettle();

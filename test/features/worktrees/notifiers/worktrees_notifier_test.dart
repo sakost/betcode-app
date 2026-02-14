@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
@@ -146,77 +143,50 @@ void main() {
 
   group('WorktreesNotifier - connection awareness', () {
     test('throws StateError when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+      final dc = await createDisconnectedContainer(
+        provider: worktreesProvider,
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(worktreesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = disconnectedContainer.read(worktreesProvider);
+      final state = dc.read(worktreesProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
 
     test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+      await createDisconnectedContainer(
+        provider: worktreesProvider,
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(worktreesProvider);
-      await Future<void>.delayed(Duration.zero);
-
       verifyNever(() => mockClient.listWorktrees(any()));
     });
   });
 
   group('WorktreesNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final errContainer = createTestContainer(
-        overrides: [
+    List errorOverrides(GrpcError error) => [
           worktreeServiceProvider.overrideWithValue(
-            _FailingWorktreeClient(GrpcError.unavailable('connection refused')),
+            _FailingWorktreeClient(error),
           ),
           selectedMachineIdProvider.overrideWith(
             _FakeSelectedMachineNotifier.new,
           ),
-        ],
+        ];
+
+    test('gRPC error is captured in state', () async {
+      final ec = await createErrorContainer(
+        provider: worktreesProvider,
+        overrides: errorOverrides(GrpcError.unavailable('connection refused')),
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(worktreesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(worktreesProvider);
+      final state = ec.read(worktreesProvider);
       expect(state.hasError, isTrue);
       expect(state.error, isA<GrpcError>());
     });
 
     test('gRPC error preserves error details', () async {
-      final errContainer = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(
-            _FailingWorktreeClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
-          ),
-        ],
+      final ec = await createErrorContainer(
+        provider: worktreesProvider,
+        overrides: errorOverrides(GrpcError.unavailable('daemon unreachable')),
       );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(worktreesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(worktreesProvider);
+      final state = ec.read(worktreesProvider);
       expect(state.hasError, isTrue);
       expect((state.error! as GrpcError).message, 'daemon unreachable');
     });

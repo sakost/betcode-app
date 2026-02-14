@@ -61,61 +61,72 @@ class ToolCallCard extends StatelessWidget {
     return _buildToolCard(context);
   }
 
+  /// Shared title widget for both tool and permission expansion tiles.
+  Text _buildTitle(ThemeData theme) => Text(
+        toolName,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontFamily: 'JetBrains Mono',
+        ),
+      );
+
+  /// Shared subtitle widget for both tool and permission expansion tiles.
+  Text _buildSubtitle(ThemeData theme) => Text(
+        description,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall,
+      );
+
+  /// Wraps an [ExpansionTile] in the standard padded card chrome.
+  Widget _wrapInCard(Widget tile) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: tile,
+        ),
+      );
+
   Widget _buildToolCard(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: ExpansionTile(
-          leading: isComplete
-              ? Icon(
-                  isError ? Icons.error_outline : Icons.check_circle_outline,
-                  color: isError ? colorScheme.error : Colors.green,
-                  size: 20,
-                )
-              : SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colorScheme.primary,
-                  ),
+    return _wrapInCard(
+      ExpansionTile(
+        leading: isComplete
+            ? Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: isError ? colorScheme.error : Colors.green,
+                size: 20,
+              )
+            : SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: colorScheme.primary,
                 ),
-          title: Text(
-            toolName,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontFamily: 'JetBrains Mono',
-            ),
-          ),
-          subtitle: Text(
-            description,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall,
-          ),
-          trailing: durationMs != null
-              ? Text(
-                  '${durationMs}ms',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                )
-              : null,
-          children: [
-            if (input != null)
-              _Section(label: 'Input', content: input!, theme: theme),
-            if (output != null)
-              _Section(
-                label: isError ? 'Error' : 'Output',
-                content: output!,
-                theme: theme,
-                isError: isError,
               ),
-          ],
-        ),
+        title: _buildTitle(theme),
+        subtitle: _buildSubtitle(theme),
+        trailing: durationMs != null
+            ? Text(
+                '${durationMs}ms',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              )
+            : null,
+        children: [
+          if (input != null)
+            _Section(label: 'Input', content: input!, theme: theme),
+          if (output != null)
+            _Section(
+              label: isError ? 'Error' : 'Output',
+              content: output!,
+              theme: theme,
+              isError: isError,
+            ),
+        ],
       ),
     );
   }
@@ -134,18 +145,8 @@ class ToolCallCard extends StatelessWidget {
             : colorScheme.primary,
         size: 20,
       ),
-      title: Text(
-        toolName,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontFamily: 'JetBrains Mono',
-        ),
-      ),
-      subtitle: Text(
-        description,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall,
-      ),
+      title: _buildTitle(theme),
+      subtitle: _buildSubtitle(theme),
       trailing: _decisionLabel != null
           ? Text(
               _decisionLabel!,
@@ -171,13 +172,7 @@ class ToolCallCard extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: tile,
-      ),
-    );
+    return _wrapInCard(tile);
   }
 }
 

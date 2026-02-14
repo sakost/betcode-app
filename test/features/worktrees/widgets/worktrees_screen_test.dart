@@ -120,6 +120,16 @@ ProviderScope _withRepos(Widget child, [List<GitRepoDetail>? repos]) {
   );
 }
 
+/// Wraps [WorktreesScreen] with a fake worktrees provider.
+Widget _worktreesApp(AsyncValue<List<WorktreeDetail>> value) {
+  return ProviderScope(
+    overrides: [
+      worktreesProvider.overrideWith(() => _FakeWorktreesNotifier(value)),
+    ],
+    child: _app(const WorktreesScreen()),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // WorktreesScreen tests
 // ---------------------------------------------------------------------------
@@ -127,16 +137,7 @@ ProviderScope _withRepos(Widget child, [List<GitRepoDetail>? repos]) {
 void main() {
   group('WorktreesScreen', () {
     testWidgets('shows loading indicator while fetching', (t) async {
-      await t.pumpWidget(
-        ProviderScope(
-          overrides: [
-            worktreesProvider.overrideWith(
-              () => _FakeWorktreesNotifier(const AsyncLoading()),
-            ),
-          ],
-          child: _app(const WorktreesScreen()),
-        ),
-      );
+      await t.pumpWidget(_worktreesApp(const AsyncLoading()));
       await t.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -152,16 +153,7 @@ void main() {
         _makeWorktree(id: 'wt-3', name: 'fix-bug'),
       ];
 
-      await t.pumpWidget(
-        ProviderScope(
-          overrides: [
-            worktreesProvider.overrideWith(
-              () => _FakeWorktreesNotifier(AsyncData(worktrees)),
-            ),
-          ],
-          child: _app(const WorktreesScreen()),
-        ),
-      );
+      await t.pumpWidget(_worktreesApp(AsyncData(worktrees)));
       await t.pumpAndSettle();
 
       expect(find.byType(WorktreeCard), findsNWidgets(3));
@@ -171,16 +163,7 @@ void main() {
     });
 
     testWidgets('shows empty state when no worktrees exist', (t) async {
-      await t.pumpWidget(
-        ProviderScope(
-          overrides: [
-            worktreesProvider.overrideWith(
-              () => _FakeWorktreesNotifier(const AsyncData([])),
-            ),
-          ],
-          child: _app(const WorktreesScreen()),
-        ),
-      );
+      await t.pumpWidget(_worktreesApp(const AsyncData([])));
       await t.pumpAndSettle();
 
       expect(find.text('No worktrees'), findsOneWidget);
@@ -190,15 +173,8 @@ void main() {
 
     testWidgets('shows error state on failure', (t) async {
       await t.pumpWidget(
-        ProviderScope(
-          overrides: [
-            worktreesProvider.overrideWith(
-              () => _FakeWorktreesNotifier(
-                AsyncError(Exception('connection refused'), StackTrace.empty),
-              ),
-            ),
-          ],
-          child: _app(const WorktreesScreen()),
+        _worktreesApp(
+          AsyncError(Exception('connection refused'), StackTrace.empty),
         ),
       );
       await t.pumpAndSettle();
@@ -209,16 +185,7 @@ void main() {
     });
 
     testWidgets('has a FloatingActionButton for creating worktrees', (t) async {
-      await t.pumpWidget(
-        ProviderScope(
-          overrides: [
-            worktreesProvider.overrideWith(
-              () => _FakeWorktreesNotifier(const AsyncData([])),
-            ),
-          ],
-          child: _app(const WorktreesScreen()),
-        ),
-      );
+      await t.pumpWidget(_worktreesApp(const AsyncData([])));
       await t.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -231,101 +198,58 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('WorktreeCard', () {
-    testWidgets('displays worktree name', (t) async {
+    /// Pumps a [WorktreeCard] with the given worktree and settles.
+    Future<void> pumpCard(
+      WidgetTester t,
+      WorktreeDetail worktree, {
+      VoidCallback? onDelete,
+    }) async {
       await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(name: 'feat-payments'),
-            onDelete: () {},
-          ),
-        ),
+        _app(WorktreeCard(worktree: worktree, onDelete: onDelete ?? () {})),
       );
       await t.pumpAndSettle();
+    }
 
+    testWidgets('displays worktree name', (t) async {
+      await pumpCard(t, _makeWorktree(name: 'feat-payments'));
       expect(find.text('feat-payments'), findsOneWidget);
     });
 
     testWidgets('displays branch name with git branch icon', (t) async {
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(branch: 'feat/payments'),
-            onDelete: () {},
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
+      await pumpCard(t, _makeWorktree(branch: 'feat/payments'));
       expect(find.text('feat/payments'), findsOneWidget);
     });
 
     testWidgets('displays path', (t) async {
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(path: '/home/user/worktrees/feat-pay'),
-            onDelete: () {},
-          ),
-        ),
+      await pumpCard(
+        t,
+        _makeWorktree(path: '/home/user/worktrees/feat-pay'),
       );
-      await t.pumpAndSettle();
-
       expect(find.text('/home/user/worktrees/feat-pay'), findsOneWidget);
     });
 
     testWidgets('shows green check when existsOnDisk is true', (t) async {
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(existsOnDisk: true),
-            onDelete: () {},
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
+      await pumpCard(t, _makeWorktree(existsOnDisk: true));
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
     });
 
     testWidgets('shows red X when existsOnDisk is false', (t) async {
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(existsOnDisk: false),
-            onDelete: () {},
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
+      await pumpCard(t, _makeWorktree(existsOnDisk: false));
       expect(find.byIcon(Icons.cancel), findsOneWidget);
     });
 
     testWidgets('displays session count', (t) async {
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(sessionCount: 7),
-            onDelete: () {},
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
+      await pumpCard(t, _makeWorktree(sessionCount: 7));
       expect(find.text('7'), findsOneWidget);
     });
 
     testWidgets('has a delete icon button', (t) async {
       var deleted = false;
-      await t.pumpWidget(
-        _app(
-          WorktreeCard(
-            worktree: _makeWorktree(),
-            onDelete: () => deleted = true,
-          ),
-        ),
+      await pumpCard(
+        t,
+        _makeWorktree(),
+        onDelete: () => deleted = true,
       );
-      await t.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
 
@@ -336,11 +260,7 @@ void main() {
     });
 
     testWidgets('renders card widget', (t) async {
-      await t.pumpWidget(
-        _app(WorktreeCard(worktree: _makeWorktree(), onDelete: () {})),
-      );
-      await t.pumpAndSettle();
-
+      await pumpCard(t, _makeWorktree());
       expect(find.byType(Card), findsOneWidget);
     });
   });
@@ -350,11 +270,16 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('CreateWorktreeDialog', () {
-    testWidgets('has required form fields', (t) async {
+    /// Pumps the dialog directly (not via showDialog).
+    Future<void> pumpDialog(WidgetTester t, [List<GitRepoDetail>? repos]) async {
       await t.pumpWidget(
-        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog()))),
+        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog())), repos),
       );
       await t.pumpAndSettle();
+    }
+
+    testWidgets('has required form fields', (t) async {
+      await pumpDialog(t);
 
       expect(find.text('Name'), findsOneWidget);
       expect(find.text('Repository'), findsOneWidget);
@@ -363,10 +288,7 @@ void main() {
     });
 
     testWidgets('has Cancel and Create buttons', (t) async {
-      await t.pumpWidget(
-        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog()))),
-      );
-      await t.pumpAndSettle();
+      await pumpDialog(t);
 
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Create'), findsOneWidget);

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../generated/betcode/v1/worktree.pb.dart';
 import '../../../shared/widgets/async_list_scaffold.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../notifiers/worktrees_providers.dart';
 import '../widgets/create_worktree_dialog.dart';
 import '../widgets/worktree_card.dart';
@@ -69,22 +70,10 @@ class WorktreesScreen extends ConsumerWidget {
     String name,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Worktree'),
-        content: Text('Remove worktree "$name"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove Worktree',
+      content: 'Remove worktree "$name"? This cannot be undone.',
     );
     if (confirmed != true) return;
     try {

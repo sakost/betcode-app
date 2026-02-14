@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/git_repo.pbenum.dart';
+import '../../../shared/widgets/dialog_actions.dart';
 
 /// The result returned from [RegisterRepoDialog] when the user presses
 /// Register and validation passes.
@@ -129,13 +130,11 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Register')),
-      ],
+      actions: buildDialogActions(
+        context,
+        onConfirm: _submit,
+        confirmLabel: 'Register',
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/git_repo.pb.dart';
 import '../../../shared/widgets/async_list_scaffold.dart';
+import '../../../shared/widgets/confirm_dialog.dart';
 import '../notifiers/git_repos_providers.dart';
 import '../widgets/git_repo_card.dart';
 import '../widgets/register_repo_dialog.dart';
@@ -72,23 +73,11 @@ class GitReposScreen extends ConsumerWidget {
     String name,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unregister Repository'),
-        content:
-            Text('Unregister "$name"? This will not delete the repository.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Unregister'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Unregister Repository',
+      content: 'Unregister "$name"? This will not delete the repository.',
+      confirmLabel: 'Unregister',
     );
     if (confirmed != true) return;
     try {
