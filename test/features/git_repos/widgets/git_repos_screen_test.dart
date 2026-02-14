@@ -221,6 +221,26 @@ void main() {
 
       expect(find.byType(Card), findsOneWidget);
     });
+
+    testWidgets('invokes onTap when card body is tapped', (t) async {
+      var tapped = false;
+      await t.pumpWidget(
+        _app(
+          GitRepoCard(
+            repo: _makeRepo(name: 'tap-target'),
+            onTap: () => tapped = true,
+            onDelete: () {},
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      // Tap on the repo name text which is inside the InkWell
+      await t.tap(find.text('tap-target'));
+      await t.pumpAndSettle();
+
+      expect(tapped, isTrue);
+    });
   });
 
   // ---------------------------------------------------------------------------

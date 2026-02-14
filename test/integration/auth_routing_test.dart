@@ -237,10 +237,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);
-      expect(find.text('Chat'), findsOneWidget);
-      expect(find.text('Sessions'), findsOneWidget);
-      expect(find.text('Machines'), findsOneWidget);
-      expect(find.text('Settings'), findsOneWidget);
+      // "Sessions" appears in both the screen title and the nav bar label,
+      // so we verify it exists at least once in the NavigationBar.
+      final navBarFinder = find.byType(NavigationBar);
+      expect(find.descendant(of: navBarFinder, matching: find.text('Machines')), findsOneWidget);
+      expect(find.descendant(of: navBarFinder, matching: find.text('Sessions')), findsOneWidget);
+      expect(find.descendant(of: navBarFinder, matching: find.text('Code')), findsOneWidget);
+      expect(find.descendant(of: navBarFinder, matching: find.text('Settings')), findsOneWidget);
     });
   });
 }

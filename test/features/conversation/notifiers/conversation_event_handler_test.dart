@@ -8,6 +8,8 @@ import 'package:betcode_app/features/conversation/models/conversation_state.dart
 import 'package:betcode_app/features/conversation/notifiers/conversation_event_handler.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/common.pbenum.dart';
+import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart'
+    as wkt;
 
 /// A minimal AsyncNotifier that mixes in ConversationEventHandler for testing.
 class _TestNotifier extends AsyncNotifier<ConversationState>
@@ -309,6 +311,402 @@ void main() {
       final active = notifier.state.value as ConversationActive;
       expect(active.messages, hasLength(1));
       expect(active.lastSequence, 6);
+    });
+  });
+
+  group('handleEvent - agent tracking', () {
+    test('Task tool call registers an agent', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Launch agent: researcher',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents, hasLength(1));
+      expect(active.agents['agent-1'], isNotNull);
+      expect(active.agents['agent-1']!.name, 'researcher');
+      expect(
+        active.agents['agent-1']!.status,
+        AgentStatus.AGENT_STATUS_EXECUTING_TOOL,
+      );
+    });
+
+    test('Task tool result marks agent as complete', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Launch agent: researcher',
+          ),
+        ),
+      );
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          toolCallResult: pb.ToolCallResult(
+            toolId: 'agent-1',
+            output: 'done',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.isComplete, true);
+      expect(
+        active.agents['agent-1']!.status,
+        AgentStatus.AGENT_STATUS_IDLE,
+      );
+    });
+
+    test('status change with parentToolUseId updates agent status', () {
+      seedActive();
+
+      // Register an agent first
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Launch agent: builder',
+          ),
+        ),
+      );
+
+      // Status change for the agent
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          parentToolUseId: 'agent-1',
+          statusChange: pb.StatusChange(
+            status: AgentStatus.AGENT_STATUS_THINKING,
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(
+        active.agents['agent-1']!.status,
+        AgentStatus.AGENT_STATUS_THINKING,
+      );
+    });
+
+    test('events with parentToolUseId increment agent message count', () {
+      seedActive();
+
+      // Register an agent
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Launch agent: worker',
+          ),
+        ),
+      );
+
+      // Send events from the agent
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          parentToolUseId: 'agent-1',
+          textDelta: pb.TextDelta(text: 'hello'),
+        ),
+      );
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(3),
+          parentToolUseId: 'agent-1',
+          textDelta: pb.TextDelta(text: ' world'),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.messageCount, 2);
+      expect(active.agents['agent-1']!.lastActivity, isNotNull);
+    });
+
+    test('agent name falls back to "Agent N" when no match in description', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Some generic task',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.name, 'Agent 1');
+    });
+
+    test('agent name extracted from input JSON name field', () {
+      seedActive();
+
+      final input = wkt.Struct()
+        ..fields['name'] = wkt.Value(stringValue: 'json-worker')
+        ..fields['prompt'] = wkt.Value(stringValue: 'do stuff');
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Some generic task',
+            input: input,
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.name, 'json-worker');
+    });
+
+    test('agent name extracted from input JSON description field', () {
+      seedActive();
+
+      final input = wkt.Struct()
+        ..fields['description'] = wkt.Value(stringValue: 'code reviewer');
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Some generic task',
+            input: input,
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.name, 'code reviewer');
+    });
+
+    test('agent name prefers description regex over input JSON', () {
+      seedActive();
+
+      final input = wkt.Struct()
+        ..fields['name'] = wkt.Value(stringValue: 'json-name');
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 'agent-1',
+            toolName: 'Task',
+            description: 'Launch agent: regex-name',
+            input: input,
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents['agent-1']!.name, 'regex-name');
+    });
+
+    test('non-Task tool call does not register an agent', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 't-1',
+            toolName: 'Read',
+            description: 'Read a file',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents, isEmpty);
+    });
+
+    test('tool named TaskManager does not register an agent', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          toolCallStart: pb.ToolCallStart(
+            toolId: 't-1',
+            toolName: 'TaskManager',
+            description: 'Manage tasks',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      expect(active.agents, isEmpty);
+    });
+  });
+
+  group('handleEvent - parentToolUseId propagation', () {
+    test('textDelta carries parentToolUseId on agent messages', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          textDelta: pb.TextDelta(text: 'hello'),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as AgentChatMessage;
+      expect(msg.parentToolUseId, 'agent-1');
+    });
+
+    test('textDelta without parentToolUseId has null parentToolUseId', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          textDelta: pb.TextDelta(text: 'hello'),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as AgentChatMessage;
+      expect(msg.parentToolUseId, isNull);
+    });
+
+    test('toolCallStart carries parentToolUseId', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          toolCallStart: pb.ToolCallStart(
+            toolId: 't-1',
+            toolName: 'Read',
+            description: 'Read file',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as ToolCallMessage;
+      expect(msg.parentToolUseId, 'agent-1');
+    });
+
+    test('toolCallResult preserves parentToolUseId from start', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          toolCallStart: pb.ToolCallStart(
+            toolId: 't-1',
+            toolName: 'Read',
+            description: 'Read file',
+          ),
+        ),
+      );
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          toolCallResult: pb.ToolCallResult(
+            toolId: 't-1',
+            output: 'contents',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as ToolCallMessage;
+      expect(msg.parentToolUseId, 'agent-1');
+      expect(msg.isComplete, true);
+    });
+
+    test('permissionRequest carries parentToolUseId', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          permissionRequest: pb.PermissionRequest(
+            requestId: 'perm-1',
+            toolName: 'Bash',
+            description: 'Run ls',
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as PermissionRequestMessage;
+      expect(msg.parentToolUseId, 'agent-1');
+    });
+
+    test('userQuestion carries parentToolUseId', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          userQuestion: pb.UserQuestion(
+            questionId: 'q-1',
+            question: 'Pick one',
+            multiSelect: false,
+          ),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as UserQuestionMessage;
+      expect(msg.parentToolUseId, 'agent-1');
+    });
+
+    test('turnComplete preserves parentToolUseId on agent messages', () {
+      seedActive();
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          parentToolUseId: 'agent-1',
+          textDelta: pb.TextDelta(text: 'partial'),
+        ),
+      );
+
+      notifier.handleEvent(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          turnComplete: pb.TurnComplete(stopReason: 'end_turn'),
+        ),
+      );
+
+      final active = notifier.state.value as ConversationActive;
+      final msg = active.messages.first as AgentChatMessage;
+      expect(msg.isComplete, true);
+      expect(msg.parentToolUseId, 'agent-1');
     });
   });
 

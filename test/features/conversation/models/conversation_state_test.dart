@@ -124,6 +124,46 @@ void main() {
       expect(perm.decision, isNull);
     });
 
+    test('agent message stores parentToolUseId', () {
+      final msg = ChatMessage.agent(
+        content: 'hello',
+        timestamp: DateTime(2026),
+        parentToolUseId: 'agent-1',
+      );
+      expect((msg as AgentChatMessage).parentToolUseId, 'agent-1');
+    });
+
+    test('toolCall stores parentToolUseId', () {
+      final msg = ChatMessage.toolCall(
+        toolId: 'tool-1',
+        toolName: 'Read',
+        description: 'Read file',
+        parentToolUseId: 'agent-1',
+      );
+      expect((msg as ToolCallMessage).parentToolUseId, 'agent-1');
+    });
+
+    test('permissionRequest stores parentToolUseId', () {
+      final msg = ChatMessage.permissionRequest(
+        requestId: 'perm-1',
+        toolName: 'Bash',
+        description: 'Run cmd',
+        parentToolUseId: 'agent-1',
+      );
+      expect((msg as PermissionRequestMessage).parentToolUseId, 'agent-1');
+    });
+
+    test('userQuestion stores parentToolUseId', () {
+      final msg = ChatMessage.userQuestion(
+        questionId: 'q-1',
+        question: 'Pick one',
+        options: [],
+        multiSelect: false,
+        parentToolUseId: 'agent-1',
+      );
+      expect((msg as UserQuestionMessage).parentToolUseId, 'agent-1');
+    });
+
     test('userQuestion creates UserQuestionMessage', () {
       final msg = ChatMessage.userQuestion(
         questionId: 'q-1',

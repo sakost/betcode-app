@@ -125,12 +125,12 @@ return error(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function()?  connecting,TResult Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage)?  active,TResult Function( String message)?  error,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  initial,TResult Function()?  connecting,TResult Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage,  Map<String, AgentInfo> agents,  String? selectedAgentId)?  active,TResult Function( String message)?  error,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case ConversationInitial() when initial != null:
 return initial();case ConversationConnecting() when connecting != null:
 return connecting();case ConversationActive() when active != null:
-return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage);case ConversationError() when error != null:
+return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage,_that.agents,_that.selectedAgentId);case ConversationError() when error != null:
 return error(_that.message);case _:
   return orElse();
 
@@ -149,12 +149,12 @@ return error(_that.message);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function()  connecting,required TResult Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage)  active,required TResult Function( String message)  error,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  initial,required TResult Function()  connecting,required TResult Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage,  Map<String, AgentInfo> agents,  String? selectedAgentId)  active,required TResult Function( String message)  error,}) {final _that = this;
 switch (_that) {
 case ConversationInitial():
 return initial();case ConversationConnecting():
 return connecting();case ConversationActive():
-return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage);case ConversationError():
+return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage,_that.agents,_that.selectedAgentId);case ConversationError():
 return error(_that.message);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -169,12 +169,12 @@ return error(_that.message);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function()?  connecting,TResult? Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage)?  active,TResult? Function( String message)?  error,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  initial,TResult? Function()?  connecting,TResult? Function( String sessionId,  List<ChatMessage> messages,  AgentStatus agentStatus,  int lastSequence,  List<TodoItem> todos,  bool planModeActive,  String? planContent,  UsageInfo? usage,  String? errorMessage,  Map<String, AgentInfo> agents,  String? selectedAgentId)?  active,TResult? Function( String message)?  error,}) {final _that = this;
 switch (_that) {
 case ConversationInitial() when initial != null:
 return initial();case ConversationConnecting() when connecting != null:
 return connecting();case ConversationActive() when active != null:
-return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage);case ConversationError() when error != null:
+return active(_that.sessionId,_that.messages,_that.agentStatus,_that.lastSequence,_that.todos,_that.planModeActive,_that.planContent,_that.usage,_that.errorMessage,_that.agents,_that.selectedAgentId);case ConversationError() when error != null:
 return error(_that.message);case _:
   return null;
 
@@ -251,7 +251,7 @@ String toString() {
 
 
 class ConversationActive implements ConversationState {
-  const ConversationActive({required this.sessionId, required final  List<ChatMessage> messages, required this.agentStatus, required this.lastSequence, final  List<TodoItem> todos = const [], this.planModeActive = false, this.planContent, this.usage, this.errorMessage}): _messages = messages,_todos = todos;
+  const ConversationActive({required this.sessionId, required final  List<ChatMessage> messages, required this.agentStatus, required this.lastSequence, final  List<TodoItem> todos = const [], this.planModeActive = false, this.planContent, this.usage, this.errorMessage, final  Map<String, AgentInfo> agents = const {}, this.selectedAgentId}): _messages = messages,_todos = todos,_agents = agents;
   
 
  final  String sessionId;
@@ -275,6 +275,14 @@ class ConversationActive implements ConversationState {
  final  String? planContent;
  final  UsageInfo? usage;
  final  String? errorMessage;
+ final  Map<String, AgentInfo> _agents;
+@JsonKey() Map<String, AgentInfo> get agents {
+  if (_agents is EqualUnmodifiableMapView) return _agents;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_agents);
+}
+
+ final  String? selectedAgentId;
 
 /// Create a copy of ConversationState
 /// with the given fields replaced by the non-null parameter values.
@@ -286,16 +294,16 @@ $ConversationActiveCopyWith<ConversationActive> get copyWith => _$ConversationAc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConversationActive&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.agentStatus, agentStatus) || other.agentStatus == agentStatus)&&(identical(other.lastSequence, lastSequence) || other.lastSequence == lastSequence)&&const DeepCollectionEquality().equals(other._todos, _todos)&&(identical(other.planModeActive, planModeActive) || other.planModeActive == planModeActive)&&(identical(other.planContent, planContent) || other.planContent == planContent)&&(identical(other.usage, usage) || other.usage == usage)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConversationActive&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.agentStatus, agentStatus) || other.agentStatus == agentStatus)&&(identical(other.lastSequence, lastSequence) || other.lastSequence == lastSequence)&&const DeepCollectionEquality().equals(other._todos, _todos)&&(identical(other.planModeActive, planModeActive) || other.planModeActive == planModeActive)&&(identical(other.planContent, planContent) || other.planContent == planContent)&&(identical(other.usage, usage) || other.usage == usage)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&const DeepCollectionEquality().equals(other._agents, _agents)&&(identical(other.selectedAgentId, selectedAgentId) || other.selectedAgentId == selectedAgentId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_messages),agentStatus,lastSequence,const DeepCollectionEquality().hash(_todos),planModeActive,planContent,usage,errorMessage);
+int get hashCode => Object.hash(runtimeType,sessionId,const DeepCollectionEquality().hash(_messages),agentStatus,lastSequence,const DeepCollectionEquality().hash(_todos),planModeActive,planContent,usage,errorMessage,const DeepCollectionEquality().hash(_agents),selectedAgentId);
 
 @override
 String toString() {
-  return 'ConversationState.active(sessionId: $sessionId, messages: $messages, agentStatus: $agentStatus, lastSequence: $lastSequence, todos: $todos, planModeActive: $planModeActive, planContent: $planContent, usage: $usage, errorMessage: $errorMessage)';
+  return 'ConversationState.active(sessionId: $sessionId, messages: $messages, agentStatus: $agentStatus, lastSequence: $lastSequence, todos: $todos, planModeActive: $planModeActive, planContent: $planContent, usage: $usage, errorMessage: $errorMessage, agents: $agents, selectedAgentId: $selectedAgentId)';
 }
 
 
@@ -306,7 +314,7 @@ abstract mixin class $ConversationActiveCopyWith<$Res> implements $ConversationS
   factory $ConversationActiveCopyWith(ConversationActive value, $Res Function(ConversationActive) _then) = _$ConversationActiveCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, List<ChatMessage> messages, AgentStatus agentStatus, int lastSequence, List<TodoItem> todos, bool planModeActive, String? planContent, UsageInfo? usage, String? errorMessage
+ String sessionId, List<ChatMessage> messages, AgentStatus agentStatus, int lastSequence, List<TodoItem> todos, bool planModeActive, String? planContent, UsageInfo? usage, String? errorMessage, Map<String, AgentInfo> agents, String? selectedAgentId
 });
 
 
@@ -323,7 +331,7 @@ class _$ConversationActiveCopyWithImpl<$Res>
 
 /// Create a copy of ConversationState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? messages = null,Object? agentStatus = null,Object? lastSequence = null,Object? todos = null,Object? planModeActive = null,Object? planContent = freezed,Object? usage = freezed,Object? errorMessage = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? messages = null,Object? agentStatus = null,Object? lastSequence = null,Object? todos = null,Object? planModeActive = null,Object? planContent = freezed,Object? usage = freezed,Object? errorMessage = freezed,Object? agents = null,Object? selectedAgentId = freezed,}) {
   return _then(ConversationActive(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
@@ -334,6 +342,8 @@ as List<TodoItem>,planModeActive: null == planModeActive ? _self.planModeActive 
 as bool,planContent: freezed == planContent ? _self.planContent : planContent // ignore: cast_nullable_to_non_nullable
 as String?,usage: freezed == usage ? _self.usage : usage // ignore: cast_nullable_to_non_nullable
 as UsageInfo?,errorMessage: freezed == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String?,agents: null == agents ? _self._agents : agents // ignore: cast_nullable_to_non_nullable
+as Map<String, AgentInfo>,selectedAgentId: freezed == selectedAgentId ? _self.selectedAgentId : selectedAgentId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -536,14 +546,14 @@ return userQuestion(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String content,  DateTime timestamp)?  user,TResult Function( String content,  DateTime timestamp,  bool isComplete)?  agent,TResult Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete)?  toolCall,TResult Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision)?  permissionRequest,TResult Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers)?  userQuestion,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String content,  DateTime timestamp)?  user,TResult Function( String content,  DateTime timestamp,  bool isComplete,  String? parentToolUseId)?  agent,TResult Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete,  String? parentToolUseId)?  toolCall,TResult Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision,  String? parentToolUseId)?  permissionRequest,TResult Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers,  String? parentToolUseId)?  userQuestion,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case UserChatMessage() when user != null:
 return user(_that.content,_that.timestamp);case AgentChatMessage() when agent != null:
-return agent(_that.content,_that.timestamp,_that.isComplete);case ToolCallMessage() when toolCall != null:
-return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete);case PermissionRequestMessage() when permissionRequest != null:
-return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision);case UserQuestionMessage() when userQuestion != null:
-return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers);case _:
+return agent(_that.content,_that.timestamp,_that.isComplete,_that.parentToolUseId);case ToolCallMessage() when toolCall != null:
+return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete,_that.parentToolUseId);case PermissionRequestMessage() when permissionRequest != null:
+return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision,_that.parentToolUseId);case UserQuestionMessage() when userQuestion != null:
+return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers,_that.parentToolUseId);case _:
   return orElse();
 
 }
@@ -561,14 +571,14 @@ return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSel
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String content,  DateTime timestamp)  user,required TResult Function( String content,  DateTime timestamp,  bool isComplete)  agent,required TResult Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete)  toolCall,required TResult Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision)  permissionRequest,required TResult Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers)  userQuestion,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String content,  DateTime timestamp)  user,required TResult Function( String content,  DateTime timestamp,  bool isComplete,  String? parentToolUseId)  agent,required TResult Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete,  String? parentToolUseId)  toolCall,required TResult Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision,  String? parentToolUseId)  permissionRequest,required TResult Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers,  String? parentToolUseId)  userQuestion,}) {final _that = this;
 switch (_that) {
 case UserChatMessage():
 return user(_that.content,_that.timestamp);case AgentChatMessage():
-return agent(_that.content,_that.timestamp,_that.isComplete);case ToolCallMessage():
-return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete);case PermissionRequestMessage():
-return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision);case UserQuestionMessage():
-return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers);}
+return agent(_that.content,_that.timestamp,_that.isComplete,_that.parentToolUseId);case ToolCallMessage():
+return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete,_that.parentToolUseId);case PermissionRequestMessage():
+return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision,_that.parentToolUseId);case UserQuestionMessage():
+return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers,_that.parentToolUseId);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -582,14 +592,14 @@ return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSel
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String content,  DateTime timestamp)?  user,TResult? Function( String content,  DateTime timestamp,  bool isComplete)?  agent,TResult? Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete)?  toolCall,TResult? Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision)?  permissionRequest,TResult? Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers)?  userQuestion,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String content,  DateTime timestamp)?  user,TResult? Function( String content,  DateTime timestamp,  bool isComplete,  String? parentToolUseId)?  agent,TResult? Function( String toolId,  String toolName,  String description,  String? input,  String? output,  bool isError,  int? durationMs,  bool isComplete,  String? parentToolUseId)?  toolCall,TResult? Function( String requestId,  String toolName,  String description,  String? input,  PermissionDecision? decision,  String? parentToolUseId)?  permissionRequest,TResult? Function( String questionId,  String question,  List<QuestionOption> options,  bool multiSelect,  Map<String, String>? answers,  String? parentToolUseId)?  userQuestion,}) {final _that = this;
 switch (_that) {
 case UserChatMessage() when user != null:
 return user(_that.content,_that.timestamp);case AgentChatMessage() when agent != null:
-return agent(_that.content,_that.timestamp,_that.isComplete);case ToolCallMessage() when toolCall != null:
-return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete);case PermissionRequestMessage() when permissionRequest != null:
-return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision);case UserQuestionMessage() when userQuestion != null:
-return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers);case _:
+return agent(_that.content,_that.timestamp,_that.isComplete,_that.parentToolUseId);case ToolCallMessage() when toolCall != null:
+return toolCall(_that.toolId,_that.toolName,_that.description,_that.input,_that.output,_that.isError,_that.durationMs,_that.isComplete,_that.parentToolUseId);case PermissionRequestMessage() when permissionRequest != null:
+return permissionRequest(_that.requestId,_that.toolName,_that.description,_that.input,_that.decision,_that.parentToolUseId);case UserQuestionMessage() when userQuestion != null:
+return userQuestion(_that.questionId,_that.question,_that.options,_that.multiSelect,_that.answers,_that.parentToolUseId);case _:
   return null;
 
 }
@@ -669,12 +679,13 @@ as DateTime,
 
 
 class AgentChatMessage implements ChatMessage {
-  const AgentChatMessage({required this.content, required this.timestamp, this.isComplete = false});
+  const AgentChatMessage({required this.content, required this.timestamp, this.isComplete = false, this.parentToolUseId});
   
 
  final  String content;
  final  DateTime timestamp;
 @JsonKey() final  bool isComplete;
+ final  String? parentToolUseId;
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
@@ -686,16 +697,16 @@ $AgentChatMessageCopyWith<AgentChatMessage> get copyWith => _$AgentChatMessageCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentChatMessage&&(identical(other.content, content) || other.content == content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentChatMessage&&(identical(other.content, content) || other.content == content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete)&&(identical(other.parentToolUseId, parentToolUseId) || other.parentToolUseId == parentToolUseId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,content,timestamp,isComplete);
+int get hashCode => Object.hash(runtimeType,content,timestamp,isComplete,parentToolUseId);
 
 @override
 String toString() {
-  return 'ChatMessage.agent(content: $content, timestamp: $timestamp, isComplete: $isComplete)';
+  return 'ChatMessage.agent(content: $content, timestamp: $timestamp, isComplete: $isComplete, parentToolUseId: $parentToolUseId)';
 }
 
 
@@ -706,7 +717,7 @@ abstract mixin class $AgentChatMessageCopyWith<$Res> implements $ChatMessageCopy
   factory $AgentChatMessageCopyWith(AgentChatMessage value, $Res Function(AgentChatMessage) _then) = _$AgentChatMessageCopyWithImpl;
 @useResult
 $Res call({
- String content, DateTime timestamp, bool isComplete
+ String content, DateTime timestamp, bool isComplete, String? parentToolUseId
 });
 
 
@@ -723,12 +734,13 @@ class _$AgentChatMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? content = null,Object? timestamp = null,Object? isComplete = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? content = null,Object? timestamp = null,Object? isComplete = null,Object? parentToolUseId = freezed,}) {
   return _then(AgentChatMessage(
 content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,timestamp: null == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
 as DateTime,isComplete: null == isComplete ? _self.isComplete : isComplete // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,parentToolUseId: freezed == parentToolUseId ? _self.parentToolUseId : parentToolUseId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -739,7 +751,7 @@ as bool,
 
 
 class ToolCallMessage implements ChatMessage {
-  const ToolCallMessage({required this.toolId, required this.toolName, required this.description, this.input, this.output, this.isError = false, this.durationMs, this.isComplete = false});
+  const ToolCallMessage({required this.toolId, required this.toolName, required this.description, this.input, this.output, this.isError = false, this.durationMs, this.isComplete = false, this.parentToolUseId});
   
 
  final  String toolId;
@@ -750,6 +762,7 @@ class ToolCallMessage implements ChatMessage {
 @JsonKey() final  bool isError;
  final  int? durationMs;
 @JsonKey() final  bool isComplete;
+ final  String? parentToolUseId;
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
@@ -761,16 +774,16 @@ $ToolCallMessageCopyWith<ToolCallMessage> get copyWith => _$ToolCallMessageCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolCallMessage&&(identical(other.toolId, toolId) || other.toolId == toolId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.description, description) || other.description == description)&&(identical(other.input, input) || other.input == input)&&(identical(other.output, output) || other.output == output)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolCallMessage&&(identical(other.toolId, toolId) || other.toolId == toolId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.description, description) || other.description == description)&&(identical(other.input, input) || other.input == input)&&(identical(other.output, output) || other.output == output)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete)&&(identical(other.parentToolUseId, parentToolUseId) || other.parentToolUseId == parentToolUseId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,toolId,toolName,description,input,output,isError,durationMs,isComplete);
+int get hashCode => Object.hash(runtimeType,toolId,toolName,description,input,output,isError,durationMs,isComplete,parentToolUseId);
 
 @override
 String toString() {
-  return 'ChatMessage.toolCall(toolId: $toolId, toolName: $toolName, description: $description, input: $input, output: $output, isError: $isError, durationMs: $durationMs, isComplete: $isComplete)';
+  return 'ChatMessage.toolCall(toolId: $toolId, toolName: $toolName, description: $description, input: $input, output: $output, isError: $isError, durationMs: $durationMs, isComplete: $isComplete, parentToolUseId: $parentToolUseId)';
 }
 
 
@@ -781,7 +794,7 @@ abstract mixin class $ToolCallMessageCopyWith<$Res> implements $ChatMessageCopyW
   factory $ToolCallMessageCopyWith(ToolCallMessage value, $Res Function(ToolCallMessage) _then) = _$ToolCallMessageCopyWithImpl;
 @useResult
 $Res call({
- String toolId, String toolName, String description, String? input, String? output, bool isError, int? durationMs, bool isComplete
+ String toolId, String toolName, String description, String? input, String? output, bool isError, int? durationMs, bool isComplete, String? parentToolUseId
 });
 
 
@@ -798,7 +811,7 @@ class _$ToolCallMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? toolId = null,Object? toolName = null,Object? description = null,Object? input = freezed,Object? output = freezed,Object? isError = null,Object? durationMs = freezed,Object? isComplete = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? toolId = null,Object? toolName = null,Object? description = null,Object? input = freezed,Object? output = freezed,Object? isError = null,Object? durationMs = freezed,Object? isComplete = null,Object? parentToolUseId = freezed,}) {
   return _then(ToolCallMessage(
 toolId: null == toolId ? _self.toolId : toolId // ignore: cast_nullable_to_non_nullable
 as String,toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
@@ -808,7 +821,8 @@ as String?,output: freezed == output ? _self.output : output // ignore: cast_nul
 as String?,isError: null == isError ? _self.isError : isError // ignore: cast_nullable_to_non_nullable
 as bool,durationMs: freezed == durationMs ? _self.durationMs : durationMs // ignore: cast_nullable_to_non_nullable
 as int?,isComplete: null == isComplete ? _self.isComplete : isComplete // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,parentToolUseId: freezed == parentToolUseId ? _self.parentToolUseId : parentToolUseId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -819,7 +833,7 @@ as bool,
 
 
 class PermissionRequestMessage implements ChatMessage {
-  const PermissionRequestMessage({required this.requestId, required this.toolName, required this.description, this.input, this.decision});
+  const PermissionRequestMessage({required this.requestId, required this.toolName, required this.description, this.input, this.decision, this.parentToolUseId});
   
 
  final  String requestId;
@@ -827,6 +841,7 @@ class PermissionRequestMessage implements ChatMessage {
  final  String description;
  final  String? input;
  final  PermissionDecision? decision;
+ final  String? parentToolUseId;
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
@@ -838,16 +853,16 @@ $PermissionRequestMessageCopyWith<PermissionRequestMessage> get copyWith => _$Pe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PermissionRequestMessage&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.description, description) || other.description == description)&&(identical(other.input, input) || other.input == input)&&(identical(other.decision, decision) || other.decision == decision));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PermissionRequestMessage&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.description, description) || other.description == description)&&(identical(other.input, input) || other.input == input)&&(identical(other.decision, decision) || other.decision == decision)&&(identical(other.parentToolUseId, parentToolUseId) || other.parentToolUseId == parentToolUseId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,requestId,toolName,description,input,decision);
+int get hashCode => Object.hash(runtimeType,requestId,toolName,description,input,decision,parentToolUseId);
 
 @override
 String toString() {
-  return 'ChatMessage.permissionRequest(requestId: $requestId, toolName: $toolName, description: $description, input: $input, decision: $decision)';
+  return 'ChatMessage.permissionRequest(requestId: $requestId, toolName: $toolName, description: $description, input: $input, decision: $decision, parentToolUseId: $parentToolUseId)';
 }
 
 
@@ -858,7 +873,7 @@ abstract mixin class $PermissionRequestMessageCopyWith<$Res> implements $ChatMes
   factory $PermissionRequestMessageCopyWith(PermissionRequestMessage value, $Res Function(PermissionRequestMessage) _then) = _$PermissionRequestMessageCopyWithImpl;
 @useResult
 $Res call({
- String requestId, String toolName, String description, String? input, PermissionDecision? decision
+ String requestId, String toolName, String description, String? input, PermissionDecision? decision, String? parentToolUseId
 });
 
 
@@ -875,14 +890,15 @@ class _$PermissionRequestMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? toolName = null,Object? description = null,Object? input = freezed,Object? decision = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? toolName = null,Object? description = null,Object? input = freezed,Object? decision = freezed,Object? parentToolUseId = freezed,}) {
   return _then(PermissionRequestMessage(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
 as String,toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,input: freezed == input ? _self.input : input // ignore: cast_nullable_to_non_nullable
 as String?,decision: freezed == decision ? _self.decision : decision // ignore: cast_nullable_to_non_nullable
-as PermissionDecision?,
+as PermissionDecision?,parentToolUseId: freezed == parentToolUseId ? _self.parentToolUseId : parentToolUseId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -893,7 +909,7 @@ as PermissionDecision?,
 
 
 class UserQuestionMessage implements ChatMessage {
-  const UserQuestionMessage({required this.questionId, required this.question, required final  List<QuestionOption> options, required this.multiSelect, final  Map<String, String>? answers}): _options = options,_answers = answers;
+  const UserQuestionMessage({required this.questionId, required this.question, required final  List<QuestionOption> options, required this.multiSelect, final  Map<String, String>? answers, this.parentToolUseId}): _options = options,_answers = answers;
   
 
  final  String questionId;
@@ -915,6 +931,7 @@ class UserQuestionMessage implements ChatMessage {
   return EqualUnmodifiableMapView(value);
 }
 
+ final  String? parentToolUseId;
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
@@ -926,16 +943,16 @@ $UserQuestionMessageCopyWith<UserQuestionMessage> get copyWith => _$UserQuestion
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserQuestionMessage&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.multiSelect, multiSelect) || other.multiSelect == multiSelect)&&const DeepCollectionEquality().equals(other._answers, _answers));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserQuestionMessage&&(identical(other.questionId, questionId) || other.questionId == questionId)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.multiSelect, multiSelect) || other.multiSelect == multiSelect)&&const DeepCollectionEquality().equals(other._answers, _answers)&&(identical(other.parentToolUseId, parentToolUseId) || other.parentToolUseId == parentToolUseId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,questionId,question,const DeepCollectionEquality().hash(_options),multiSelect,const DeepCollectionEquality().hash(_answers));
+int get hashCode => Object.hash(runtimeType,questionId,question,const DeepCollectionEquality().hash(_options),multiSelect,const DeepCollectionEquality().hash(_answers),parentToolUseId);
 
 @override
 String toString() {
-  return 'ChatMessage.userQuestion(questionId: $questionId, question: $question, options: $options, multiSelect: $multiSelect, answers: $answers)';
+  return 'ChatMessage.userQuestion(questionId: $questionId, question: $question, options: $options, multiSelect: $multiSelect, answers: $answers, parentToolUseId: $parentToolUseId)';
 }
 
 
@@ -946,7 +963,7 @@ abstract mixin class $UserQuestionMessageCopyWith<$Res> implements $ChatMessageC
   factory $UserQuestionMessageCopyWith(UserQuestionMessage value, $Res Function(UserQuestionMessage) _then) = _$UserQuestionMessageCopyWithImpl;
 @useResult
 $Res call({
- String questionId, String question, List<QuestionOption> options, bool multiSelect, Map<String, String>? answers
+ String questionId, String question, List<QuestionOption> options, bool multiSelect, Map<String, String>? answers, String? parentToolUseId
 });
 
 
@@ -963,14 +980,15 @@ class _$UserQuestionMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? questionId = null,Object? question = null,Object? options = null,Object? multiSelect = null,Object? answers = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? questionId = null,Object? question = null,Object? options = null,Object? multiSelect = null,Object? answers = freezed,Object? parentToolUseId = freezed,}) {
   return _then(UserQuestionMessage(
 questionId: null == questionId ? _self.questionId : questionId // ignore: cast_nullable_to_non_nullable
 as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as String,options: null == options ? _self._options : options // ignore: cast_nullable_to_non_nullable
 as List<QuestionOption>,multiSelect: null == multiSelect ? _self.multiSelect : multiSelect // ignore: cast_nullable_to_non_nullable
 as bool,answers: freezed == answers ? _self._answers : answers // ignore: cast_nullable_to_non_nullable
-as Map<String, String>?,
+as Map<String, String>?,parentToolUseId: freezed == parentToolUseId ? _self.parentToolUseId : parentToolUseId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -1246,6 +1264,278 @@ as int,model: null == model ? _self.model : model // ignore: cast_nullable_to_no
 as String,costUsd: null == costUsd ? _self.costUsd : costUsd // ignore: cast_nullable_to_non_nullable
 as double,durationMs: null == durationMs ? _self.durationMs : durationMs // ignore: cast_nullable_to_non_nullable
 as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$AgentInfo {
+
+ String get id; String get name; AgentStatus get status; bool get isComplete; int get messageCount; DateTime? get lastActivity;
+/// Create a copy of AgentInfo
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$AgentInfoCopyWith<AgentInfo> get copyWith => _$AgentInfoCopyWithImpl<AgentInfo>(this as AgentInfo, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.status, status) || other.status == status)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete)&&(identical(other.messageCount, messageCount) || other.messageCount == messageCount)&&(identical(other.lastActivity, lastActivity) || other.lastActivity == lastActivity));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,name,status,isComplete,messageCount,lastActivity);
+
+@override
+String toString() {
+  return 'AgentInfo(id: $id, name: $name, status: $status, isComplete: $isComplete, messageCount: $messageCount, lastActivity: $lastActivity)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $AgentInfoCopyWith<$Res>  {
+  factory $AgentInfoCopyWith(AgentInfo value, $Res Function(AgentInfo) _then) = _$AgentInfoCopyWithImpl;
+@useResult
+$Res call({
+ String id, String name, AgentStatus status, bool isComplete, int messageCount, DateTime? lastActivity
+});
+
+
+
+
+}
+/// @nodoc
+class _$AgentInfoCopyWithImpl<$Res>
+    implements $AgentInfoCopyWith<$Res> {
+  _$AgentInfoCopyWithImpl(this._self, this._then);
+
+  final AgentInfo _self;
+  final $Res Function(AgentInfo) _then;
+
+/// Create a copy of AgentInfo
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? status = null,Object? isComplete = null,Object? messageCount = null,Object? lastActivity = freezed,}) {
+  return _then(_self.copyWith(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as AgentStatus,isComplete: null == isComplete ? _self.isComplete : isComplete // ignore: cast_nullable_to_non_nullable
+as bool,messageCount: null == messageCount ? _self.messageCount : messageCount // ignore: cast_nullable_to_non_nullable
+as int,lastActivity: freezed == lastActivity ? _self.lastActivity : lastActivity // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [AgentInfo].
+extension AgentInfoPatterns on AgentInfo {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _AgentInfo value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _AgentInfo() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _AgentInfo value)  $default,){
+final _that = this;
+switch (_that) {
+case _AgentInfo():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _AgentInfo value)?  $default,){
+final _that = this;
+switch (_that) {
+case _AgentInfo() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  AgentStatus status,  bool isComplete,  int messageCount,  DateTime? lastActivity)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _AgentInfo() when $default != null:
+return $default(_that.id,_that.name,_that.status,_that.isComplete,_that.messageCount,_that.lastActivity);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  AgentStatus status,  bool isComplete,  int messageCount,  DateTime? lastActivity)  $default,) {final _that = this;
+switch (_that) {
+case _AgentInfo():
+return $default(_that.id,_that.name,_that.status,_that.isComplete,_that.messageCount,_that.lastActivity);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  AgentStatus status,  bool isComplete,  int messageCount,  DateTime? lastActivity)?  $default,) {final _that = this;
+switch (_that) {
+case _AgentInfo() when $default != null:
+return $default(_that.id,_that.name,_that.status,_that.isComplete,_that.messageCount,_that.lastActivity);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _AgentInfo implements AgentInfo {
+  const _AgentInfo({required this.id, required this.name, required this.status, this.isComplete = false, this.messageCount = 0, this.lastActivity});
+  
+
+@override final  String id;
+@override final  String name;
+@override final  AgentStatus status;
+@override@JsonKey() final  bool isComplete;
+@override@JsonKey() final  int messageCount;
+@override final  DateTime? lastActivity;
+
+/// Create a copy of AgentInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$AgentInfoCopyWith<_AgentInfo> get copyWith => __$AgentInfoCopyWithImpl<_AgentInfo>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.status, status) || other.status == status)&&(identical(other.isComplete, isComplete) || other.isComplete == isComplete)&&(identical(other.messageCount, messageCount) || other.messageCount == messageCount)&&(identical(other.lastActivity, lastActivity) || other.lastActivity == lastActivity));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,id,name,status,isComplete,messageCount,lastActivity);
+
+@override
+String toString() {
+  return 'AgentInfo(id: $id, name: $name, status: $status, isComplete: $isComplete, messageCount: $messageCount, lastActivity: $lastActivity)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$AgentInfoCopyWith<$Res> implements $AgentInfoCopyWith<$Res> {
+  factory _$AgentInfoCopyWith(_AgentInfo value, $Res Function(_AgentInfo) _then) = __$AgentInfoCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String name, AgentStatus status, bool isComplete, int messageCount, DateTime? lastActivity
+});
+
+
+
+
+}
+/// @nodoc
+class __$AgentInfoCopyWithImpl<$Res>
+    implements _$AgentInfoCopyWith<$Res> {
+  __$AgentInfoCopyWithImpl(this._self, this._then);
+
+  final _AgentInfo _self;
+  final $Res Function(_AgentInfo) _then;
+
+/// Create a copy of AgentInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? status = null,Object? isComplete = null,Object? messageCount = null,Object? lastActivity = freezed,}) {
+  return _then(_AgentInfo(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as AgentStatus,isComplete: null == isComplete ? _self.isComplete : isComplete // ignore: cast_nullable_to_non_nullable
+as bool,messageCount: null == messageCount ? _self.messageCount : messageCount // ignore: cast_nullable_to_non_nullable
+as int,lastActivity: freezed == lastActivity ? _self.lastActivity : lastActivity // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

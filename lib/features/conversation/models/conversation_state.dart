@@ -22,6 +22,8 @@ sealed class ConversationState with _$ConversationState {
     String? planContent,
     UsageInfo? usage,
     String? errorMessage,
+    @Default({}) Map<String, AgentInfo> agents,
+    String? selectedAgentId,
   }) = ConversationActive;
   const factory ConversationState.error(String message) = ConversationError;
 }
@@ -40,6 +42,7 @@ sealed class ChatMessage with _$ChatMessage {
     required String content,
     required DateTime timestamp,
     @Default(false) bool isComplete,
+    String? parentToolUseId,
   }) = AgentChatMessage;
   const factory ChatMessage.toolCall({
     required String toolId,
@@ -50,6 +53,7 @@ sealed class ChatMessage with _$ChatMessage {
     @Default(false) bool isError,
     int? durationMs,
     @Default(false) bool isComplete,
+    String? parentToolUseId,
   }) = ToolCallMessage;
   const factory ChatMessage.permissionRequest({
     required String requestId,
@@ -57,6 +61,7 @@ sealed class ChatMessage with _$ChatMessage {
     required String description,
     String? input,
     PermissionDecision? decision,
+    String? parentToolUseId,
   }) = PermissionRequestMessage;
   const factory ChatMessage.userQuestion({
     required String questionId,
@@ -64,6 +69,7 @@ sealed class ChatMessage with _$ChatMessage {
     required List<QuestionOption> options,
     required bool multiSelect,
     Map<String, String>? answers,
+    String? parentToolUseId,
   }) = UserQuestionMessage;
 }
 
@@ -79,4 +85,17 @@ abstract class UsageInfo with _$UsageInfo {
     @Default(0.0) double costUsd,
     @Default(0) int durationMs,
   }) = _UsageInfo;
+}
+
+/// Tracks a sub-agent spawned via a Task tool call.
+@freezed
+abstract class AgentInfo with _$AgentInfo {
+  const factory AgentInfo({
+    required String id,
+    required String name,
+    required AgentStatus status,
+    @Default(false) bool isComplete,
+    @Default(0) int messageCount,
+    DateTime? lastActivity,
+  }) = _AgentInfo;
 }

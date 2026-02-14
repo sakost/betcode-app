@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../../generated/betcode/v1/common.pb.dart';
+
 /// A collapsible card showing a tool invocation and its result.
 ///
 /// While the tool is executing, shows a spinner. Once complete, the card
 /// can be expanded to reveal the tool output.
+///
+/// When [isPermission] is true the card renders as a permission request:
+/// - Shield icon as the leading indicator
+/// - Auto-expands when [decision] is null (awaiting user input)
+/// - Collapses with Allowed/Denied badge once decided
+/// - Tapping while awaiting calls [onPermissionTap] instead of toggling
 class ToolCallCard extends StatelessWidget {
   const ToolCallCard({
     super.key,
@@ -14,6 +22,9 @@ class ToolCallCard extends StatelessWidget {
     this.isError = false,
     this.isComplete = false,
     this.durationMs,
+    this.isPermission = false,
+    this.decision,
+    this.onPermissionTap,
   });
 
   final String toolName;
@@ -24,8 +35,33 @@ class ToolCallCard extends StatelessWidget {
   final bool isComplete;
   final int? durationMs;
 
+  /// When true, this card renders as a permission request card.
+  final bool isPermission;
+
+  /// The user's permission decision. Null means awaiting decision.
+  final PermissionDecision? decision;
+
+  /// Called when user taps the card while awaiting a permission decision.
+  final VoidCallback? onPermissionTap;
+
+  bool get _isDecided => decision != null;
+
+  bool get _isAllowed =>
+      decision == PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE ||
+      decision == PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION;
+
+  String? get _decisionLabel {
+    if (!_isDecided) return null;
+    return _isAllowed ? 'Allowed' : 'Denied';
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPermission) return _buildPermissionCard(context);
+    return _buildToolCard(context);
+  }
+
+  Widget _buildToolCard(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -80,6 +116,66 @@ class ToolCallCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final awaiting = !_isDecided;
+
+    Widget tile = ExpansionTile(
+      initiallyExpanded: awaiting,
+      leading: Icon(
+        Icons.shield,
+        color: _isDecided
+            ? (_isAllowed ? Colors.green : colorScheme.error)
+            : colorScheme.primary,
+        size: 20,
+      ),
+      title: Text(
+        toolName,
+        style: theme.textTheme.titleSmall?.copyWith(
+          fontFamily: 'JetBrains Mono',
+        ),
+      ),
+      subtitle: Text(
+        description,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall,
+      ),
+      trailing: _decisionLabel != null
+          ? Text(
+              _decisionLabel!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: _isAllowed ? Colors.green : colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          : null,
+      children: [
+        if (input != null)
+          _Section(label: 'Input', content: input!, theme: theme),
+      ],
+    );
+
+    // When awaiting a permission decision, intercept taps on the whole card
+    // to open the permission sheet instead of just toggling the expansion.
+    if (awaiting && onPermissionTap != null) {
+      tile = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onPermissionTap,
+        child: IgnorePointer(child: tile),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: tile,
       ),
     );
   }

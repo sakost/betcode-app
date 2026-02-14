@@ -109,7 +109,7 @@ void main() {
       expect(find.text('Login'), findsOneWidget);
     });
 
-    testWidgets('authenticated user accessing /register -> /conversation', (
+    testWidgets('authenticated user accessing /register -> /sessions', (
       tester,
     ) async {
       await tester.pumpWidget(buildAuthApp(initialLocation: '/register'));
@@ -118,7 +118,7 @@ void main() {
       expect(find.text('Register'), findsNothing);
     });
 
-    testWidgets('authenticated user on /login -> /conversation', (
+    testWidgets('authenticated user on /login -> /sessions', (
       tester,
     ) async {
       await tester.pumpWidget(buildAuthApp(initialLocation: '/login'));
@@ -141,10 +141,20 @@ void main() {
   group('Router - deep linking', () {
     testWidgets('conversation with sessionId parameter', (tester) async {
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/conversation/sess-42'),
+        buildAuthApp(initialLocation: '/sessions/sess-42'),
       );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
+    });
+
+    testWidgets('/sessions/new routes to ConversationScreen with null sessionId',
+        (tester) async {
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/sessions/new'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Conversation'), findsOneWidget);
     });
 
     testWidgets('machines with machineId parameter', (tester) async {
@@ -155,16 +165,31 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
+
+    testWidgets('code with repoId parameter', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 60000));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/code/repos/repo-42'),
+      );
+      // Use pump() instead of pumpAndSettle() because RepoDetailScreen
+      // shows a CircularProgressIndicator while loading worktrees, which
+      // animates indefinitely and prevents settling.
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
   });
 
   group('Router - AppShell navigation', () {
-    // Use a large surface to avoid overflow from both 7 nav destinations
+    // Use a large surface to avoid overflow from nav destinations
     // (width) and ErrorDisplay content in screens that lack gRPC (height).
     Future<void> setLargeSize(WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
     }
 
-    testWidgets('has exactly 7 navigation destinations', (tester) async {
+    testWidgets('has exactly 4 navigation destinations', (tester) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -172,21 +197,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.destinations, hasLength(7));
-    });
-
-    testWidgets('tapping Sessions navigates to /sessions', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Sessions'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 1);
+      expect(navBar.destinations, hasLength(4));
     });
 
     testWidgets('tapping Machines navigates to /machines', (tester) async {
@@ -200,49 +211,40 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 0);
+    });
+
+    testWidgets('tapping Sessions navigates to /sessions', (tester) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      // "Sessions" appears in both the screen title and the nav bar,
+      // so target the one inside NavigationBar.
+      await tester.tap(find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Sessions'),
+      ));
+      await tester.pumpAndSettle();
+
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+      expect(navBar.selectedIndex, 1);
+    });
+
+    testWidgets('tapping Code navigates to /code', (tester) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Code'));
+      await tester.pumpAndSettle();
+
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
       expect(navBar.selectedIndex, 2);
-    });
-
-    testWidgets('tapping Repos navigates to /repos', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Repos'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 3);
-    });
-
-    testWidgets('tapping Worktrees navigates to /worktrees', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Worktrees'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 4);
-    });
-
-    testWidgets('tapping GitLab navigates to /gitlab', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('GitLab'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 5);
     });
 
     testWidgets('tapping Settings navigates to /settings', (tester) async {
@@ -256,24 +258,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 6);
-    });
-
-    testWidgets('tapping Chat returns to /conversation', (tester) async {
-      await setLargeSize(tester);
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(buildAuthApp());
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Settings'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Chat'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 0);
+      expect(navBar.selectedIndex, 3);
     });
   });
 }

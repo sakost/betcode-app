@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/features/conversation/widgets/agent_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/message_bubble.dart';
 import 'package:betcode_app/features/conversation/widgets/permission_sheet.dart';
@@ -136,6 +138,116 @@ void main() {
         ),
       );
       expect(find.text('350ms'), findsOneWidget);
+    });
+  });
+
+  // -- ToolCallCard: permission mode --
+  group('ToolCallCard permission mode', () {
+    testWidgets('shows shield icon for permission card', (t) async {
+      await t.pumpWidget(
+        _app(
+          const ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run command',
+            isPermission: true,
+          ),
+        ),
+      );
+      expect(find.byIcon(Icons.shield), findsOneWidget);
+      expect(find.text('Bash'), findsOneWidget);
+      expect(find.text('Run command'), findsOneWidget);
+    });
+
+    testWidgets('awaiting permission shows no trailing badge', (t) async {
+      await t.pumpWidget(
+        _app(
+          const ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+          ),
+        ),
+      );
+      expect(find.text('Allowed'), findsNothing);
+      expect(find.text('Denied'), findsNothing);
+    });
+
+    testWidgets('allowed decision shows Allowed badge', (t) async {
+      await t.pumpWidget(
+        _app(
+          ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+            decision: PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+          ),
+        ),
+      );
+      expect(find.text('Allowed'), findsOneWidget);
+    });
+
+    testWidgets('allow session shows Allowed badge', (t) async {
+      await t.pumpWidget(
+        _app(
+          ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+            decision: PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION,
+          ),
+        ),
+      );
+      expect(find.text('Allowed'), findsOneWidget);
+    });
+
+    testWidgets('deny decision shows Denied badge', (t) async {
+      await t.pumpWidget(
+        _app(
+          ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+            decision: PermissionDecision.PERMISSION_DECISION_DENY,
+          ),
+        ),
+      );
+      expect(find.text('Denied'), findsOneWidget);
+    });
+
+    testWidgets('onPermissionTap called when tapping awaiting card', (
+      t,
+    ) async {
+      bool tapped = false;
+      await t.pumpWidget(
+        _app(
+          ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+            onPermissionTap: () => tapped = true,
+          ),
+        ),
+      );
+      // Tap on the GestureDetector wrapping the card.
+      // The IgnorePointer prevents the ExpansionTile from consuming the tap.
+      await t.tap(find.byType(GestureDetector).first);
+      await t.pumpAndSettle();
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('shows input section when input provided', (t) async {
+      await t.pumpWidget(
+        _app(
+          const ToolCallCard(
+            toolName: 'Bash',
+            description: 'Run cmd',
+            isPermission: true,
+            input: 'rm -rf /',
+          ),
+        ),
+      );
+      // Card is initially expanded when awaiting, so input should be visible
+      expect(find.text('rm -rf /'), findsOneWidget);
     });
   });
 
@@ -554,5 +666,144 @@ void main() {
         expect(result, entry.value);
       });
     }
+  });
+
+  // -- AgentBar --
+  group('AgentBar', () {
+    final agents = {
+      'a1': const AgentInfo(
+        id: 'a1',
+        name: 'researcher',
+        status: AgentStatus.AGENT_STATUS_THINKING,
+        messageCount: 5,
+      ),
+      'a2': const AgentInfo(
+        id: 'a2',
+        name: 'coder',
+        status: AgentStatus.AGENT_STATUS_EXECUTING_TOOL,
+        messageCount: 3,
+      ),
+      'a3': const AgentInfo(
+        id: 'a3',
+        name: 'tester',
+        status: AgentStatus.AGENT_STATUS_IDLE,
+        isComplete: true,
+        messageCount: 0,
+      ),
+    };
+
+    testWidgets('renders SizedBox.shrink when agents is empty', (t) async {
+      await t.pumpWidget(
+        _app(AgentBar(agents: const {}, onAgentSelected: (_) {})),
+      );
+      expect(find.byType(SizedBox), findsOneWidget);
+      expect(find.byType(ChoiceChip), findsNothing);
+    });
+
+    testWidgets('renders All chip plus one chip per agent', (t) async {
+      await t.pumpWidget(
+        _app(AgentBar(agents: agents, onAgentSelected: (_) {})),
+      );
+      // All + 3 agents = 4 chips
+      expect(find.byType(ChoiceChip), findsNWidgets(4));
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('researcher'), findsOneWidget);
+      expect(find.text('coder'), findsOneWidget);
+      expect(find.text('tester'), findsOneWidget);
+    });
+
+    testWidgets('All chip is selected when selectedAgentId is null', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        _app(AgentBar(agents: agents, onAgentSelected: (_) {})),
+      );
+      final allChip = t.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'All'),
+      );
+      expect(allChip.selected, isTrue);
+    });
+
+    testWidgets('agent chip is selected when selectedAgentId matches', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        _app(
+          AgentBar(
+            agents: agents,
+            selectedAgentId: 'a2',
+            onAgentSelected: (_) {},
+          ),
+        ),
+      );
+      final allChip = t.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'All'),
+      );
+      expect(allChip.selected, isFalse);
+      final coderChip = t.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'coder'),
+      );
+      expect(coderChip.selected, isTrue);
+    });
+
+    testWidgets('tapping All chip calls onAgentSelected with null', (
+      t,
+    ) async {
+      String? selected = 'initial';
+      await t.pumpWidget(
+        _app(
+          AgentBar(
+            agents: agents,
+            selectedAgentId: 'a1',
+            onAgentSelected: (id) => selected = id,
+          ),
+        ),
+      );
+      await t.tap(find.widgetWithText(ChoiceChip, 'All'));
+      await t.pump();
+      expect(selected, isNull);
+    });
+
+    testWidgets('tapping agent chip calls onAgentSelected with agent id', (
+      t,
+    ) async {
+      String? selected;
+      await t.pumpWidget(
+        _app(
+          AgentBar(agents: agents, onAgentSelected: (id) => selected = id),
+        ),
+      );
+      await t.tap(find.widgetWithText(ChoiceChip, 'coder'));
+      await t.pump();
+      expect(selected, 'a2');
+    });
+
+    testWidgets('message count badge shown for agents with messages', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        _app(AgentBar(agents: agents, onAgentSelected: (_) {})),
+      );
+      expect(find.text('5'), findsOneWidget); // researcher
+      expect(find.text('3'), findsOneWidget); // coder
+      // tester has 0 messages, no badge
+    });
+
+    testWidgets('status dots rendered as colored Container', (t) async {
+      await t.pumpWidget(
+        _app(AgentBar(agents: agents, onAgentSelected: (_) {})),
+      );
+      // Icons should no longer be present
+      expect(find.byIcon(Icons.check_circle), findsNothing);
+      expect(find.byIcon(Icons.psychology), findsNothing);
+      expect(find.byIcon(Icons.construction), findsNothing);
+      // 3 agents = 3 status dots (Container with BoxDecoration)
+      final dotFinder = find.byWidgetPredicate((w) {
+        if (w is! Container) return false;
+        final decoration = w.decoration;
+        return decoration is BoxDecoration && decoration.shape == BoxShape.circle;
+      });
+      expect(dotFinder, findsNWidgets(3));
+    });
   });
 }

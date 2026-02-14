@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/sessions_providers.dart';
@@ -14,6 +15,10 @@ class SessionsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Sessions')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.go('/sessions/new'),
+        child: const Icon(Icons.add),
+      ),
       body: sessionsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => ErrorDisplay(

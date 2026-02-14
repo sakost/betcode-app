@@ -4,11 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth.dart';
 import '../features/conversation/conversation.dart';
-import '../features/gitlab/gitlab.dart';
 import '../features/machines/machines.dart';
 import '../features/sessions/sessions.dart';
 import '../features/settings/settings.dart';
 import '../features/git_repos/git_repos.dart';
+import '../features/git_repos/screens/repo_detail_screen.dart';
 import '../features/worktrees/worktrees.dart';
 import 'auth/auth.dart';
 import 'grpc/grpc_providers.dart';
@@ -22,7 +22,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/conversation',
+    initialLocation: '/sessions',
     redirect: (context, state) {
       final isAuth = authState is AuthAuthenticated;
       final hasRelay = relayConfig != null;
@@ -31,7 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state.matchedLocation == '/register';
 
       if ((!isAuth || !hasRelay) && !isAuthRoute) return '/login';
-      if (isAuth && hasRelay && isAuthRoute) return '/conversation';
+      if (isAuth && hasRelay && isAuthRoute) return '/sessions';
       return null;
     },
     routes: [
@@ -48,22 +48,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(
-            path: '/conversation',
-            builder: (context, state) => const ConversationScreen(),
-            routes: [
-              GoRoute(
-                path: ':sessionId',
-                builder: (context, state) => ConversationScreen(
-                  sessionId: state.pathParameters['sessionId'],
-                ),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/sessions',
-            builder: (context, state) => const SessionsScreen(),
-          ),
-          GoRoute(
             path: '/machines',
             builder: (context, state) => const MachinesScreen(),
             routes: [
@@ -74,16 +58,32 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
-            path: '/repos',
+            path: '/sessions',
+            builder: (context, state) => const SessionsScreen(),
+            routes: [
+              GoRoute(
+                path: ':sessionId',
+                builder: (context, state) {
+                  final raw = state.pathParameters['sessionId'];
+                  return ConversationScreen(
+                    sessionId: raw == 'new' ? null : raw,
+                    workingDirectory: state.extra as String?,
+                  );
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/code',
             builder: (context, state) => const GitReposScreen(),
-          ),
-          GoRoute(
-            path: '/worktrees',
-            builder: (context, state) => const WorktreesScreen(),
-          ),
-          GoRoute(
-            path: '/gitlab',
-            builder: (context, state) => const GitLabScreen(),
+            routes: [
+              GoRoute(
+                path: 'repos/:repoId',
+                builder: (context, state) => RepoDetailScreen(
+                  repoId: state.pathParameters['repoId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/settings',
@@ -102,9 +102,9 @@ class AppShell extends StatelessWidget {
 
   static const _destinations = [
     NavigationDestination(
-      icon: Icon(Icons.chat_outlined),
-      selectedIcon: Icon(Icons.chat),
-      label: 'Chat',
+      icon: Icon(Icons.computer_outlined),
+      selectedIcon: Icon(Icons.computer),
+      label: 'Machines',
     ),
     NavigationDestination(
       icon: Icon(Icons.history_outlined),
@@ -112,24 +112,9 @@ class AppShell extends StatelessWidget {
       label: 'Sessions',
     ),
     NavigationDestination(
-      icon: Icon(Icons.computer_outlined),
-      selectedIcon: Icon(Icons.computer),
-      label: 'Machines',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.folder_outlined),
-      selectedIcon: Icon(Icons.folder),
-      label: 'Repos',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.account_tree_outlined),
-      selectedIcon: Icon(Icons.account_tree),
-      label: 'Worktrees',
-    ),
-    NavigationDestination(
-      icon: Icon(Icons.merge_outlined),
-      selectedIcon: Icon(Icons.merge),
-      label: 'GitLab',
+      icon: Icon(Icons.code_outlined),
+      selectedIcon: Icon(Icons.code),
+      label: 'Code',
     ),
     NavigationDestination(
       icon: Icon(Icons.settings_outlined),
@@ -139,12 +124,9 @@ class AppShell extends StatelessWidget {
   ];
 
   static const _routes = [
-    '/conversation',
-    '/sessions',
     '/machines',
-    '/repos',
-    '/worktrees',
-    '/gitlab',
+    '/sessions',
+    '/code',
     '/settings',
   ];
 

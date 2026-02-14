@@ -1,3 +1,4 @@
+export 'agent_bar.dart';
 export 'input_bar.dart';
 export 'message_bubble.dart';
 export 'permission_sheet.dart';

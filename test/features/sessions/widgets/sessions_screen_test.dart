@@ -137,6 +137,23 @@ void main() {
       expect(find.byType(SessionCard), findsNothing);
     });
 
+    testWidgets('shows FAB with add icon', (t) async {
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sessionsProvider.overrideWith(
+              () => _FakeSessionsNotifier(const AsyncData([])),
+            ),
+          ],
+          child: _app(const SessionsScreen()),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    });
+
     testWidgets('shows error state on failure', (t) async {
       await t.pumpWidget(
         ProviderScope(

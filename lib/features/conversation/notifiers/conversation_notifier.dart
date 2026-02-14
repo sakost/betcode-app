@@ -190,6 +190,13 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     );
   }
 
+  /// Sets the selected agent for filtering conversation messages.
+  void setSelectedAgent(String? agentId) {
+    final current = state.value;
+    if (current is! ConversationActive) return;
+    state = AsyncData(current.copyWith(selectedAgentId: agentId));
+  }
+
   /// Cancels the current agent turn via the bidi stream.
   void cancelTurn() {
     if (_requestController == null) return;

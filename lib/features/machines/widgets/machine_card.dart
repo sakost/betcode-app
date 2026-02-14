@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../generated/betcode/v1/machine.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/utils/time_utils.dart';
 
 /// A card displaying a single [MachineInfo] in the machines list.
 ///
@@ -131,15 +132,7 @@ class MachineCard extends StatelessWidget {
       machine.lastSeen.seconds.toInt() * 1000,
       isUtc: true,
     ).toLocal();
-
-    final now = DateTime.now();
-    final diff = now.difference(dateTime);
-
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    return relativeTime(dateTime);
   }
 }
 

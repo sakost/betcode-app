@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/error_display.dart';
 import '../notifiers/git_repos_providers.dart';
@@ -34,6 +35,7 @@ class GitReposScreen extends ConsumerWidget {
               itemCount: repos.length,
               itemBuilder: (context, index) => GitRepoCard(
                 repo: repos[index],
+                onTap: () => context.go('/code/repos/${repos[index].id}'),
                 onDelete: () => _confirmUnregister(
                   context,
                   ref,

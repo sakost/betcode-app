@@ -414,7 +414,7 @@ void main() {
       });
 
       testWidgets(
-        'permission request without decision shows tap to respond card',
+        'permission request without decision shows ToolCallCard with shield',
         (tester) async {
           final state = _activeState(
             messages: [
@@ -428,12 +428,14 @@ void main() {
           await tester.pumpWidget(_buildApp(state: state));
           await tester.pumpAndSettle();
 
-          expect(find.text('Tap to respond'), findsOneWidget);
+          // Permission requests render as ToolCallCard with isPermission
+          expect(find.byType(ToolCallCard), findsOneWidget);
+          expect(find.byIcon(Icons.shield), findsOneWidget);
           expect(find.text('Bash'), findsOneWidget);
         },
       );
 
-      testWidgets('permission request with decision shows decided indicator', (
+      testWidgets('permission request with decision shows Allowed badge', (
         tester,
       ) async {
         final state = _activeState(
@@ -449,10 +451,9 @@ void main() {
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
-        expect(find.text('Tap to respond'), findsNothing);
         expect(find.text('Bash'), findsOneWidget);
-        // Should show the decision was made
         expect(find.text('Allowed'), findsOneWidget);
+        expect(find.byIcon(Icons.shield), findsOneWidget);
       });
 
       testWidgets('user question without answers shows tap to answer card', (

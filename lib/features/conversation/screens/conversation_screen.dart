@@ -6,6 +6,7 @@ import '../../../generated/betcode/v1/common.pb.dart';
 import '../../worktrees/notifiers/worktrees_providers.dart';
 import '../models/conversation_state.dart';
 import '../notifiers/conversation_providers.dart';
+import '../widgets/agent_bar.dart';
 import '../widgets/input_bar.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/permission_sheet.dart';
@@ -17,9 +18,10 @@ import '../widgets/usage_display.dart';
 import '../widgets/user_question_dialog.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
-  const ConversationScreen({super.key, this.sessionId});
+  const ConversationScreen({super.key, this.sessionId, this.workingDirectory});
 
   final String? sessionId;
+  final String? workingDirectory;
 
   @override
   ConsumerState<ConversationScreen> createState() => _ConversationScreenState();
@@ -27,26 +29,65 @@ class ConversationScreen extends ConsumerStatefulWidget {
 
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
-  int _lastMessageCount = 0;
+  bool _isUserScrolledUp = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _scrollToBottom() {
+  Widget? _buildBackButton() {
+    final String location;
+    try {
+      location = GoRouterState.of(context).matchedLocation;
+    } on GoError {
+      return null;
+    }
+    if (!location.startsWith('/sessions/')) return null;
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () => context.go('/sessions'),
+    );
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final atBottom = position.pixels >= position.maxScrollExtent - 50;
+    if (atBottom && _isUserScrolledUp) {
+      setState(() => _isUserScrolledUp = false);
+    } else if (!atBottom && !_isUserScrolledUp) {
+      setState(() => _isUserScrolledUp = true);
+    }
+  }
+
+  void _scrollToBottom({bool animate = true}) {
     if (!_scrollController.hasClients) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!_scrollController.hasClients) return;
+      if (animate) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
+      } else {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
+      setState(() => _isUserScrolledUp = false);
     });
   }
+
+  int _messageCount(ConversationState? state) =>
+      state is ConversationActive ? state.messages.length : 0;
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +95,29 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     // Pre-load worktrees so they're available when the user taps Start.
     ref.watch(worktreesProvider);
 
+    // Auto-scroll when new messages arrive and user hasn't scrolled up.
+    ref.listen(conversationProvider(widget.sessionId), (prev, next) {
+      if (_isUserScrolledUp) return;
+      final prevCount = _messageCount(prev?.value);
+      final nextCount = _messageCount(next.value);
+      if (nextCount > prevCount) {
+        _scrollToBottom();
+      }
+    });
+
     return asyncState.when(
       loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Conversation')),
+        appBar: AppBar(
+          leading: _buildBackButton(),
+          title: const Text('Conversation'),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (error, _) => Scaffold(
-        appBar: AppBar(title: const Text('Conversation')),
+        appBar: AppBar(
+          leading: _buildBackButton(),
+          title: const Text('Conversation'),
+        ),
         body: Center(child: Text('Error: $error')),
       ),
       data: (state) => switch (state) {
@@ -83,7 +140,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   void _startConversation() {
-    final workingDirectory = _resolveWorkingDirectory();
+    final workingDirectory = widget.workingDirectory ?? _resolveWorkingDirectory();
     if (workingDirectory == null) {
       debugPrint('[ConversationScreen] Cannot start: no working directory');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,7 +160,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final worktreesAsync = ref.watch(worktreesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: AppBar(
+        leading: _buildBackButton(),
+        title: const Text('Conversation'),
+      ),
       body: Center(
         child: worktreesAsync.when(
           loading: () => const Column(
@@ -148,7 +208,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: () => context.go('/worktrees'),
+                    onPressed: () => context.go('/code'),
                     icon: const Icon(Icons.add),
                     label: const Text('Create Worktree'),
                   ),
@@ -174,7 +234,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   Widget _buildConnectingState() {
     return Scaffold(
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: AppBar(
+        leading: _buildBackButton(),
+        title: const Text('Conversation'),
+      ),
       body: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -190,7 +253,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
   Widget _buildErrorState(String message) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Conversation')),
+      appBar: AppBar(
+        leading: _buildBackButton(),
+        title: const Text('Conversation'),
+      ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -209,20 +275,31 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     );
   }
 
+  /// Returns the parentToolUseId of a message, or null for user messages.
+  static String? _parentToolUseId(ChatMessage msg) => switch (msg) {
+    UserChatMessage() => null,
+    AgentChatMessage(:final parentToolUseId) => parentToolUseId,
+    ToolCallMessage(:final parentToolUseId) => parentToolUseId,
+    PermissionRequestMessage(:final parentToolUseId) => parentToolUseId,
+    UserQuestionMessage(:final parentToolUseId) => parentToolUseId,
+  };
+
   Widget _buildActiveState(ConversationActive active) {
-    final messages = active.messages;
+    final selectedId = active.selectedAgentId;
+    final messages = selectedId == null
+        ? active.messages
+        : active.messages.where((msg) {
+            // UserChatMessages have no parentToolUseId — always show them.
+            if (msg is UserChatMessage) return true;
+            return _parentToolUseId(msg) == selectedId;
+          }).toList();
     final isIdle =
         active.agentStatus == AgentStatus.AGENT_STATUS_IDLE ||
         active.agentStatus == AgentStatus.AGENT_STATUS_WAITING_FOR_USER;
 
-    // Auto-scroll on new messages.
-    if (messages.length > _lastMessageCount) {
-      _lastMessageCount = messages.length;
-      _scrollToBottom();
-    }
-
     return Scaffold(
       appBar: AppBar(
+        leading: _buildBackButton(),
         title: const Text('Conversation'),
         actions: [
           Padding(
@@ -231,6 +308,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           ),
         ],
       ),
+      floatingActionButton: _isUserScrolledUp
+          ? FloatingActionButton(
+              mini: true,
+              tooltip: 'Scroll to bottom',
+              onPressed: _scrollToBottom,
+              child: const Icon(Icons.arrow_downward),
+            )
+          : null,
       body: Column(
         children: [
           // Error banner
@@ -256,6 +341,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
 
           // Todo list panel
           TodoListPanel(todos: active.todos),
+
+          // Agent bar
+          if (active.agents.isNotEmpty)
+            AgentBar(
+              agents: active.agents,
+              selectedAgentId: active.selectedAgentId,
+              onAgentSelected: (agentId) => ref
+                  .read(conversationProvider(widget.sessionId).notifier)
+                  .setSelectedAgent(agentId),
+            ),
 
           // Messages list
           Expanded(
@@ -336,53 +431,27 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   Widget _buildPermissionCard(PermissionRequestMessage msg) {
-    final decided = msg.decision != null;
-    final decisionLabel = switch (msg.decision) {
-      PermissionDecision p
-          when p == PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE ||
-              p == PermissionDecision.PERMISSION_DECISION_ALLOW_SESSION =>
-        'Allowed',
-      PermissionDecision p
-          when p == PermissionDecision.PERMISSION_DECISION_DENY =>
-        'Denied',
-      _ => null,
-    };
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Card(
-        child: ListTile(
-          leading: Icon(
-            decided ? Icons.check_circle : Icons.security,
-            color: decided
-                ? Colors.green
-                : Theme.of(context).colorScheme.primary,
-          ),
-          title: Text(msg.toolName),
-          subtitle: Text(decided ? decisionLabel! : msg.description),
-          trailing: decided
-              ? null
-              : const Text(
-                  'Tap to respond',
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-          onTap: decided
-              ? null
-              : () async {
-                  final decision = await PermissionSheet.show(
-                    context,
-                    toolName: msg.toolName,
-                    description: msg.description,
-                    input: msg.input,
-                  );
-                  if (decision != null && mounted) {
-                    ref
-                        .read(conversationProvider(widget.sessionId).notifier)
-                        .respondToPermission(msg.requestId, decision);
-                  }
-                },
-        ),
-      ),
+    return ToolCallCard(
+      toolName: msg.toolName,
+      description: msg.description,
+      input: msg.input,
+      isPermission: true,
+      decision: msg.decision,
+      onPermissionTap: msg.decision == null
+          ? () async {
+              final decision = await PermissionSheet.show(
+                context,
+                toolName: msg.toolName,
+                description: msg.description,
+                input: msg.input,
+              );
+              if (decision != null && mounted) {
+                ref
+                    .read(conversationProvider(widget.sessionId).notifier)
+                    .respondToPermission(msg.requestId, decision);
+              }
+            }
+          : null,
     );
   }
 

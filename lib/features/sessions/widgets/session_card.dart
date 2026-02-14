@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../generated/betcode/v1/agent.pb.dart';
 import '../../../shared/theme/app_colors.dart';
+import '../../../shared/utils/time_utils.dart';
 
 /// A card displaying a single [SessionSummary] in the sessions list.
 ///
@@ -23,7 +24,7 @@ class SessionCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/conversation/${session.id}'),
+        onTap: () => context.go('/sessions/${session.id}'),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -105,8 +106,6 @@ class SessionCard extends StatelessWidget {
     );
   }
 
-  /// Converts the session's [updatedAt] (or [createdAt]) protobuf Timestamp
-  /// into a human-readable relative time string.
   String _relativeTime(SessionSummary session) {
     final DateTime dateTime;
     if (session.hasUpdatedAt()) {
@@ -122,15 +121,7 @@ class SessionCard extends StatelessWidget {
     } else {
       return '';
     }
-
-    final now = DateTime.now();
-    final diff = now.difference(dateTime);
-
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${dateTime.month}/${dateTime.day}/${dateTime.year}';
+    return relativeTime(dateTime);
   }
 }
 
