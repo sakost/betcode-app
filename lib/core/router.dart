@@ -27,6 +27,18 @@ class _PreviousTabIndexNotifier extends Notifier<int> {
   int build() => 1; // default: sessions (initial route)
 }
 
+/// Tracks the destination tab index so exiting pages can determine the
+/// correct exit direction at animation time.
+final _targetTabIndexProvider =
+    NotifierProvider<_TargetTabIndexNotifier, int>(
+      _TargetTabIndexNotifier.new,
+    );
+
+class _TargetTabIndexNotifier extends Notifier<int> {
+  @override
+  int build() => 1; // default: sessions (initial route)
+}
+
 /// Route paths for the bottom navigation tabs (single source of truth).
 const _tabPaths = ['/machines', '/sessions', '/code', '/settings'];
 
@@ -34,41 +46,42 @@ const _tabPaths = ['/machines', '/sessions', '/code', '/settings'];
 /// based on the tab index relative to the previous tab.
 ///
 /// The [previousTabIndex] value is captured at navigation time, fixing the
-/// slide direction for the lifetime of the transition.
+/// entry slide direction. For exit animations (when the page is being
+/// replaced), the direction is read from [_targetTabIndexProvider] at
+/// animation time so the page exits toward the new destination.
 CustomTransitionPage<void> _buildTabPage({
   required GoRouterState state,
   required int tabIndex,
   required int previousTabIndex,
+  required Ref ref,
   required Widget child,
 }) {
-  // Same tab re-selected or initial route — skip animation.
-  if (tabIndex == previousTabIndex) {
-    return CustomTransitionPage<void>(
-      key: state.pageKey,
-      child: child,
-      transitionsBuilder: (_, __, ___, child) => child,
-    );
-  }
-  final goingLeft = tabIndex < previousTabIndex;
+  final enteringFromLeft = tabIndex < previousTabIndex;
+  final isSameTab = tabIndex == previousTabIndex;
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
     transitionDuration: const Duration(milliseconds: 300),
     reverseTransitionDuration: const Duration(milliseconds: 300),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final begin = Offset(goingLeft ? -1.0 : 1.0, 0);
-      final slideIn = Tween<Offset>(begin: begin, end: Offset.zero).animate(
+      if (animation.status == AnimationStatus.reverse) {
+        // Exiting: read the current destination to determine exit direction.
+        // E.g. if destination is to the right, this page exits to the left.
+        final target = ref.read(_targetTabIndexProvider);
+        if (target == tabIndex) return child; // same-tab: no exit animation
+        final begin = Offset(target > tabIndex ? -1.0 : 1.0, 0);
+        final slide = Tween<Offset>(begin: begin, end: Offset.zero).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+        );
+        return SlideTransition(position: slide, child: child);
+      }
+      // Entering (or at rest). Same-tab / initial route: no entry animation.
+      if (isSameTab) return child;
+      final begin = Offset(enteringFromLeft ? -1.0 : 1.0, 0);
+      final slide = Tween<Offset>(begin: begin, end: Offset.zero).animate(
         CurvedAnimation(parent: animation, curve: Curves.easeInOut),
       );
-      // Slide the outgoing page in the opposite direction.
-      final outBegin = Offset(goingLeft ? 1.0 : -1.0, 0);
-      final slideOut = Tween<Offset>(begin: Offset.zero, end: outBegin).animate(
-        CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInOut),
-      );
-      return SlideTransition(
-        position: slideOut,
-        child: SlideTransition(position: slideIn, child: child),
-      );
+      return SlideTransition(position: slide, child: child);
     },
   );
 }
@@ -116,6 +129,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               state: state,
               tabIndex: 0,
               previousTabIndex: ref.read(_previousTabIndexProvider),
+              ref: ref,
               child: const MachinesScreen(),
             ),
             routes: [
@@ -131,6 +145,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               state: state,
               tabIndex: 1,
               previousTabIndex: ref.read(_previousTabIndexProvider),
+              ref: ref,
               child: const SessionsScreen(),
             ),
             routes: [
@@ -152,6 +167,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               state: state,
               tabIndex: 2,
               previousTabIndex: ref.read(_previousTabIndexProvider),
+              ref: ref,
               child: const GitReposScreen(),
             ),
             routes: [
@@ -169,6 +185,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               state: state,
               tabIndex: 3,
               previousTabIndex: ref.read(_previousTabIndexProvider),
+              ref: ref,
               child: const SettingsScreen(),
             ),
           ),
@@ -230,6 +247,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   void _onDestinationSelected(int index) {
     ref.read(_previousTabIndexProvider.notifier).state =
         _currentIndex(context);
+    ref.read(_targetTabIndexProvider.notifier).state = index;
     context.go(_tabPaths[index]);
   }
 

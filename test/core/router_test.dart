@@ -341,7 +341,9 @@ void main() {
       expect(navBar.selectedIndex, 3);
     });
 
-    testWidgets('navigating left slides in from the left', (tester) async {
+    testWidgets('navigating left slides incoming page from the left', (
+      tester,
+    ) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -351,21 +353,23 @@ void main() {
       // Navigate from Sessions (index 1) to Machines (index 0) — going left.
       await tester.tap(find.text('Machines'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 150));
 
-      final slides = tester.widgetList<SlideTransition>(
-        find.byType(SlideTransition),
-      );
-      expect(slides, isNotEmpty);
-
-      // The incoming page should slide in from the left (negative dx).
-      final incomingSlide = slides.last;
-      expect(incomingSlide.position.value.dx, isNegative);
+      final dxValues = tester
+          .widgetList<SlideTransition>(find.byType(SlideTransition))
+          .map((s) => s.position.value.dx)
+          .where((dx) => dx != 0.0)
+          .toList();
+      expect(dxValues, isNotEmpty);
+      // Incoming page enters from the left (negative dx).
+      expect(dxValues, everyElement(isNegative));
 
       await tester.pumpAndSettle();
     });
 
-    testWidgets('navigating right slides in from the right', (tester) async {
+    testWidgets('navigating right slides incoming page from the right', (
+      tester,
+    ) async {
       await setLargeSize(tester);
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -375,16 +379,48 @@ void main() {
       // Navigate from Sessions (index 1) to Code (index 2) — going right.
       await tester.tap(find.text('Code'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 150));
 
-      final slides = tester.widgetList<SlideTransition>(
-        find.byType(SlideTransition),
-      );
-      expect(slides, isNotEmpty);
+      final dxValues = tester
+          .widgetList<SlideTransition>(find.byType(SlideTransition))
+          .map((s) => s.position.value.dx)
+          .where((dx) => dx != 0.0)
+          .toList();
+      expect(dxValues, isNotEmpty);
+      // Incoming page enters from the right (positive dx).
+      expect(dxValues, everyElement(isPositive));
 
-      // The incoming page should slide in from the right (positive dx).
-      final incomingSlide = slides.last;
-      expect(incomingSlide.position.value.dx, isPositive);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('multi-step navigation: exit direction matches target', (
+      tester,
+    ) async {
+      await setLargeSize(tester);
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(buildAuthApp());
+      await tester.pumpAndSettle();
+
+      // Step 1: Sessions (1) → Machines (0).
+      await tester.tap(find.text('Machines'));
+      await tester.pumpAndSettle();
+
+      // Step 2: Machines (0) → Code (2) — going right.
+      // Machines was entered with a real transition, so its exit animation
+      // (if the Navigator reverses it) should go to the left.
+      await tester.tap(find.text('Code'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+
+      final dxValues = tester
+          .widgetList<SlideTransition>(find.byType(SlideTransition))
+          .map((s) => s.position.value.dx)
+          .where((dx) => dx != 0.0)
+          .toList();
+      expect(dxValues, isNotEmpty);
+      // Incoming Code page enters from the right (positive dx).
+      expect(dxValues, contains(isPositive));
 
       await tester.pumpAndSettle();
     });
