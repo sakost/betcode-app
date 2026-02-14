@@ -14,16 +14,58 @@ import 'grpc/grpc_providers.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Tracks the previous tab index for directional slide animations.
+///
+/// Updated in [_AppShellState._onDestinationSelected] before navigation.
+int _previousTabIndex = 1; // default: sessions (initial route)
+
+/// Builds a [CustomTransitionPage] that slides in from the correct direction
+/// based on the tab index relative to the previous tab.
+CustomTransitionPage<void> _buildTabPage({
+  required GoRouterState state,
+  required int tabIndex,
+  required Widget child,
+}) {
+  final goingLeft = tabIndex < _previousTabIndex;
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 300),
+    reverseTransitionDuration: const Duration(milliseconds: 300),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final begin = Offset(goingLeft ? -1.0 : 1.0, 0);
+      final slideIn = Tween<Offset>(begin: begin, end: Offset.zero).animate(
+        CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+      );
+      // Slide the outgoing page in the opposite direction.
+      final outBegin = Offset(goingLeft ? 1.0 : -1.0, 0);
+      final slideOut = Tween<Offset>(begin: Offset.zero, end: outBegin).animate(
+        CurvedAnimation(parent: secondaryAnimation, curve: Curves.easeInOut),
+      );
+      return SlideTransition(
+        position: slideOut,
+        child: SlideTransition(position: slideIn, child: child),
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authNotifierProvider);
-  final relayConfig = ref.watch(relayConfigNotifierProvider);
+  // Notifier that triggers GoRouter redirect re-evaluation when
+  // auth or relay config changes — without recreating the GoRouter.
+  final refreshNotifier = _RouterRefreshNotifier();
+
+  ref.listen(authNotifierProvider, (_, __) => refreshNotifier.notify());
+  ref.listen(relayConfigNotifierProvider, (_, __) => refreshNotifier.notify());
+  ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
+    refreshListenable: refreshNotifier,
     initialLocation: '/sessions',
     redirect: (context, state) {
-      final isAuth = authState is AuthAuthenticated;
-      final hasRelay = relayConfig != null;
+      final isAuth = ref.read(authNotifierProvider) is AuthAuthenticated;
+      final hasRelay = ref.read(relayConfigNotifierProvider) != null;
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
@@ -47,7 +89,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/machines',
-            builder: (context, state) => const MachinesScreen(),
+            pageBuilder: (context, state) => _buildTabPage(
+              state: state,
+              tabIndex: 0,
+              child: const MachinesScreen(),
+            ),
             routes: [
               GoRoute(
                 path: ':machineId',
@@ -57,7 +103,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/sessions',
-            builder: (context, state) => const SessionsScreen(),
+            pageBuilder: (context, state) => _buildTabPage(
+              state: state,
+              tabIndex: 1,
+              child: const SessionsScreen(),
+            ),
             routes: [
               GoRoute(
                 path: ':sessionId',
@@ -73,7 +123,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/code',
-            builder: (context, state) => const GitReposScreen(),
+            pageBuilder: (context, state) => _buildTabPage(
+              state: state,
+              tabIndex: 2,
+              child: const GitReposScreen(),
+            ),
             routes: [
               GoRoute(
                 path: 'repos/:repoId',
@@ -85,7 +139,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsScreen(),
+            pageBuilder: (context, state) => _buildTabPage(
+              state: state,
+              tabIndex: 3,
+              child: const SettingsScreen(),
+            ),
           ),
         ],
       ),
@@ -93,11 +151,24 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class AppShell extends StatelessWidget {
+/// A [ChangeNotifier] that GoRouter listens to via [refreshListenable].
+///
+/// When auth or relay state changes, [notify] is called, which triggers
+/// GoRouter to re-evaluate its [redirect] without recreating the router.
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
 
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
   static const _destinations = [
     NavigationDestination(
       icon: Icon(Icons.computer_outlined),
@@ -136,13 +207,18 @@ class AppShell extends StatelessWidget {
     return 0;
   }
 
+  void _onDestinationSelected(int index) {
+    _previousTabIndex = _currentIndex(context);
+    context.go(_routes[index]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex(context),
-        onDestinationSelected: (index) => context.go(_routes[index]),
+        onDestinationSelected: _onDestinationSelected,
         destinations: _destinations,
       ),
     );

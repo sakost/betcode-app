@@ -182,6 +182,59 @@ void main() {
     });
   });
 
+  group('Router - stability', () {
+    testWidgets('GoRouter instance is reused when auth state changes', (
+      tester,
+    ) async {
+      // Create a mutable auth notifier so we can change state mid-test.
+      late AuthNotifier authNotifier;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            secureStorageProvider.overrideWithValue(mockStorage),
+            authNotifierProvider.overrideWith(() {
+              authNotifier = _AuthenticatedNotifier();
+              return authNotifier;
+            }),
+            relayConfigNotifierProvider
+                .overrideWith(_ConnectedRelayNotifier.new),
+          ],
+          child: Consumer(
+            builder: (context, ref, _) {
+              final router = ref.watch(routerProvider);
+              return MaterialApp.router(
+                routerConfig: router,
+                theme: AppTheme.lightTheme,
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Read the router instance before state change.
+      final container =
+          ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      final routerBefore = container.read(routerProvider);
+
+      // Trigger an auth state change by invalidating the provider.
+      // The router should use refreshListenable, NOT recreate.
+      container.read(authNotifierProvider.notifier).state =
+          AuthState.authenticated(
+        accessToken: 'tok2',
+        refreshToken: 'ref2',
+        userId: 'u2',
+        expiresAt: DateTime.now().add(const Duration(hours: 2)),
+      );
+      await tester.pumpAndSettle();
+
+      final routerAfter = container.read(routerProvider);
+      expect(identical(routerBefore, routerAfter), isTrue,
+          reason: 'GoRouter should be the same instance after auth change');
+    });
+  });
+
   group('Router - AppShell navigation', () {
     // Use a large surface to avoid overflow from nav destinations
     // (width) and ErrorDisplay content in screens that lack gRPC (height).
