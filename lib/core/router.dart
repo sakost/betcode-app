@@ -25,6 +25,8 @@ final _previousTabIndexProvider =
 class _PreviousTabIndexNotifier extends Notifier<int> {
   @override
   int build() => 1; // default: sessions (initial route)
+
+  void update(int value) => state = value;
 }
 
 /// Tracks the destination tab index so exiting pages can determine the
@@ -36,6 +38,8 @@ final _targetTabIndexProvider = NotifierProvider<_TargetTabIndexNotifier, int>(
 class _TargetTabIndexNotifier extends Notifier<int> {
   @override
   int build() => 1; // default: sessions (initial route)
+
+  void update(int value) => state = value;
 }
 
 /// Route paths for the bottom navigation tabs (single source of truth).
@@ -245,8 +249,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   void _onDestinationSelected(int index) {
-    ref.read(_previousTabIndexProvider.notifier).state = _currentIndex(context);
-    ref.read(_targetTabIndexProvider.notifier).state = index;
+    ref.read(_previousTabIndexProvider.notifier).update(_currentIndex(context));
+    ref.read(_targetTabIndexProvider.notifier).update(index);
     context.go(_tabPaths[index]);
   }
 

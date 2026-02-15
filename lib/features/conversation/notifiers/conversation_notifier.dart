@@ -3,10 +3,12 @@ import 'dart:math' show min;
 
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
 
 import '../../../core/grpc/service_providers.dart';
+import '../../../core/lifecycle/lifecycle.dart';
 import '../../../generated/betcode/v1/agent.pb.dart' as pb;
 import '../../../generated/betcode/v1/agent.pbgrpc.dart';
 import '../../../generated/betcode/v1/common.pb.dart';
@@ -32,6 +34,8 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   StreamSubscription<pb.AgentEvent>? _eventSubscription;
   int _reconnectAttempt = 0;
   Timer? _reconnectTimer;
+  bool _isReconnecting = false;
+  bool _paused = false;
 
   /// The session ID this notifier was created with.
   /// Set by the family provider factory.
@@ -41,8 +45,17 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   @override
   FutureOr<ConversationState> build() {
+    ref.listen<AppLifecycleState>(appLifecycleProvider, _onLifecycleChanged);
     ref.onDispose(_cleanup);
     return const ConversationState.initial();
+  }
+
+  void _onLifecycleChanged(AppLifecycleState? prev, AppLifecycleState next) {
+    if (next == AppLifecycleState.paused || next == AppLifecycleState.hidden) {
+      _onAppPaused();
+    } else if (next == AppLifecycleState.resumed) {
+      _onAppResumed();
+    }
   }
 
   /// Opens the bidi stream and sends a [StartConversation] request.
@@ -224,9 +237,16 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
     // Don't retry fatal errors.
     if (_isFatalError(error)) {
+      _isReconnecting = false;
       state = AsyncData(ConversationState.error('Stream error: $error'));
       _requestController?.close();
       _requestController = null;
+      return;
+    }
+
+    // Don't retry while app is backgrounded.
+    if (_paused) {
+      debugPrint('[Conversation] App paused, deferring reconnection');
       return;
     }
 
@@ -235,6 +255,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     if (current is ConversationActive && current.sessionId.isNotEmpty) {
       _attemptReconnection(current);
     } else {
+      _isReconnecting = false;
       state = AsyncData(ConversationState.error('Stream error: $error'));
       _requestController?.close();
       _requestController = null;
@@ -251,7 +272,13 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   }
 
   void _attemptReconnection(ConversationActive active) {
+    if (_paused) {
+      debugPrint('[Conversation] App paused, deferring reconnection');
+      return;
+    }
+
     if (_reconnectAttempt >= _maxReconnectAttempts) {
+      _isReconnecting = false;
       state = AsyncData(
         ConversationState.error(
           'Connection lost after $_maxReconnectAttempts reconnection attempts',
@@ -261,9 +288,15 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       return;
     }
 
+    _isReconnecting = true;
     final delay =
         _backoffDurations[min(_reconnectAttempt, _backoffDurations.length - 1)];
     _reconnectAttempt++;
+
+    debugPrint(
+      '[Conversation] Reconnecting in ${delay.inMilliseconds}ms '
+      '(attempt $_reconnectAttempt/$_maxReconnectAttempts)',
+    );
 
     state = AsyncData(
       active.copyWith(
@@ -272,7 +305,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     );
 
     _reconnectTimer = Timer(delay, () {
-      if (state.value is! ConversationActive) return;
+      if (_paused || state.value is! ConversationActive) return;
 
       try {
         final responseStream = _client.resumeSession(
@@ -283,18 +316,15 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         );
 
         _eventSubscription = responseStream.listen(
-          handleEvent,
+          _onReconnectEvent,
           onError: _handleStreamError,
           onDone: _handleStreamDone,
           cancelOnError: false,
         );
 
-        // Success — reset counter and clear error.
-        _reconnectAttempt = 0;
-        final current = state.value;
-        if (current is ConversationActive) {
-          state = AsyncData(current.copyWith(errorMessage: null));
-        }
+        // Don't reset _reconnectAttempt here — the stream setup is
+        // non-blocking. The counter is reset in _onReconnectEvent when
+        // the first successful event arrives.
       } catch (e) {
         // Retry on failure.
         final current = state.value;
@@ -303,6 +333,54 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         }
       }
     });
+  }
+
+  /// Handles the first successful event after reconnection, confirming the
+  /// connection is truly established. Resets the reconnect counter and
+  /// switches to the normal event handler.
+  void _onReconnectEvent(pb.AgentEvent event) {
+    debugPrint('[Conversation] Reconnection confirmed, stream active');
+    _reconnectAttempt = 0;
+    _isReconnecting = false;
+
+    // Clear error message.
+    final current = state.value;
+    if (current is ConversationActive) {
+      state = AsyncData(current.copyWith(errorMessage: null));
+    }
+
+    // Switch to normal event handler for subsequent events.
+    _eventSubscription?.onData(handleEvent);
+
+    // Process this event normally.
+    handleEvent(event);
+  }
+
+  // ---------------------------------------------------------------------------
+  // App lifecycle
+  // ---------------------------------------------------------------------------
+
+  void _onAppPaused() {
+    _paused = true;
+    if (_isReconnecting) {
+      debugPrint('[Conversation] App paused, suspending reconnection');
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    }
+  }
+
+  void _onAppResumed() {
+    if (!_paused) return;
+    _paused = false;
+    debugPrint('[Conversation] App resumed');
+
+    final current = state.value;
+    if (current is ConversationActive && _isReconnecting) {
+      // Restart reconnection with a fresh counter.
+      debugPrint('[Conversation] Resuming reconnection from attempt 0');
+      _reconnectAttempt = 0;
+      _attemptReconnection(current);
+    }
   }
 
   void _handleStreamDone() {
@@ -323,5 +401,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     _requestController = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _isReconnecting = false;
+    _paused = false;
   }
 }

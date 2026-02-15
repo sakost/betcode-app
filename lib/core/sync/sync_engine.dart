@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../grpc/service_providers.dart';
+import '../lifecycle/lifecycle.dart';
 import '../storage/storage.dart';
 import 'connectivity.dart';
 import 'sync_dispatcher.dart';
@@ -46,6 +49,7 @@ class SyncEngine {
   Timer? _drainTimer;
   bool _isSyncing = false;
   bool _disposed = false;
+  bool _paused = false;
   int _sequence = 0;
 
   Stream<SyncStatus> get statusStream => _statusController.stream;
@@ -60,7 +64,7 @@ class SyncEngine {
 
   void start() {
     _connectivitySub = _connectivity.statusStream.listen((status) {
-      if (status == NetworkStatus.online) {
+      if (status == NetworkStatus.online && !_paused) {
         // Wait for connection stability before draining
         _drainTimer?.cancel();
         _drainTimer = Timer(_stabilityDelay, _drainQueue);
@@ -73,6 +77,32 @@ class SyncEngine {
     _connectivitySub?.cancel();
     _drainTimer?.cancel();
     _statusController.close();
+  }
+
+  /// Whether the engine is currently paused (app backgrounded).
+  bool get isPaused => _paused;
+
+  /// Pause queue drain operations. Called when the app is backgrounded.
+  /// Does not interrupt an in-progress drain cycle.
+  void pause() {
+    if (_paused) return;
+    _paused = true;
+    _drainTimer?.cancel();
+    _drainTimer = null;
+    debugPrint('[SyncEngine] Paused');
+  }
+
+  /// Resume queue drain operations. Triggers a drain if currently online.
+  void resume() {
+    if (!_paused) return;
+    _paused = false;
+    debugPrint('[SyncEngine] Resumed');
+    // Check connectivity and drain if online.
+    _connectivity.currentStatus.then((status) {
+      if (status == NetworkStatus.online && !_isSyncing && !_paused) {
+        _drainQueue();
+      }
+    });
   }
 
   /// Add an item to the offline sync queue.
@@ -104,8 +134,8 @@ class SyncEngine {
             sessionId: Value(sessionId),
           ),
         );
-    // Trigger drain only if online and not already syncing
-    if (!_isSyncing) {
+    // Trigger drain only if online, not already syncing, and not paused.
+    if (!_isSyncing && !_paused) {
       final status = await _connectivity.currentStatus;
       if (status == NetworkStatus.online) {
         _drainQueue();
@@ -255,6 +285,13 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
     connectivity: connectivity,
     dispatcher: dispatcher,
   )..start();
+  ref.listen(appLifecycleProvider, (prev, next) {
+    if (next == AppLifecycleState.paused || next == AppLifecycleState.hidden) {
+      engine.pause();
+    } else if (next == AppLifecycleState.resumed) {
+      engine.resume();
+    }
+  });
   ref.onDispose(engine.dispose);
   return engine;
 });

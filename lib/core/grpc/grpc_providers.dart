@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
 
@@ -5,9 +6,11 @@ import '../../generated/betcode/v1/auth.pbgrpc.dart';
 import '../../generated/betcode/v1/health.pbgrpc.dart';
 import '../../features/machines/notifiers/machines_providers.dart';
 import '../auth/auth.dart';
+import '../lifecycle/lifecycle.dart';
 import 'client_manager.dart';
 import 'connection_state.dart';
 import 'interceptors.dart';
+import 'lifecycle_bridge.dart';
 import 'relay_config.dart';
 import 'relay_notifier.dart';
 
@@ -42,7 +45,18 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
     },
   );
 
+  final bridge = GrpcLifecycleBridge(manager);
+
+  ref.listen(appLifecycleProvider, (prev, next) {
+    if (next == AppLifecycleState.paused || next == AppLifecycleState.hidden) {
+      bridge.onPaused();
+    } else if (next == AppLifecycleState.resumed) {
+      bridge.onResumed();
+    }
+  });
+
   ref.onDispose(() async {
+    bridge.dispose();
     await manager.dispose();
   });
 

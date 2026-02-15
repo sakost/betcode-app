@@ -7,7 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:flutter/widgets.dart' show AppLifecycleState;
+
 import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/core/lifecycle/app_lifecycle_notifier.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_notifier.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_providers.dart';
@@ -587,6 +590,269 @@ void main() {
         expect(s, isA<ConversationActive>());
 
         activeResumeController?.close();
+      });
+    });
+
+    test(
+      'immediate stream error does not reset counter (backoff progresses)',
+      () {
+        fakeAsync((async) {
+          var resumeCallCount = 0;
+
+          // Every resumeSession call returns a stream that immediately errors.
+          when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+            resumeCallCount++;
+            return ErrorResponseStream<pb.AgentEvent>(
+              GrpcError.unavailable('dns fail'),
+            );
+          });
+
+          startActive(async);
+          injectError(async);
+
+          // First attempt: 500ms backoff.
+          async.elapse(const Duration(milliseconds: 600));
+          async.flushMicrotasks();
+          expect(resumeCallCount, 1);
+
+          // Second attempt: 1s backoff (counter was NOT reset).
+          async.elapse(const Duration(seconds: 1));
+          async.flushMicrotasks();
+          expect(resumeCallCount, 2);
+
+          // Third attempt: 3s backoff.
+          async.elapse(const Duration(seconds: 3));
+          async.flushMicrotasks();
+          expect(resumeCallCount, 3);
+        });
+      },
+    );
+
+    test(
+      'exhausts max attempts with immediate stream errors (no infinite loop)',
+      () {
+        fakeAsync((async) {
+          var resumeCallCount = 0;
+
+          when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+            resumeCallCount++;
+            return ErrorResponseStream<pb.AgentEvent>(
+              GrpcError.unavailable('dns fail'),
+            );
+          });
+
+          startActive(async);
+          injectError(async);
+
+          // Advance past all backoff durations.
+          async.elapse(const Duration(minutes: 2));
+
+          // Should have made exactly 5 attempts then stopped.
+          expect(resumeCallCount, 5);
+
+          final s = stateVal();
+          expect(s, isA<ConversationError>());
+          expect((s as ConversationError).message, contains('5'));
+        });
+      },
+    );
+
+    test('counter only resets after receiving a successful event', () {
+      fakeAsync((async) {
+        var resumeCallCount = 0;
+        StreamController<pb.AgentEvent>? activeController;
+
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          resumeCallCount++;
+          activeController = StreamController<pb.AgentEvent>();
+          return FakeResponseStream<pb.AgentEvent>(activeController!);
+        });
+
+        startActive(async);
+        injectError(async);
+
+        // First attempt fires at 500ms.
+        async.elapse(const Duration(milliseconds: 600));
+        expect(resumeCallCount, 1);
+
+        // Stream is set up but no events sent yet — error it immediately.
+        // The counter should NOT have been reset.
+        activeController!.addError(GrpcError.unavailable('still failing'));
+        async.flushMicrotasks();
+
+        // Second attempt should use 1s backoff (not 500ms), proving
+        // the counter was NOT reset.
+        async.elapse(const Duration(milliseconds: 600));
+        expect(resumeCallCount, 1, reason: 'Should not retry yet at 500ms');
+
+        async.elapse(const Duration(milliseconds: 500));
+        expect(resumeCallCount, 2, reason: 'Should retry at ~1s');
+      });
+    });
+  });
+
+  group('app lifecycle', () {
+    /// Creates a container with lifecycle notifier override for testing.
+    ProviderContainer createLifecycleContainer() {
+      return ProviderContainer(
+        overrides: [agentServiceProvider.overrideWithValue(mockClient)],
+      );
+    }
+
+    AppLifecycleNotifier lifecycleNotifier(ProviderContainer c) =>
+        c.read(appLifecycleProvider.notifier);
+
+    test('paused state prevents reconnection while backgrounded', () {
+      fakeAsync((async) {
+        final c = createLifecycleContainer();
+        addTearDown(c.dispose);
+
+        // Set up reconnection mock.
+        var resumeCallCount = 0;
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          resumeCallCount++;
+          return ErrorResponseStream<pb.AgentEvent>(
+            GrpcError.unavailable('dns fail'),
+          );
+        });
+
+        // Go active.
+        c.read(conversationProvider(null));
+        final n = c.read(conversationProvider(null).notifier);
+        n.startConversation(workingDirectory: '/tmp');
+        async.flushMicrotasks();
+
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-lifecycle'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Background the app BEFORE any error occurs.
+        lifecycleNotifier(c).transition(AppLifecycleState.paused);
+        async.flushMicrotasks();
+
+        // Now inject stream error while backgrounded.
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        // Advance past all backoff durations — no reconnect should fire.
+        async.elapse(const Duration(minutes: 2));
+        expect(resumeCallCount, 0, reason: 'No reconnect while paused');
+
+        c.dispose();
+      });
+    });
+
+    test('resumed state triggers reconnection after background error', () {
+      fakeAsync((async) {
+        final c = createLifecycleContainer();
+        addTearDown(c.dispose);
+
+        var resumeCallCount = 0;
+        StreamController<pb.AgentEvent>? resumeController;
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          resumeCallCount++;
+          resumeController = StreamController<pb.AgentEvent>();
+          return FakeResponseStream<pb.AgentEvent>(resumeController!);
+        });
+
+        // Go active.
+        c.read(conversationProvider(null));
+        final n = c.read(conversationProvider(null).notifier);
+        n.startConversation(workingDirectory: '/tmp');
+        async.flushMicrotasks();
+
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-lifecycle'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Inject error to trigger reconnection.
+        eventController.addError(GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        // Background the app (this should pause reconnection).
+        lifecycleNotifier(c).transition(AppLifecycleState.paused);
+        async.flushMicrotasks();
+
+        // Advance time — no reconnect while paused.
+        async.elapse(const Duration(seconds: 5));
+        expect(resumeCallCount, 0);
+
+        // Foreground the app.
+        lifecycleNotifier(c).transition(AppLifecycleState.resumed);
+        async.flushMicrotasks();
+
+        // Counter should be reset; first attempt fires at 500ms.
+        async.elapse(const Duration(milliseconds: 600));
+        expect(resumeCallCount, 1, reason: 'Reconnect after resume');
+
+        resumeController?.close();
+        c.dispose();
+      });
+    });
+
+    test('cleanup resets paused flag so new conversation works', () {
+      fakeAsync((async) {
+        final c = createLifecycleContainer();
+        addTearDown(c.dispose);
+
+        // Go active.
+        c.read(conversationProvider(null));
+        final n = c.read(conversationProvider(null).notifier);
+        n.startConversation(workingDirectory: '/tmp');
+        async.flushMicrotasks();
+
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-cleanup'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Background the app (sets _paused = true).
+        lifecycleNotifier(c).transition(AppLifecycleState.paused);
+        async.flushMicrotasks();
+
+        // Stream done while backgrounded (triggers cleanup).
+        eventController.close();
+        async.flushMicrotasks();
+
+        // Foreground the app.
+        lifecycleNotifier(c).transition(AppLifecycleState.resumed);
+        async.flushMicrotasks();
+
+        // Start a new conversation — should work (paused was reset by cleanup).
+        final newEventController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen((_) {});
+          return FakeResponseStream<pb.AgentEvent>(newEventController);
+        });
+
+        n.startConversation(workingDirectory: '/tmp');
+        async.flushMicrotasks();
+
+        newEventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-new'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        final s = c.read(conversationProvider(null)).value;
+        expect(s, isA<ConversationActive>());
+        expect((s as ConversationActive).sessionId, 'sess-new');
+
+        newEventController.close();
+        c.dispose();
       });
     });
   });

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 
@@ -374,6 +375,134 @@ void main() {
           GrpcConnectionStatus.reconnecting,
         ]),
       );
+    });
+  });
+
+  group('GrpcClientManager - pause/resume lifecycle', () {
+    test('isPaused is false initially', () {
+      expect(manager.isPaused, isFalse);
+    });
+
+    test('pause() cancels active reconnection timer', () {
+      fakeAsync((async) {
+        final mgr = GrpcClientManager();
+
+        // Start a reconnect — this schedules a timer (100ms for attempt 0).
+        mgr.reconnect(host: 'localhost', port: 50051);
+        expect(mgr.status, GrpcConnectionStatus.reconnecting);
+
+        // Pause before the timer fires.
+        mgr.pause();
+        expect(mgr.isPaused, isTrue);
+
+        // Advance well past all backoff durations — timer should NOT fire.
+        async.elapse(const Duration(seconds: 60));
+
+        // Status should still be reconnecting (the timer callback never ran,
+        // so no connect() was attempted — status was not changed to
+        // connecting/connected).
+        expect(mgr.status, GrpcConnectionStatus.reconnecting);
+
+        mgr.dispose();
+      });
+    });
+
+    test('pause() does not disconnect the channel', () async {
+      await manager.connect('localhost', 50051);
+      expect(manager.channelOrNull, isNotNull);
+      expect(manager.status, GrpcConnectionStatus.connected);
+
+      manager.pause();
+
+      // Channel should still be available.
+      expect(manager.channelOrNull, isNotNull);
+      expect(manager.status, GrpcConnectionStatus.connected);
+    });
+
+    test('resume() restarts reconnection when in reconnecting state', () {
+      fakeAsync((async) {
+        final mgr = GrpcClientManager();
+
+        // Start reconnect, then pause.
+        mgr.reconnect(host: 'localhost', port: 50051);
+        mgr.pause();
+
+        // Advance past initial timer — nothing should happen.
+        async.elapse(const Duration(seconds: 1));
+        expect(mgr.status, GrpcConnectionStatus.reconnecting);
+
+        // Resume — should restart reconnection with attempt 0.
+        mgr.resume();
+        expect(mgr.isPaused, isFalse);
+
+        // After resume, reconnect restarts from attempt 0 (100ms delay).
+        // The status should be reconnecting with attempt 1 (attempt 0 + 1).
+        expect(mgr.status, GrpcConnectionStatus.reconnecting);
+        expect(mgr.currentInfo.reconnectAttempt, 1);
+
+        mgr.dispose();
+      });
+    });
+
+    test('reconnect loop does not fire while paused', () {
+      fakeAsync((async) {
+        final mgr = GrpcClientManager();
+
+        // Pause first, then trigger reconnect.
+        mgr.pause();
+        mgr.reconnect(host: 'localhost', port: 50051);
+
+        // The _reconnectLoop should bail out immediately because _paused is
+        // true. Status should still be whatever reconnect() set before
+        // _reconnectLoop returned early. Since _reconnectLoop returns early
+        // before emitting, let's check status stays disconnected or doesn't
+        // schedule any timer.
+        // Actually reconnect() calls _cancelReconnect() then _reconnectLoop().
+        // _reconnectLoop checks _paused at top and returns immediately.
+        // Status was 'disconnected' initially, and _reconnectLoop didn't emit.
+        expect(mgr.status, GrpcConnectionStatus.disconnected);
+
+        // Advance well past all backoff durations — nothing fires.
+        async.elapse(const Duration(seconds: 60));
+        expect(mgr.status, GrpcConnectionStatus.disconnected);
+
+        mgr.dispose();
+      });
+    });
+
+    test('pause/resume cycle resets reconnect attempts', () {
+      fakeAsync((async) {
+        final mgr = GrpcClientManager();
+
+        // Start reconnecting — attempt 1 emitted synchronously.
+        mgr.reconnect(host: 'localhost', port: 50051);
+        expect(mgr.currentInfo.reconnectAttempt, 1);
+
+        // Pause to cancel the reconnect timer.
+        mgr.pause();
+        expect(mgr.currentInfo.status, GrpcConnectionStatus.reconnecting);
+
+        // Resume — should restart reconnection from attempt 0.
+        // _reconnectLoop(attempt: 0) emits reconnectAttempt = 0 + 1 = 1,
+        // confirming the attempt counter was reset back to zero.
+        mgr.resume();
+        expect(mgr.currentInfo.reconnectAttempt, 1); // reset: attempt 0+1=1
+        expect(mgr.currentInfo.status, GrpcConnectionStatus.reconnecting);
+
+        mgr.dispose();
+      });
+    });
+
+    test('pause is idempotent', () {
+      manager.pause();
+      expect(manager.isPaused, isTrue);
+      manager.pause(); // second call is no-op
+      expect(manager.isPaused, isTrue);
+    });
+
+    test('resume is idempotent when not paused', () {
+      manager.resume(); // no-op when not paused
+      expect(manager.isPaused, isFalse);
     });
   });
 }

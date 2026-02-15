@@ -36,6 +36,7 @@ class GrpcClientManager {
   ConnectionInfo _currentInfo = const ConnectionInfo();
   Timer? _reconnectTimer;
   bool _disposed = false;
+  bool _paused = false;
 
   // Stored connection parameters for auto-reconnect.
   String? _host;
@@ -95,6 +96,37 @@ class GrpcClientManager {
 
   /// Whether TLS was enabled in the last [connect] call.
   bool get useTls => _useTls;
+
+  /// Whether the manager is currently paused (app backgrounded).
+  bool get isPaused => _paused;
+
+  /// Pause reconnection attempts. Called when the app is backgrounded.
+  ///
+  /// Cancels any active reconnection timer but does not disconnect the
+  /// channel. This ensures the app does not waste resources reconnecting
+  /// while in the background.
+  void pause() {
+    if (_paused) return;
+    _paused = true;
+    _cancelReconnect();
+    debugPrint('[GrpcClientManager] Paused');
+  }
+
+  /// Resume operations. If the manager was reconnecting when paused,
+  /// restart reconnection from attempt 0.
+  void resume() {
+    if (!_paused) return;
+    _paused = false;
+    debugPrint('[GrpcClientManager] Resumed');
+
+    if (_currentInfo.status == GrpcConnectionStatus.reconnecting) {
+      final h = _host;
+      final p = _port;
+      if (h != null && p != null) {
+        _reconnectLoop(h, p, useTls: _useTls, attempt: 0);
+      }
+    }
+  }
 
   /// Establish a gRPC connection to the given [host] and [port].
   ///
@@ -202,7 +234,7 @@ class GrpcClientManager {
     required bool useTls,
     int attempt = 0,
   }) {
-    if (_disposed) return;
+    if (_disposed || _paused) return;
 
     final delay = _backoffDurations[min(attempt, _backoffDurations.length - 1)];
 

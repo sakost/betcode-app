@@ -456,6 +456,101 @@ void main() {
   });
 
   // -----------------------------------------------------------------------
+  // Pause / resume lifecycle
+  // -----------------------------------------------------------------------
+
+  group('pause/resume lifecycle', () {
+    test('pause() cancels pending drain timer', () async {
+      engine.start();
+      // Trigger online event which schedules a stability-delay timer.
+      fakeConnectivity.emit(NetworkStatus.online);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Pause before the 3s stability delay expires.
+      engine.pause();
+      expect(engine.isPaused, isTrue);
+
+      // Wait past the stability delay — drain should never fire.
+      await Future<void>.delayed(const Duration(seconds: 4));
+      verifyNever(() => mockDb.delete(mockTable));
+    });
+
+    test('pause() does not interrupt in-progress sync', () async {
+      final completer = Completer<int>();
+      when(() => mockDelete.go()).thenAnswer((_) => completer.future);
+
+      engine.start();
+      fakeConnectivity.emit(NetworkStatus.online);
+      // Wait for the stability delay to fire and start the drain.
+      await Future<void>.delayed(const Duration(seconds: 4));
+
+      // Drain is now in progress (_isSyncing = true). Pause.
+      engine.pause();
+
+      // Let the drain finish.
+      completer.complete(0);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // delete was called, proving the drain ran to completion.
+      verify(() => mockDb.delete(mockTable)).called(1);
+    });
+
+    test('resume() triggers drain when online', () async {
+      engine.start();
+      engine.pause();
+
+      // While paused, connectivity is online.
+      fakeConnectivity.emit(NetworkStatus.online);
+      await Future<void>.delayed(const Duration(seconds: 4));
+
+      // No drain while paused.
+      verifyNever(() => mockDb.delete(mockTable));
+
+      // Resume — should trigger a drain since we are online.
+      engine.resume();
+      expect(engine.isPaused, isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(() => mockDb.delete(mockTable)).called(1);
+    });
+
+    test('drain timer does not fire while paused', () async {
+      engine.start();
+      // Pause first.
+      engine.pause();
+
+      // Then trigger connectivity online event.
+      fakeConnectivity.emit(NetworkStatus.online);
+
+      // Wait past the stability delay.
+      await Future<void>.delayed(const Duration(seconds: 4));
+
+      // Drain should never have been scheduled.
+      verifyNever(() => mockDb.delete(mockTable));
+    });
+
+    test('enqueue does not trigger immediate drain while paused', () async {
+      registerFallbackValue(FakeInsertable());
+      registerFallbackValue(FakeSyncQueueCompanion());
+      wireUpInsertChain(mockDb: mockDb, mockTable: mockTable);
+
+      engine.start();
+      engine.pause();
+
+      // Enqueue while paused and online.
+      await engine.enqueue(
+        machineId: 'machine-1',
+        requestType: 'user_message',
+        payload: Uint8List.fromList([1, 2, 3]),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Drain should not have been triggered.
+      verifyNever(() => mockDb.delete(mockTable));
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // Drain queue processing
   // -----------------------------------------------------------------------
 
