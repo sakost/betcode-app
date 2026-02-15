@@ -136,10 +136,22 @@ void main() {
       // "Sessions" appears in both the screen title and the nav bar label,
       // so we verify it exists at least once in the NavigationBar.
       final navBarFinder = find.byType(NavigationBar);
-      expect(find.descendant(of: navBarFinder, matching: find.text('Machines')), findsOneWidget);
-      expect(find.descendant(of: navBarFinder, matching: find.text('Sessions')), findsOneWidget);
-      expect(find.descendant(of: navBarFinder, matching: find.text('Code')), findsOneWidget);
-      expect(find.descendant(of: navBarFinder, matching: find.text('Settings')), findsOneWidget);
+      expect(
+        find.descendant(of: navBarFinder, matching: find.text('Machines')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: navBarFinder, matching: find.text('Sessions')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: navBarFinder, matching: find.text('Code')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: navBarFinder, matching: find.text('Settings')),
+        findsOneWidget,
+      );
     });
   });
 }

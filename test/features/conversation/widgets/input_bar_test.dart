@@ -41,9 +41,7 @@ void main() {
 
     testWidgets('selecting command calls onSubmit with /command', (t) async {
       String? submitted;
-      await t.pumpWidget(
-        _app(InputBar(onSubmit: (s) => submitted = s)),
-      );
+      await t.pumpWidget(_app(InputBar(onSubmit: (s) => submitted = s)));
       await t.enterText(find.byType(TextField), '/exit');
       await t.pump();
       // Tap the ListTile in the palette, not the text in the TextField
@@ -74,9 +72,7 @@ void main() {
     testWidgets('typing @ shows mention overlay when agents provided', (
       t,
     ) async {
-      await t.pumpWidget(
-        _app(InputBar(onSubmit: (_) {}, agents: _agents)),
-      );
+      await t.pumpWidget(_app(InputBar(onSubmit: (_) {}, agents: _agents)));
       await t.enterText(find.byType(TextField), '@');
       await t.pump();
       expect(find.byType(AgentMentionOverlay), findsOneWidget);
@@ -90,35 +86,34 @@ void main() {
     });
 
     testWidgets('no overlay when agents is empty', (t) async {
-      await t.pumpWidget(
-        _app(InputBar(onSubmit: (_) {}, agents: const {})),
-      );
+      await t.pumpWidget(_app(InputBar(onSubmit: (_) {}, agents: const {})));
       await t.enterText(find.byType(TextField), '@');
       await t.pump();
       expect(find.byType(AgentMentionOverlay), findsNothing);
     });
 
     testWidgets('selecting agent inserts @name into text', (t) async {
-      await t.pumpWidget(
-        _app(InputBar(onSubmit: (_) {}, agents: _agents)),
-      );
+      await t.pumpWidget(_app(InputBar(onSubmit: (_) {}, agents: _agents)));
       await t.enterText(find.byType(TextField), '@cod');
       await t.pump();
       await t.tap(find.text('@coder'));
       await t.pump();
-      final controller =
-          t.widget<TextField>(find.byType(TextField)).controller!;
+      final controller = t
+          .widget<TextField>(find.byType(TextField))
+          .controller!;
       expect(controller.text, contains('@coder'));
     });
 
     testWidgets('selecting agent calls onAgentSelected', (t) async {
       String? selectedId;
       await t.pumpWidget(
-        _app(InputBar(
-          onSubmit: (_) {},
-          agents: _agents,
-          onAgentSelected: (id) => selectedId = id,
-        )),
+        _app(
+          InputBar(
+            onSubmit: (_) {},
+            agents: _agents,
+            onAgentSelected: (id) => selectedId = id,
+          ),
+        ),
       );
       await t.enterText(find.byType(TextField), '@cod');
       await t.pump();

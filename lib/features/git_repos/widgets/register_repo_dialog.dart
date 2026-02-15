@@ -85,9 +85,7 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
             children: [
               TextFormField(
                 controller: _repoPathController,
-                decoration: const InputDecoration(
-                  labelText: 'Repository Path',
-                ),
+                decoration: const InputDecoration(labelText: 'Repository Path'),
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
@@ -101,9 +99,7 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
               const SizedBox(height: 12),
               DropdownButtonFormField<WorktreeMode>(
                 initialValue: _worktreeMode,
-                decoration: const InputDecoration(
-                  labelText: 'Worktree Mode',
-                ),
+                decoration: const InputDecoration(labelText: 'Worktree Mode'),
                 items: _worktreeModes
                     .map(
                       (mode) => DropdownMenuItem(

@@ -52,10 +52,7 @@ class MachinesNotifier extends AsyncNotifier<List<MachineInfo>> {
     Map<String, String>? metadata,
   }) async {
     final client = ref.read(machineServiceProvider);
-    final request = RegisterMachineRequest(
-      machineId: machineId,
-      name: name,
-    );
+    final request = RegisterMachineRequest(machineId: machineId, name: name);
     if (metadata != null) {
       request.metadata.addAll(metadata);
     }

@@ -7,8 +7,14 @@ void main() {
     test('returns "just now" for less than 1 minute ago', () {
       final now = DateTime.now();
       expect(relativeTime(now), 'just now');
-      expect(relativeTime(now.subtract(const Duration(seconds: 30))), 'just now');
-      expect(relativeTime(now.subtract(const Duration(seconds: 59))), 'just now');
+      expect(
+        relativeTime(now.subtract(const Duration(seconds: 30))),
+        'just now',
+      );
+      expect(
+        relativeTime(now.subtract(const Duration(seconds: 59))),
+        'just now',
+      );
     });
 
     test('returns "1m ago" for exactly 1 minute ago', () {

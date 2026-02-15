@@ -29,10 +29,9 @@ class _PreviousTabIndexNotifier extends Notifier<int> {
 
 /// Tracks the destination tab index so exiting pages can determine the
 /// correct exit direction at animation time.
-final _targetTabIndexProvider =
-    NotifierProvider<_TargetTabIndexNotifier, int>(
-      _TargetTabIndexNotifier.new,
-    );
+final _targetTabIndexProvider = NotifierProvider<_TargetTabIndexNotifier, int>(
+  _TargetTabIndexNotifier.new,
+);
 
 class _TargetTabIndexNotifier extends Notifier<int> {
   @override
@@ -70,17 +69,19 @@ CustomTransitionPage<void> _buildTabPage({
         final target = ref.read(_targetTabIndexProvider);
         if (target == tabIndex) return child; // same-tab: no exit animation
         final begin = Offset(target > tabIndex ? -1.0 : 1.0, 0);
-        final slide = Tween<Offset>(begin: begin, end: Offset.zero).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeInOut),
-        );
+        final slide = Tween<Offset>(
+          begin: begin,
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut));
         return SlideTransition(position: slide, child: child);
       }
       // Entering (or at rest). Same-tab / initial route: no entry animation.
       if (isSameTab) return child;
       final begin = Offset(enteringFromLeft ? -1.0 : 1.0, 0);
-      final slide = Tween<Offset>(begin: begin, end: Offset.zero).animate(
-        CurvedAnimation(parent: animation, curve: Curves.easeInOut),
-      );
+      final slide = Tween<Offset>(
+        begin: begin,
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut));
       return SlideTransition(position: slide, child: child);
     },
   );
@@ -173,9 +174,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'repos/:repoId',
-                builder: (context, state) => RepoDetailScreen(
-                  repoId: state.pathParameters['repoId']!,
-                ),
+                builder: (context, state) =>
+                    RepoDetailScreen(repoId: state.pathParameters['repoId']!),
               ),
             ],
           ),
@@ -245,8 +245,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   void _onDestinationSelected(int index) {
-    ref.read(_previousTabIndexProvider.notifier).state =
-        _currentIndex(context);
+    ref.read(_previousTabIndexProvider.notifier).state = _currentIndex(context);
     ref.read(_targetTabIndexProvider.notifier).state = index;
     context.go(_tabPaths[index]);
   }

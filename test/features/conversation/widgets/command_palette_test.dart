@@ -4,14 +4,8 @@ import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
 import 'package:betcode_app/features/conversation/models/input_command.dart';
 
 Widget _app(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          height: 600,
-          width: 400,
-          child: child,
-        ),
-      ),
-    );
+  home: Scaffold(body: SizedBox(height: 600, width: 400, child: child)),
+);
 
 void main() {
   group('CommandPalette', () {
@@ -76,10 +70,10 @@ void main() {
       await t.pumpWidget(
         _app(CommandPalette(query: 'exit', onCommandSelected: (_) {})),
       );
-      final boxes =
-          t.widgetList<ConstrainedBox>(find.byType(ConstrainedBox)).toList();
-      final hasConstraint =
-          boxes.any((b) => b.constraints.maxHeight == 240);
+      final boxes = t
+          .widgetList<ConstrainedBox>(find.byType(ConstrainedBox))
+          .toList();
+      final hasConstraint = boxes.any((b) => b.constraints.maxHeight == 240);
       expect(hasConstraint, isTrue);
     });
 

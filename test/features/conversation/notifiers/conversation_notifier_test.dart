@@ -383,6 +383,35 @@ void main() {
   });
 
   group('reconnection', () {
+    /// Starts a conversation and transitions to active state inside fakeAsync.
+    ///
+    /// Returns the notifier. After calling, the event stream has received
+    /// a SessionInfo with the given [sessionId] and [sequence].
+    ConversationNotifier startActive(
+      FakeAsync async, {
+      String sessionId = 'sess-1',
+      int sequence = 1,
+    }) {
+      final n = notifier();
+      n.startConversation(workingDirectory: '/tmp');
+      async.flushMicrotasks();
+
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(sequence),
+          sessionInfo: pb.SessionInfo(sessionId: sessionId),
+        ),
+      );
+      async.flushMicrotasks();
+      return n;
+    }
+
+    /// Injects a transient error and flushes microtasks.
+    void injectError(FakeAsync async, [GrpcError? error]) {
+      eventController.addError(error ?? GrpcError.unavailable('lost'));
+      async.flushMicrotasks();
+    }
+
     test('attempts reconnection on transient stream error', () {
       fakeAsync((async) {
         final resumeController = StreamController<pb.AgentEvent>();
@@ -390,25 +419,9 @@ void main() {
           (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
         );
 
-        final n = notifier();
-        // Manually drive the futures in fakeAsync.
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
+        startActive(async);
+        injectError(async);
 
-        // Transition to active state.
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-          ),
-        );
-        async.flushMicrotasks();
-
-        // Simulate transient stream error.
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
-
-        // Advance past the first backoff delay (500ms).
         async.elapse(const Duration(milliseconds: 600));
 
         verify(() => mockClient.resumeSession(any())).called(1);
@@ -427,20 +440,8 @@ void main() {
           return FakeResponseStream<pb.AgentEvent>(resumeController);
         });
 
-        final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
-
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(7),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-42'),
-          ),
-        );
-        async.flushMicrotasks();
-
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
+        startActive(async, sessionId: 'sess-42', sequence: 7);
+        injectError(async);
 
         async.elapse(const Duration(milliseconds: 600));
 
@@ -464,9 +465,8 @@ void main() {
         n.startConversation(workingDirectory: '/tmp');
         async.flushMicrotasks();
 
-        // Error before SessionInfo — state is ConversationConnecting, not active.
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
+        // Error before SessionInfo -- no session to reconnect to.
+        injectError(async);
 
         async.elapse(const Duration(seconds: 60));
 
@@ -485,20 +485,8 @@ void main() {
           ),
         );
 
-        final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
-
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-          ),
-        );
-        async.flushMicrotasks();
-
-        eventController.addError(GrpcError.unauthenticated('expired'));
-        async.flushMicrotasks();
+        startActive(async);
+        injectError(async, GrpcError.unauthenticated('expired'));
 
         async.elapse(const Duration(seconds: 60));
 
@@ -511,25 +499,12 @@ void main() {
 
     test('transitions to error state after max reconnection attempts', () {
       fakeAsync((async) {
-        // Make resumeSession always throw to trigger repeated retries.
         when(
           () => mockClient.resumeSession(any()),
         ).thenThrow(GrpcError.unavailable('still down'));
 
-        final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
-
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-          ),
-        );
-        async.flushMicrotasks();
-
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
+        startActive(async);
+        injectError(async);
 
         // Advance well past all backoff durations (500ms + 1s + 3s + 10s + 30s = 44.5s).
         async.elapse(const Duration(minutes: 2));
@@ -547,24 +522,11 @@ void main() {
           (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
         );
 
-        final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
-
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-          ),
-        );
-        async.flushMicrotasks();
-
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
+        startActive(async);
+        injectError(async);
 
         async.elapse(const Duration(milliseconds: 600));
 
-        // Send events through the resumed stream.
         resumeController.add(
           pb.AgentEvent(
             sequence: Int64(2),
@@ -593,21 +555,10 @@ void main() {
           return FakeResponseStream<pb.AgentEvent>(activeResumeController!);
         });
 
-        final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
-        async.flushMicrotasks();
-
-        eventController.add(
-          pb.AgentEvent(
-            sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
-          ),
-        );
-        async.flushMicrotasks();
+        startActive(async);
 
         // First disconnect.
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
+        injectError(async);
         async.elapse(const Duration(milliseconds: 600));
         expect(resumeCallCount, 1);
 

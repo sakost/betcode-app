@@ -365,7 +365,15 @@ void main() {
       verify(() => mockInsert.insert(any())).called(1);
     });
 
-    test('uses correct priority', () async {
+    /// Stubs mockInsert to capture the [SyncQueueCompanion], enqueues with the
+    /// given params, and returns the captured companion.
+    Future<SyncQueueCompanion> enqueueAndCapture({
+      String machineId = 'machine-1',
+      String requestType = 'user_message',
+      List<int> payload = const [1],
+      int priority = 4,
+      String? sessionId,
+    }) async {
       SyncQueueCompanion? captured;
       when(() => mockInsert.insert(any())).thenAnswer((invocation) async {
         captured = invocation.positionalArguments[0] as SyncQueueCompanion;
@@ -373,14 +381,23 @@ void main() {
       });
 
       await engine.enqueue(
-        machineId: 'machine-1',
-        requestType: 'permission_response',
-        payload: Uint8List.fromList([1]),
-        priority: 1,
+        machineId: machineId,
+        requestType: requestType,
+        payload: Uint8List.fromList(payload),
+        priority: priority,
+        sessionId: sessionId,
       );
 
       expect(captured, isNotNull);
-      expect(captured!.priority.value, 1);
+      return captured!;
+    }
+
+    test('uses correct priority', () async {
+      final captured = await enqueueAndCapture(
+        requestType: 'permission_response',
+        priority: 1,
+      );
+      expect(captured.priority.value, 1);
     });
 
     test('generates unique idempotency keys', () async {
@@ -408,21 +425,9 @@ void main() {
     });
 
     test('sets 7-day TTL', () async {
-      SyncQueueCompanion? captured;
-      when(() => mockInsert.insert(any())).thenAnswer((invocation) async {
-        captured = invocation.positionalArguments[0] as SyncQueueCompanion;
-        return 1;
-      });
-
-      await engine.enqueue(
-        machineId: 'machine-1',
-        requestType: 'user_message',
-        payload: Uint8List.fromList([1]),
-      );
-
-      expect(captured, isNotNull);
-      final createdAt = captured!.createdAt.value;
-      final expiresAt = captured!.expiresAt.value;
+      final captured = await enqueueAndCapture();
+      final createdAt = captured.createdAt.value;
+      final expiresAt = captured.expiresAt.value;
       // 7 days = 604800 seconds
       expect(expiresAt - createdAt, 604800);
     });
@@ -440,38 +445,13 @@ void main() {
     });
 
     test('passes sessionId when provided', () async {
-      SyncQueueCompanion? captured;
-      when(() => mockInsert.insert(any())).thenAnswer((invocation) async {
-        captured = invocation.positionalArguments[0] as SyncQueueCompanion;
-        return 1;
-      });
-
-      await engine.enqueue(
-        machineId: 'machine-1',
-        requestType: 'user_message',
-        payload: Uint8List.fromList([1]),
-        sessionId: 'session-42',
-      );
-
-      expect(captured, isNotNull);
-      expect(captured!.sessionId.value, 'session-42');
+      final captured = await enqueueAndCapture(sessionId: 'session-42');
+      expect(captured.sessionId.value, 'session-42');
     });
 
     test('uses default priority of 4 for user messages', () async {
-      SyncQueueCompanion? captured;
-      when(() => mockInsert.insert(any())).thenAnswer((invocation) async {
-        captured = invocation.positionalArguments[0] as SyncQueueCompanion;
-        return 1;
-      });
-
-      await engine.enqueue(
-        machineId: 'machine-1',
-        requestType: 'user_message',
-        payload: Uint8List.fromList([1]),
-      );
-
-      expect(captured, isNotNull);
-      expect(captured!.priority.value, 4);
+      final captured = await enqueueAndCapture();
+      expect(captured.priority.value, 4);
     });
   });
 
@@ -542,10 +522,14 @@ void main() {
       verify(() => mockUpdate.write(any())).called(4);
     });
 
-    test('drain updates status from pending to sent', () async {
-      final items = [makeItem(id: 1)];
-      final capturedWrites = <SyncQueueCompanion>[];
-
+    /// Stubs select to return [items] on the 3rd call (the drain query)
+    /// and empty otherwise. Starts the engine with an online event and
+    /// waits for processing to settle. Returns the list of captured
+    /// [SyncQueueCompanion] writes.
+    Future<List<SyncQueueCompanion>> runDrainWith(
+      List<SyncQueueData> items, {
+      int? failOnUpdateCall,
+    }) async {
       var selectCallCount = 0;
       when(() => mockSelect.get()).thenAnswer((_) async {
         selectCallCount++;
@@ -553,9 +537,15 @@ void main() {
         return [];
       });
 
+      final capturedWrites = <SyncQueueCompanion>[];
+      var updateCallCount = 0;
       when(() => mockUpdate.write(any())).thenAnswer((invocation) async {
+        updateCallCount++;
         final companion =
             invocation.positionalArguments[0] as SyncQueueCompanion;
+        if (failOnUpdateCall != null && updateCallCount == failOnUpdateCall) {
+          throw Exception('gRPC unavailable');
+        }
         capturedWrites.add(companion);
         return 1;
       });
@@ -563,84 +553,36 @@ void main() {
       engine.start();
       fakeConnectivity.emit(NetworkStatus.online);
       await Future<void>.delayed(const Duration(seconds: 4));
+      return capturedWrites;
+    }
 
-      // Should have at least 2 writes: sending, then sent
-      expect(capturedWrites.length, greaterThanOrEqualTo(2));
-      expect(capturedWrites[0].status.value, 'sending');
-      expect(capturedWrites[1].status.value, 'sent');
+    test('drain updates status from pending to sent', () async {
+      final writes = await runDrainWith([makeItem(id: 1)]);
+
+      expect(writes.length, greaterThanOrEqualTo(2));
+      expect(writes[0].status.value, 'sending');
+      expect(writes[1].status.value, 'sent');
     });
 
     test('drain handles errors and increments retryCount', () async {
-      final items = [makeItem(id: 1, retryCount: 0)];
-      final capturedWrites = <SyncQueueCompanion>[];
+      final writes = await runDrainWith([
+        makeItem(id: 1, retryCount: 0),
+      ], failOnUpdateCall: 2);
 
-      var selectCallCount = 0;
-      when(() => mockSelect.get()).thenAnswer((_) async {
-        selectCallCount++;
-        if (selectCallCount == 3) return items;
-        return [];
-      });
-
-      // First update call (status -> sending) succeeds.
-      // Second update call (status -> sent) throws to simulate gRPC error.
-      // Third update call (error handling write) should succeed.
-      var updateCallCount = 0;
-      when(() => mockUpdate.write(any())).thenAnswer((invocation) async {
-        updateCallCount++;
-        final companion =
-            invocation.positionalArguments[0] as SyncQueueCompanion;
-        if (updateCallCount == 2) {
-          // Simulate dispatch failure: the "sent" write throws
-          throw Exception('gRPC unavailable');
-        }
-        capturedWrites.add(companion);
-        return 1;
-      });
-
-      engine.start();
-      fakeConnectivity.emit(NetworkStatus.online);
-      await Future<void>.delayed(const Duration(seconds: 4));
-
-      // The first write is 'sending', then on error, a write with
-      // retryCount incremented and status 'blocked'.
-      expect(capturedWrites.length, greaterThanOrEqualTo(2));
-      expect(capturedWrites[0].status.value, 'sending');
-      expect(capturedWrites[1].retryCount.value, 1);
-      expect(capturedWrites[1].status.value, 'blocked');
+      expect(writes.length, greaterThanOrEqualTo(2));
+      expect(writes[0].status.value, 'sending');
+      expect(writes[1].retryCount.value, 1);
+      expect(writes[1].status.value, 'blocked');
     });
 
     test('drain sets status to failed after max retries', () async {
-      // Item already at retryCount = 4 (one more retry -> 5 = maxRetries)
-      final items = [makeItem(id: 1, retryCount: 4)];
-      final capturedWrites = <SyncQueueCompanion>[];
+      final writes = await runDrainWith([
+        makeItem(id: 1, retryCount: 4),
+      ], failOnUpdateCall: 2);
 
-      var selectCallCount = 0;
-      when(() => mockSelect.get()).thenAnswer((_) async {
-        selectCallCount++;
-        if (selectCallCount == 3) return items;
-        return [];
-      });
-
-      var updateCallCount = 0;
-      when(() => mockUpdate.write(any())).thenAnswer((invocation) async {
-        updateCallCount++;
-        final companion =
-            invocation.positionalArguments[0] as SyncQueueCompanion;
-        if (updateCallCount == 2) {
-          throw Exception('gRPC unavailable');
-        }
-        capturedWrites.add(companion);
-        return 1;
-      });
-
-      engine.start();
-      fakeConnectivity.emit(NetworkStatus.online);
-      await Future<void>.delayed(const Duration(seconds: 4));
-
-      // After error: retryCount = 4+1 = 5 >= _maxRetries(5), status = failed
-      expect(capturedWrites.length, greaterThanOrEqualTo(2));
-      expect(capturedWrites.last.retryCount.value, 5);
-      expect(capturedWrites.last.status.value, 'failed');
+      expect(writes.length, greaterThanOrEqualTo(2));
+      expect(writes.last.retryCount.value, 5);
+      expect(writes.last.status.value, 'failed');
     });
 
     test('drain emits accurate pending/failed counts', () async {

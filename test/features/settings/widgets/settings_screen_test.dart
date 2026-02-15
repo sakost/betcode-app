@@ -17,36 +17,14 @@ import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:betcode_app/shared/widgets/connection_indicator.dart';
 
+import '../../../helpers/settings_test_helpers.dart';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 Widget _app(Widget child) =>
     MaterialApp(theme: AppTheme.lightTheme, home: child);
-
-Settings _makeSettings({
-  String defaultModel = 'opus',
-  bool autoCompact = true,
-  int autoCompactThreshold = 100,
-  int maxMessagesPerSession = 500,
-  int connectedTimeoutSecs = 30,
-  int disconnectedTimeoutSecs = 120,
-  bool enableAutoApprove = false,
-  bool activityRefreshEnabled = true,
-}) => Settings(
-  sessions: SessionSettings(
-    defaultModel: defaultModel,
-    autoCompact: autoCompact,
-    autoCompactThreshold: autoCompactThreshold,
-    maxMessagesPerSession: maxMessagesPerSession,
-  ),
-  permissions: PermissionSettings(
-    connectedTimeoutSecs: connectedTimeoutSecs,
-    disconnectedTimeoutSecs: disconnectedTimeoutSecs,
-    enableAutoApprove: enableAutoApprove,
-    activityRefreshEnabled: activityRefreshEnabled,
-  ),
-);
 
 McpServerInfo _makeServer({
   String name = 'context7',
@@ -119,7 +97,7 @@ Widget _settingsApp({
   return ProviderScope(
     overrides: [
       settingsProvider.overrideWith(
-        () => _FakeSettingsNotifier(settings ?? AsyncData(_makeSettings())),
+        () => _FakeSettingsNotifier(settings ?? AsyncData(makeTestSettings())),
       ),
       mcpServersProvider.overrideWith(
         () => _FakeMcpServersNotifier(servers ?? const AsyncData([])),
@@ -178,7 +156,7 @@ void main() {
       await t.pumpWidget(
         _settingsApp(
           settings: AsyncData(
-            _makeSettings(
+            makeTestSettings(
               defaultModel: 'claude-opus-4',
               autoCompact: true,
               autoCompactThreshold: 150,
@@ -200,7 +178,7 @@ void main() {
       await t.pumpWidget(
         _settingsApp(
           settings: AsyncData(
-            _makeSettings(
+            makeTestSettings(
               connectedTimeoutSecs: 45,
               disconnectedTimeoutSecs: 180,
               enableAutoApprove: true,
@@ -259,9 +237,7 @@ void main() {
 
     testWidgets('shows auto-compact as Disabled when off', (t) async {
       await t.pumpWidget(
-        _settingsApp(
-          settings: AsyncData(_makeSettings(autoCompact: false)),
-        ),
+        _settingsApp(settings: AsyncData(makeTestSettings(autoCompact: false))),
       );
       await t.pumpAndSettle();
 
@@ -366,7 +342,10 @@ void main() {
   group('Relay connection section', () {
     /// Builds [_settingsApp] with relay and connection overrides.
     Widget relayApp({
-      RelayConfig? relay = const RelayConfig(host: 'relay.example.com', port: 443),
+      RelayConfig? relay = const RelayConfig(
+        host: 'relay.example.com',
+        port: 443,
+      ),
       GrpcConnectionStatus connectionStatus = GrpcConnectionStatus.connected,
     }) {
       return _settingsApp(
@@ -390,9 +369,7 @@ void main() {
 
     testWidgets('shows host:port', (t) async {
       await t.pumpWidget(
-        relayApp(
-          relay: const RelayConfig(host: 'my-relay.io', port: 8443),
-        ),
+        relayApp(relay: const RelayConfig(host: 'my-relay.io', port: 8443)),
       );
       await t.pumpAndSettle();
 

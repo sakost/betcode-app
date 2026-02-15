@@ -7,11 +7,7 @@ import 'package:flutter/material.dart';
 /// appropriate [color] and [label] for their domain-specific status value and
 /// pass them directly.
 class StatusBadge extends StatelessWidget {
-  const StatusBadge({
-    super.key,
-    required this.color,
-    required this.label,
-  });
+  const StatusBadge({super.key, required this.color, required this.label});
 
   /// The semantic color for the badge (both the text and the tinted background).
   final Color color;

@@ -13,44 +13,11 @@ import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 
 import '../../helpers/fake_response_future.dart';
+import '../interceptor_test_helpers.dart';
 
 class MockSecureStorageService extends Mock implements SecureStorageService {}
 
 class MockAuthServiceClient extends Mock implements AuthServiceClient {}
-
-class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
-  FakeResponseStream(this._s);
-  final Stream<T> _s;
-
-  @override
-  StreamSubscription<T> listen(
-    void Function(T)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _s.listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
-}
-
-ClientMethod<String, String> _method([String path = '/test/M']) =>
-    ClientMethod<String, String>(
-      path,
-      (s) => s.codeUnits,
-      (b) => String.fromCharCodes(b),
-    );
-
-/// Resolves all metadata providers on a [CallOptions], simulating what the
-/// real gRPC transport does before sending the request.
-Future<void> _resolveMetadata(CallOptions options) async {
-  final md = Map<String, String>.of(options.metadata);
-  for (final p in options.metadataProviders) {
-    await p(md, '');
-  }
-}
 
 void main() {
   late MockSecureStorageService mockStorage;
@@ -88,41 +55,8 @@ void main() {
   }
 
   group('TokenRefreshInterceptor', () {
-    test('passes through when token is not expiring soon', () async {
-      await authenticateWithExpiry(3600); // 1 hour - plenty of time
-
-      var refreshCalled = false;
-      interceptor = TokenRefreshInterceptor(
-        authNotifier: readNotifier(),
-        authClientFactory: () {
-          refreshCalled = true;
-          return mockAuthClient;
-        },
-      );
-
-      var invokerCalled = false;
-      late CallOptions capturedOptions;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          invokerCalled = true;
-          capturedOptions = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-
-      // Resolve metadata providers (simulates real gRPC transport)
-      await _resolveMetadata(capturedOptions);
-
-      expect(refreshCalled, isFalse);
-      expect(invokerCalled, isTrue);
-    });
-
-    test('refreshes token before RPC when expiring soon', () async {
-      await authenticateWithExpiry(30); // 30 seconds - expiring soon
-
+    /// Stubs a successful refresh response on [mockAuthClient].
+    void stubRefreshSuccess() {
       when(() => mockAuthClient.refreshToken(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           RefreshTokenResponse(
@@ -132,16 +66,22 @@ void main() {
           ),
         ),
       );
+    }
 
+    /// Creates the interceptor and fires a single interceptUnary call,
+    /// resolves metadata, and returns whether the invoker was called.
+    Future<bool> interceptAndResolve({
+      AuthServiceClient Function()? clientFactory,
+    }) async {
       interceptor = TokenRefreshInterceptor(
         authNotifier: readNotifier(),
-        authClientFactory: () => mockAuthClient,
+        authClientFactory: clientFactory ?? () => mockAuthClient,
       );
 
       var invokerCalled = false;
       late CallOptions capturedOptions;
       interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req',
         CallOptions(),
         (m, r, o) {
@@ -150,19 +90,39 @@ void main() {
           return FakeResponseFuture.value('ok');
         },
       );
+      await resolveMetadata(capturedOptions);
+      return invokerCalled;
+    }
 
-      // Resolve metadata providers to trigger the refresh
-      await _resolveMetadata(capturedOptions);
+    test('passes through when token is not expiring soon', () async {
+      await authenticateWithExpiry(3600); // 1 hour - plenty of time
+
+      var refreshCalled = false;
+      final invoked = await interceptAndResolve(
+        clientFactory: () {
+          refreshCalled = true;
+          return mockAuthClient;
+        },
+      );
+
+      expect(refreshCalled, isFalse);
+      expect(invoked, isTrue);
+    });
+
+    test('refreshes token before RPC when expiring soon', () async {
+      await authenticateWithExpiry(30); // 30 seconds - expiring soon
+      stubRefreshSuccess();
+
+      final invoked = await interceptAndResolve();
 
       verify(() => mockAuthClient.refreshToken(any())).called(1);
-      expect(invokerCalled, isTrue);
+      expect(invoked, isTrue);
     });
 
     test('prevents concurrent refreshes for parallel RPCs', () async {
       await authenticateWithExpiry(30); // expiring soon
 
       var refreshCallCount = 0;
-
       when(() => mockAuthClient.refreshToken(any())).thenAnswer((_) {
         refreshCallCount++;
         return FakeResponseFuture.value(
@@ -182,7 +142,7 @@ void main() {
       // Fire two RPCs concurrently
       late CallOptions opts1, opts2;
       interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req1',
         CallOptions(),
         (m, r, o) {
@@ -191,7 +151,7 @@ void main() {
         },
       );
       interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req2',
         CallOptions(),
         (m, r, o) {
@@ -200,58 +160,24 @@ void main() {
         },
       );
 
-      // Resolve both metadata providers concurrently
-      await Future.wait([_resolveMetadata(opts1), _resolveMetadata(opts2)]);
-
-      // Refresh should only be called once despite two concurrent RPCs
+      await Future.wait([resolveMetadata(opts1), resolveMetadata(opts2)]);
       expect(refreshCallCount, 1);
     });
 
     test('proceeds with current token if refresh fails', () async {
       await authenticateWithExpiry(30); // expiring soon
       when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
       when(
         () => mockAuthClient.refreshToken(any()),
       ).thenThrow(GrpcError.internal('refresh failed'));
 
-      interceptor = TokenRefreshInterceptor(
-        authNotifier: readNotifier(),
-        authClientFactory: () => mockAuthClient,
-      );
-
-      var invokerCalled = false;
-      late CallOptions capturedOptions;
-      interceptor.interceptUnary<String, String>(
-        _method(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          invokerCalled = true;
-          capturedOptions = o;
-          return FakeResponseFuture.value('ok');
-        },
-      );
-
-      // Resolve metadata providers to trigger the refresh attempt
-      await _resolveMetadata(capturedOptions);
-
-      // Invoker should still have been called even though refresh failed
-      expect(invokerCalled, isTrue);
+      final invoked = await interceptAndResolve();
+      expect(invoked, isTrue);
     });
 
     test('refreshes token before streaming RPC when expiring soon', () async {
       await authenticateWithExpiry(30); // expiring soon
-
-      when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          RefreshTokenResponse(
-            accessToken: 'new-access',
-            refreshToken: 'new-refresh',
-            expiresInSecs: Int64(7200),
-          ),
-        ),
-      );
+      stubRefreshSuccess();
 
       interceptor = TokenRefreshInterceptor(
         authNotifier: readNotifier(),
@@ -261,18 +187,16 @@ void main() {
       var invokerCalled = false;
       late CallOptions capturedOptions;
       interceptor.interceptStreaming<String, String>(
-        _method(),
+        testMethod(),
         const Stream.empty(),
         CallOptions(),
         (m, r, o) {
           invokerCalled = true;
           capturedOptions = o;
-          return FakeResponseStream(const Stream.empty());
+          return FakeInterceptorResponseStream(const Stream.empty());
         },
       );
-
-      // Resolve metadata providers to trigger the refresh
-      await _resolveMetadata(capturedOptions);
+      await resolveMetadata(capturedOptions);
 
       verify(() => mockAuthClient.refreshToken(any())).called(1);
       expect(invokerCalled, isTrue);

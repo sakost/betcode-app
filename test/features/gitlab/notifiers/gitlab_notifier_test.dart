@@ -9,6 +9,7 @@ import 'package:betcode_app/features/gitlab/notifiers/gitlab_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -68,13 +69,29 @@ void main() {
     mockClient = MockGitLabServiceClient();
 
     container = createTestContainer(
-      overrides: [
-        gitlabServiceProvider.overrideWithValue(mockClient),
-      ],
+      overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
     );
   });
 
   tearDown(() => container.dispose());
+
+  void stubPipelinesEmpty() {
+    when(
+      () => mockClient.listPipelines(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
+  }
+
+  void stubMergeRequestsEmpty() {
+    when(
+      () => mockClient.listMergeRequests(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListMergeRequestsResponse()));
+  }
+
+  void stubIssuesEmpty() {
+    when(
+      () => mockClient.listIssues(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
+  }
 
   // -------------------------------------------------------------------------
   // PipelinesNotifier
@@ -139,167 +156,61 @@ void main() {
     });
   });
 
-  group('PipelinesNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: pipelinesProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(pipelinesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'PipelinesNotifier',
+    provider: pipelinesProvider,
+    serviceOverrides: () => [
+      gitlabServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listPipelines(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: pipelinesProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listPipelines(any()));
-    });
-  });
+  errorHandlingTests(
+    label: 'PipelinesNotifier',
+    provider: pipelinesProvider,
+    errorOverrides: (error) => [
+      gitlabServiceProvider.overrideWithValue(_FailingGitLabClient(error)),
+    ],
+  );
 
-  group('PipelinesNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: pipelinesProvider,
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(
-            _FailingGitLabClient(GrpcError.unavailable('connection refused')),
+  refreshTests(
+    RefreshTestConfig<List<PipelineInfo>>(
+      provider: pipelinesProvider,
+      label: 'PipelinesNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listPipelines(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListPipelinesResponse(
+              pipelines: [PipelineInfo(id: Int64(1), refName: 'main')],
+            ),
           ),
-        ],
-      );
-      final state = ec.read(pipelinesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: pipelinesProvider,
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(
-            _FailingGitLabClient(GrpcError.unavailable('daemon unreachable')),
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listPipelines(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListPipelinesResponse(
+              pipelines: [
+                PipelineInfo(id: Int64(1), refName: 'main'),
+                PipelineInfo(id: Int64(2), refName: 'new-branch'),
+              ],
+            ),
           ),
-        ],
-      );
-      final state = ec.read(pipelinesProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
-
-  group('PipelinesNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPipelinesResponse(
-            pipelines: [PipelineInfo(id: Int64(1), refName: 'main')],
-          ),
-        ),
-      );
-      await container.read(pipelinesProvider.future);
-
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPipelinesResponse(
-            pipelines: [
-              PipelineInfo(id: Int64(1), refName: 'main'),
-              PipelineInfo(id: Int64(2), refName: 'new-branch'),
-            ],
-          ),
-        ),
-      );
-
-      final notifier = container.read(pipelinesProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(pipelinesProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].refName, 'new-branch');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<PipelineInfo>>>[];
-
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPipelinesResponse(
-            pipelines: [PipelineInfo(id: Int64(1), refName: 'main')],
-          ),
-        ),
-      );
-      await container.read(pipelinesProvider.future);
-
-      container.listen(pipelinesProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPipelinesResponse(
-            pipelines: [PipelineInfo(id: Int64(2), refName: 'develop')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(pipelinesProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.refName, 'develop');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockGitLabServiceClient();
-      when(
-        () => errClient.listPipelines(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(pipelinesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      when(() => errClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPipelinesResponse(
-            pipelines: [PipelineInfo(id: Int64(1), refName: 'recovered')],
-          ),
-        ),
-      );
-
-      final notifier = errContainer.read(pipelinesProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(pipelinesProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.refName, 'recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listPipelines(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
-      await container.read(pipelinesProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.listPipelines(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
-
-      final notifier = container.read(pipelinesProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listPipelines(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listPipelines(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListPipelinesResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listPipelines(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].refName,
+    ),
+  );
 
   // -------------------------------------------------------------------------
   // MergeRequestsNotifier
@@ -382,153 +293,62 @@ void main() {
     });
   });
 
-  group('MergeRequestsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: mergeRequestsProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(mergeRequestsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'MergeRequestsNotifier',
+    provider: mergeRequestsProvider,
+    serviceOverrides: () => [
+      gitlabServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () =>
+        verifyNever(() => mockClient.listMergeRequests(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: mergeRequestsProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listMergeRequests(any()));
-    });
-  });
+  errorHandlingTests(
+    label: 'MergeRequestsNotifier',
+    provider: mergeRequestsProvider,
+    errorOverrides: (error) => [
+      gitlabServiceProvider.overrideWithValue(_FailingGitLabClient(error)),
+    ],
+  );
 
-  group('MergeRequestsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: mergeRequestsProvider,
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(
-            _FailingGitLabClient(GrpcError.unavailable('connection refused')),
+  refreshTests(
+    RefreshTestConfig<List<MergeRequestInfo>>(
+      provider: mergeRequestsProvider,
+      label: 'MergeRequestsNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listMergeRequests(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListMergeRequestsResponse(
+              mergeRequests: [MergeRequestInfo(id: Int64(1), title: 'First')],
+            ),
           ),
-        ],
-      );
-      final state = ec.read(mergeRequestsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-  });
-
-  group('MergeRequestsNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMergeRequestsResponse(
-            mergeRequests: [MergeRequestInfo(id: Int64(1), title: 'First')],
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listMergeRequests(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListMergeRequestsResponse(
+              mergeRequests: [
+                MergeRequestInfo(id: Int64(1), title: 'First'),
+                MergeRequestInfo(id: Int64(2), title: 'Second'),
+              ],
+            ),
           ),
-        ),
-      );
-      await container.read(mergeRequestsProvider.future);
-
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMergeRequestsResponse(
-            mergeRequests: [
-              MergeRequestInfo(id: Int64(1), title: 'First'),
-              MergeRequestInfo(id: Int64(2), title: 'Second'),
-            ],
-          ),
-        ),
-      );
-
-      final notifier = container.read(mergeRequestsProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(mergeRequestsProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].title, 'Second');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<MergeRequestInfo>>>[];
-
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMergeRequestsResponse(
-            mergeRequests: [MergeRequestInfo(id: Int64(1), title: 'First')],
-          ),
-        ),
-      );
-      await container.read(mergeRequestsProvider.future);
-
-      container.listen(mergeRequestsProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMergeRequestsResponse(
-            mergeRequests: [MergeRequestInfo(id: Int64(2), title: 'Updated')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(mergeRequestsProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.title, 'Updated');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockGitLabServiceClient();
-      when(
-        () => errClient.listMergeRequests(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(mergeRequestsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      when(() => errClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMergeRequestsResponse(
-            mergeRequests: [MergeRequestInfo(id: Int64(1), title: 'Recovered')],
-          ),
-        ),
-      );
-
-      final notifier = errContainer.read(mergeRequestsProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(mergeRequestsProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.title, 'Recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
-      );
-      await container.read(mergeRequestsProvider.future);
-
-      reset(mockClient);
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
-      );
-
-      final notifier = container.read(mergeRequestsProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listMergeRequests(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(() => mockClient.listMergeRequests(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
+        );
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listMergeRequests(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].title,
+    ),
+  );
 
   // -------------------------------------------------------------------------
   // IssuesNotifier
@@ -607,153 +427,61 @@ void main() {
     });
   });
 
-  group('IssuesNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: issuesProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(issuesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'IssuesNotifier',
+    provider: issuesProvider,
+    serviceOverrides: () => [
+      gitlabServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listIssues(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: issuesProvider,
-        overrides: [gitlabServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listIssues(any()));
-    });
-  });
+  errorHandlingTests(
+    label: 'IssuesNotifier',
+    provider: issuesProvider,
+    errorOverrides: (error) => [
+      gitlabServiceProvider.overrideWithValue(_FailingGitLabClient(error)),
+    ],
+  );
 
-  group('IssuesNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: issuesProvider,
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(
-            _FailingGitLabClient(GrpcError.unavailable('connection refused')),
+  refreshTests(
+    RefreshTestConfig<List<IssueInfo>>(
+      provider: issuesProvider,
+      label: 'IssuesNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listIssues(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListIssuesResponse(
+              issues: [IssueInfo(id: Int64(1), title: 'First')],
+            ),
           ),
-        ],
-      );
-      final state = ec.read(issuesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-  });
-
-  group('IssuesNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListIssuesResponse(
-            issues: [IssueInfo(id: Int64(1), title: 'First')],
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listIssues(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListIssuesResponse(
+              issues: [
+                IssueInfo(id: Int64(1), title: 'First'),
+                IssueInfo(id: Int64(2), title: 'Second'),
+              ],
+            ),
           ),
-        ),
-      );
-      await container.read(issuesProvider.future);
-
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListIssuesResponse(
-            issues: [
-              IssueInfo(id: Int64(1), title: 'First'),
-              IssueInfo(id: Int64(2), title: 'Second'),
-            ],
-          ),
-        ),
-      );
-
-      final notifier = container.read(issuesProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(issuesProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].title, 'Second');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<IssueInfo>>>[];
-
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListIssuesResponse(
-            issues: [IssueInfo(id: Int64(1), title: 'First')],
-          ),
-        ),
-      );
-      await container.read(issuesProvider.future);
-
-      container.listen(issuesProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListIssuesResponse(
-            issues: [IssueInfo(id: Int64(2), title: 'Updated')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(issuesProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.title, 'Updated');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockGitLabServiceClient();
-      when(
-        () => errClient.listIssues(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          gitlabServiceProvider.overrideWithValue(errClient),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(issuesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      when(() => errClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListIssuesResponse(
-            issues: [IssueInfo(id: Int64(1), title: 'Recovered')],
-          ),
-        ),
-      );
-
-      final notifier = errContainer.read(issuesProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(issuesProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.title, 'Recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listIssues(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
-      await container.read(issuesProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.listIssues(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
-
-      final notifier = container.read(issuesProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listIssues(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listIssues(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListIssuesResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listIssues(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].title,
+    ),
+  );
 
   // -------------------------------------------------------------------------
   // MergeRequestsNotifier - getMergeRequest
@@ -761,11 +489,11 @@ void main() {
 
   group('MergeRequestsNotifier - getMergeRequest', () {
     test('returns merge request info on success', () async {
-      // Stub list call so build() succeeds
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
+      await initNotifier(
+        container: container,
+        provider: mergeRequestsProvider,
+        stubEmpty: stubMergeRequestsEmpty,
       );
-      await container.read(mergeRequestsProvider.future);
 
       final expectedMr = MergeRequestInfo(
         id: Int64(42),
@@ -796,10 +524,11 @@ void main() {
     });
 
     test('sends correct project and iid in request', () async {
-      when(() => mockClient.listMergeRequests(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
+      await initNotifier(
+        container: container,
+        provider: mergeRequestsProvider,
+        stubEmpty: stubMergeRequestsEmpty,
       );
-      await container.read(mergeRequestsProvider.future);
 
       when(() => mockClient.getMergeRequest(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -810,14 +539,11 @@ void main() {
       );
 
       final notifier = container.read(mergeRequestsProvider.notifier);
-      await notifier.getMergeRequest(
-        project: 'org/repo',
-        iid: Int64(55),
-      );
+      await notifier.getMergeRequest(project: 'org/repo', iid: Int64(55));
 
-      final captured = verify(
-        () => mockClient.getMergeRequest(captureAny()),
-      ).captured.single as GetMergeRequestRequest;
+      final captured =
+          verify(() => mockClient.getMergeRequest(captureAny())).captured.single
+              as GetMergeRequestRequest;
 
       expect(captured.project, 'org/repo');
       expect(captured.iid, Int64(55));
@@ -830,11 +556,11 @@ void main() {
 
   group('PipelinesNotifier - getPipeline', () {
     test('returns pipeline info on success', () async {
-      // Stub list call so build() succeeds
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: pipelinesProvider,
+        stubEmpty: stubPipelinesEmpty,
       );
-      await container.read(pipelinesProvider.future);
 
       final expectedPipeline = PipelineInfo(
         id: Int64(99),
@@ -865,28 +591,24 @@ void main() {
     });
 
     test('sends correct project and pipelineId in request', () async {
-      when(() => mockClient.listPipelines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: pipelinesProvider,
+        stubEmpty: stubPipelinesEmpty,
       );
-      await container.read(pipelinesProvider.future);
 
       when(() => mockClient.getPipeline(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          GetPipelineResponse(
-            pipeline: PipelineInfo(id: Int64(77)),
-          ),
+          GetPipelineResponse(pipeline: PipelineInfo(id: Int64(77))),
         ),
       );
 
       final notifier = container.read(pipelinesProvider.notifier);
-      await notifier.getPipeline(
-        project: 'org/repo',
-        pipelineId: Int64(77),
-      );
+      await notifier.getPipeline(project: 'org/repo', pipelineId: Int64(77));
 
-      final captured = verify(
-        () => mockClient.getPipeline(captureAny()),
-      ).captured.single as GetPipelineRequest;
+      final captured =
+          verify(() => mockClient.getPipeline(captureAny())).captured.single
+              as GetPipelineRequest;
 
       expect(captured.project, 'org/repo');
       expect(captured.pipelineId, Int64(77));
@@ -899,11 +621,11 @@ void main() {
 
   group('IssuesNotifier - getIssue', () {
     test('returns issue info on success', () async {
-      // Stub list call so build() succeeds
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListIssuesResponse()),
+      await initNotifier(
+        container: container,
+        provider: issuesProvider,
+        stubEmpty: stubIssuesEmpty,
       );
-      await container.read(issuesProvider.future);
 
       final expectedIssue = IssueInfo(
         id: Int64(42),
@@ -916,9 +638,7 @@ void main() {
         webUrl: 'https://gitlab.com/issues/15',
       );
       when(() => mockClient.getIssue(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetIssueResponse(issue: expectedIssue),
-        ),
+        (_) => FakeResponseFuture.value(GetIssueResponse(issue: expectedIssue)),
       );
 
       final notifier = container.read(issuesProvider.notifier);
@@ -938,28 +658,24 @@ void main() {
     });
 
     test('sends correct project and iid in request', () async {
-      when(() => mockClient.listIssues(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListIssuesResponse()),
+      await initNotifier(
+        container: container,
+        provider: issuesProvider,
+        stubEmpty: stubIssuesEmpty,
       );
-      await container.read(issuesProvider.future);
 
       when(() => mockClient.getIssue(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          GetIssueResponse(
-            issue: IssueInfo(iid: Int64(33)),
-          ),
+          GetIssueResponse(issue: IssueInfo(iid: Int64(33))),
         ),
       );
 
       final notifier = container.read(issuesProvider.notifier);
-      await notifier.getIssue(
-        project: 'org/repo',
-        iid: Int64(33),
-      );
+      await notifier.getIssue(project: 'org/repo', iid: Int64(33));
 
-      final captured = verify(
-        () => mockClient.getIssue(captureAny()),
-      ).captured.single as GetIssueRequest;
+      final captured =
+          verify(() => mockClient.getIssue(captureAny())).captured.single
+              as GetIssueRequest;
 
       expect(captured.project, 'org/repo');
       expect(captured.iid, Int64(33));

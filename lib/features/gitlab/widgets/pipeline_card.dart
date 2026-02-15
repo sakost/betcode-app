@@ -37,9 +37,7 @@ class PipelineCard extends StatelessWidget {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  pipeline.refName.isNotEmpty
-                      ? pipeline.refName
-                      : 'Unknown',
+                  pipeline.refName.isNotEmpty ? pipeline.refName : 'Unknown',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -71,10 +69,7 @@ class PipelineCard extends StatelessWidget {
           // Source
           if (pipeline.source.isNotEmpty) ...[
             const SizedBox(height: 4),
-            IconLabelRow(
-              icon: Icons.source_outlined,
-              label: pipeline.source,
-            ),
+            IconLabelRow(icon: Icons.source_outlined, label: pipeline.source),
           ],
         ],
       ),
@@ -103,18 +98,9 @@ StatusBadge _buildPipelineStatusBadge(PipelineStatus status) {
       AppColors.agentIdle,
       'Canceled',
     ),
-    PipelineStatus.PIPELINE_STATUS_CREATED => (
-      AppColors.agentIdle,
-      'Created',
-    ),
-    PipelineStatus.PIPELINE_STATUS_SKIPPED => (
-      AppColors.agentIdle,
-      'Skipped',
-    ),
-    PipelineStatus.PIPELINE_STATUS_MANUAL => (
-      AppColors.agentWaiting,
-      'Manual',
-    ),
+    PipelineStatus.PIPELINE_STATUS_CREATED => (AppColors.agentIdle, 'Created'),
+    PipelineStatus.PIPELINE_STATUS_SKIPPED => (AppColors.agentIdle, 'Skipped'),
+    PipelineStatus.PIPELINE_STATUS_MANUAL => (AppColors.agentWaiting, 'Manual'),
     PipelineStatus.PIPELINE_STATUS_SCHEDULED => (
       AppColors.scheduled,
       'Scheduled',

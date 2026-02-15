@@ -36,10 +36,7 @@ class TappableCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         onLongPress: onLongPress,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: child,
-        ),
+        child: Padding(padding: const EdgeInsets.all(14), child: child),
       ),
     );
   }

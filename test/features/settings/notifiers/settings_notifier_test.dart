@@ -3,12 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
+import '../../../helpers/settings_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -55,37 +56,11 @@ void main() {
   setUp(() {
     mockClient = MockConfigServiceClient();
     container = createTestContainer(
-      overrides: [
-        configServiceProvider.overrideWithValue(mockClient),
-      ],
+      overrides: [configServiceProvider.overrideWithValue(mockClient)],
     );
   });
 
   tearDown(() => container.dispose());
-
-  Settings makeSettings({
-    String defaultModel = 'opus',
-    bool autoCompact = true,
-    int autoCompactThreshold = 100,
-    int maxMessagesPerSession = 500,
-    int connectedTimeoutSecs = 30,
-    int disconnectedTimeoutSecs = 120,
-    bool enableAutoApprove = false,
-    bool activityRefreshEnabled = true,
-  }) => Settings(
-    sessions: SessionSettings(
-      defaultModel: defaultModel,
-      autoCompact: autoCompact,
-      autoCompactThreshold: autoCompactThreshold,
-      maxMessagesPerSession: maxMessagesPerSession,
-    ),
-    permissions: PermissionSettings(
-      connectedTimeoutSecs: connectedTimeoutSecs,
-      disconnectedTimeoutSecs: disconnectedTimeoutSecs,
-      enableAutoApprove: enableAutoApprove,
-      activityRefreshEnabled: activityRefreshEnabled,
-    ),
-  );
 
   // ---------------------------------------------------------------------------
   // SettingsNotifier
@@ -93,7 +68,7 @@ void main() {
 
   group('SettingsNotifier - build', () {
     test('fetches settings from gRPC', () async {
-      final settings = makeSettings();
+      final settings = makeTestSettings();
       when(
         () => mockClient.getSettings(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(settings));
@@ -108,7 +83,7 @@ void main() {
     test('calls getSettings exactly once on build', () async {
       when(
         () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      ).thenAnswer((_) => FakeResponseFuture.value(makeTestSettings()));
 
       await container.read(settingsProvider.future);
 
@@ -118,7 +93,7 @@ void main() {
     test('preserves all session settings fields', () async {
       when(() => mockClient.getSettings(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          makeSettings(
+          makeTestSettings(
             defaultModel: 'sonnet',
             autoCompact: false,
             autoCompactThreshold: 200,
@@ -138,7 +113,7 @@ void main() {
     test('preserves all permission settings fields', () async {
       when(() => mockClient.getSettings(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          makeSettings(
+          makeTestSettings(
             connectedTimeoutSecs: 60,
             disconnectedTimeoutSecs: 300,
             enableAutoApprove: true,
@@ -156,134 +131,31 @@ void main() {
     });
   });
 
-  group('SettingsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: settingsProvider,
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(settingsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'SettingsNotifier',
+    provider: settingsProvider,
+    serviceOverrides: () => [
+      configServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.getSettings(any())),
+  );
 
-    test('throws StateError when connecting', () async {
-      final dc = await createDisconnectedContainer(
-        provider: settingsProvider,
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-        status: GrpcConnectionStatus.connecting,
-      );
-      final state = dc.read(settingsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: settingsProvider,
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.getSettings(any()));
-    });
-  });
-
-  group('SettingsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: settingsProvider,
-        overrides: [
-          configServiceProvider.overrideWithValue(
-            _FailingConfigClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(settingsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: settingsProvider,
-        overrides: [
-          configServiceProvider.overrideWithValue(
-            _FailingConfigClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(settingsProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
-
-  group('SettingsNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(
-        () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
-      await container.read(settingsProvider.future);
-
-      when(() => mockClient.getSettings(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeSettings(defaultModel: 'haiku')),
-      );
-
-      final notifier = container.read(settingsProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(settingsProvider);
-      expect(state.value!.sessions.defaultModel, 'haiku');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<Settings>>[];
-
-      when(
-        () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
-      await container.read(settingsProvider.future);
-
-      container.listen(settingsProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.getSettings(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeSettings(defaultModel: 'sonnet')),
-      );
-
-      final notifier = container.read(settingsProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value!.sessions.defaultModel, 'sonnet');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
-      await container.read(settingsProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
-
-      final notifier = container.read(settingsProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.getSettings(any())).called(1);
-    });
-  });
+  errorHandlingTests(
+    label: 'SettingsNotifier',
+    provider: settingsProvider,
+    errorOverrides: (error) => [
+      configServiceProvider.overrideWithValue(_FailingConfigClient(error)),
+    ],
+  );
 
   group('SettingsNotifier - updateSettings', () {
     test('sends updated settings to gRPC and updates state', () async {
       when(
         () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      ).thenAnswer((_) => FakeResponseFuture.value(makeTestSettings()));
       await container.read(settingsProvider.future);
 
-      final updated = makeSettings(defaultModel: 'haiku');
+      final updated = makeTestSettings(defaultModel: 'haiku');
       when(
         () => mockClient.updateSettings(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(updated));
@@ -298,10 +170,10 @@ void main() {
     test('passes settings in UpdateSettingsRequest', () async {
       when(
         () => mockClient.getSettings(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeSettings()));
+      ).thenAnswer((_) => FakeResponseFuture.value(makeTestSettings()));
       await container.read(settingsProvider.future);
 
-      final updated = makeSettings(defaultModel: 'sonnet');
+      final updated = makeTestSettings(defaultModel: 'sonnet');
       when(
         () => mockClient.updateSettings(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(updated));
@@ -374,41 +246,23 @@ void main() {
     });
   });
 
-  group('McpServersNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: mcpServersProvider,
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(mcpServersProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'McpServersNotifier',
+    provider: mcpServersProvider,
+    serviceOverrides: () => [
+      configServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () =>
+        verifyNever(() => mockClient.listMcpServers(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: mcpServersProvider,
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listMcpServers(any()));
-    });
-  });
-
-  group('McpServersNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: mcpServersProvider,
-        overrides: [
-          configServiceProvider.overrideWithValue(
-            _FailingConfigClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(mcpServersProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-  });
+  errorHandlingTests(
+    label: 'McpServersNotifier',
+    provider: mcpServersProvider,
+    errorOverrides: (error) => [
+      configServiceProvider.overrideWithValue(_FailingConfigClient(error)),
+    ],
+  );
 
   group('McpServersNotifier - refresh', () {
     test('re-fetches and updates state', () async {

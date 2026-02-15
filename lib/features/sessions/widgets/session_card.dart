@@ -31,7 +31,9 @@ class SessionCard extends StatelessWidget {
 
   String get _title {
     if (session.name.isNotEmpty) return session.name;
-    if (session.lastMessagePreview.isNotEmpty) return session.lastMessagePreview;
+    if (session.lastMessagePreview.isNotEmpty) {
+      return session.lastMessagePreview;
+    }
     return session.model.isNotEmpty ? session.model : 'Unknown';
   }
 
@@ -135,8 +137,7 @@ class SessionCard extends StatelessWidget {
   }
 
   Future<void> _showContextMenu(BuildContext context) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final button = context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromRect(
       button.localToGlobal(Offset.zero, ancestor: overlay) & button.size,

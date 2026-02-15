@@ -1,4 +1,3 @@
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -11,6 +10,7 @@ import 'package:betcode_app/features/machines/notifiers/selected_machine_notifie
 import 'package:betcode_app/generated/betcode/v1/machine.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -152,162 +152,49 @@ void main() {
     });
   });
 
-  group('MachinesNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final errContainer = ProviderContainer(
-        overrides: [
-          machineServiceProvider.overrideWithValue(
-            _FailingMachineClient(GrpcError.unavailable('connection refused')),
+  errorHandlingTests(
+    label: 'MachinesNotifier',
+    provider: machinesProvider,
+    errorOverrides: (error) => [
+      machineServiceProvider.overrideWithValue(_FailingMachineClient(error)),
+      selectedMachineIdProvider.overrideWith(_FakeSelectedMachineNotifier.new),
+      authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
+    ],
+  );
+
+  refreshTests(
+    RefreshTestConfig<List<MachineInfo>>(
+      provider: machinesProvider,
+      label: 'MachinesNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listMachines(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListMachinesResponse(machines: [makeMachine('m-1')]),
           ),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listMachines(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListMachinesResponse(
+              machines: [makeMachine('m-1'), makeMachine('m-new')],
+            ),
           ),
-          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      // Trigger build and let microtasks settle.
-      errContainer.read(machinesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(machinesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final errContainer = ProviderContainer(
-        overrides: [
-          machineServiceProvider.overrideWithValue(
-            _FailingMachineClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
-          ),
-          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(machinesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(machinesProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
-
-  group('MachinesNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      // Initial fetch
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMachinesResponse(machines: [makeMachine('m-1')]),
-        ),
-      );
-      await container.read(machinesProvider.future);
-
-      // Refresh with updated data
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMachinesResponse(
-            machines: [makeMachine('m-1'), makeMachine('m-new')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(machinesProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(machinesProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].machineId, 'm-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<MachineInfo>>>[];
-
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMachinesResponse(machines: [makeMachine('m-1')]),
-        ),
-      );
-      await container.read(machinesProvider.future);
-
-      container.listen(machinesProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMachinesResponse(machines: [makeMachine('m-2')]),
-        ),
-      );
-
-      final notifier = container.read(machinesProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.machineId, 'm-2');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockMachineServiceClient();
-      when(
-        () => errClient.listMachines(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = ProviderContainer(
-        overrides: [
-          machineServiceProvider.overrideWithValue(errClient),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
-          ),
-          authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      // Trigger build and let error settle.
-      errContainer.read(machinesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      // Now re-stub to succeed.
-      when(() => errClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListMachinesResponse(machines: [makeMachine('recovered')]),
-        ),
-      );
-
-      final notifier = errContainer.read(machinesProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(machinesProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.machineId, 'recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listMachines(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
-      await container.read(machinesProvider.future);
-
-      // Reset call count
-      reset(mockClient);
-      when(
-        () => mockClient.listMachines(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
-
-      final notifier = container.read(machinesProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listMachines(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listMachines(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listMachines(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].machineId,
+    ),
+  );
 
   group('MachinesNotifier - auto-select', () {
     test('auto-selects when exactly one machine and none selected', () async {
@@ -365,6 +252,12 @@ void main() {
     });
   });
 
+  void stubMachinesEmpty() {
+    when(
+      () => mockClient.listMachines(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListMachinesResponse()));
+  }
+
   group('MachinesNotifier - registerMachine', () {
     test('calls gRPC registerMachine and refreshes', () async {
       // Initial build
@@ -387,7 +280,10 @@ void main() {
       when(() => mockClient.listMachines(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           ListMachinesResponse(
-            machines: [makeMachine('m-1'), makeMachine('m-new', name: 'new-box')],
+            machines: [
+              makeMachine('m-1'),
+              makeMachine('m-new', name: 'new-box'),
+            ],
           ),
         ),
       );
@@ -403,11 +299,11 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      // Initial build
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: machinesProvider,
+        stubEmpty: stubMachinesEmpty,
       );
-      await container.read(machinesProvider.future);
 
       when(() => mockClient.registerMachine(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -424,9 +320,9 @@ void main() {
         metadata: {'env': 'prod', 'region': 'us-east'},
       );
 
-      final captured = verify(
-        () => mockClient.registerMachine(captureAny()),
-      ).captured.single as RegisterMachineRequest;
+      final captured =
+          verify(() => mockClient.registerMachine(captureAny())).captured.single
+              as RegisterMachineRequest;
 
       expect(captured.machineId, 'reg-1');
       expect(captured.name, 'my-server');
@@ -449,9 +345,7 @@ void main() {
 
       // Stub removeMachine
       when(() => mockClient.removeMachine(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          RemoveMachineResponse(removed: true),
-        ),
+        (_) => FakeResponseFuture.value(RemoveMachineResponse(removed: true)),
       );
 
       // After removal, list returns only one machine
@@ -472,24 +366,22 @@ void main() {
     });
 
     test('passes correct machineId to gRPC', () async {
-      // Initial build
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: machinesProvider,
+        stubEmpty: stubMachinesEmpty,
       );
-      await container.read(machinesProvider.future);
 
       when(() => mockClient.removeMachine(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          RemoveMachineResponse(removed: true),
-        ),
+        (_) => FakeResponseFuture.value(RemoveMachineResponse(removed: true)),
       );
 
       final notifier = container.read(machinesProvider.notifier);
       await notifier.removeMachine('target-42');
 
-      final captured = verify(
-        () => mockClient.removeMachine(captureAny()),
-      ).captured.single as RemoveMachineRequest;
+      final captured =
+          verify(() => mockClient.removeMachine(captureAny())).captured.single
+              as RemoveMachineRequest;
 
       expect(captured.machineId, 'target-42');
     });
@@ -497,11 +389,11 @@ void main() {
 
   group('MachinesNotifier - getMachine', () {
     test('returns MachineInfo for given machineId', () async {
-      // Initial build
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: machinesProvider,
+        stubEmpty: stubMachinesEmpty,
       );
-      await container.read(machinesProvider.future);
 
       final expected = MachineInfo(
         machineId: 'get-1',
@@ -509,9 +401,7 @@ void main() {
         status: MachineStatus.MACHINE_STATUS_ONLINE,
       );
       when(() => mockClient.getMachine(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetMachineResponse(machine: expected),
-        ),
+        (_) => FakeResponseFuture.value(GetMachineResponse(machine: expected)),
       );
 
       final notifier = container.read(machinesProvider.notifier);
@@ -523,26 +413,24 @@ void main() {
     });
 
     test('passes correct machineId to gRPC', () async {
-      // Initial build
-      when(() => mockClient.listMachines(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListMachinesResponse()),
+      await initNotifier(
+        container: container,
+        provider: machinesProvider,
+        stubEmpty: stubMachinesEmpty,
       );
-      await container.read(machinesProvider.future);
 
       when(() => mockClient.getMachine(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          GetMachineResponse(
-            machine: makeMachine('lookup-99'),
-          ),
+          GetMachineResponse(machine: makeMachine('lookup-99')),
         ),
       );
 
       final notifier = container.read(machinesProvider.notifier);
       await notifier.getMachine('lookup-99');
 
-      final captured = verify(
-        () => mockClient.getMachine(captureAny()),
-      ).captured.single as GetMachineRequest;
+      final captured =
+          verify(() => mockClient.getMachine(captureAny())).captured.single
+              as GetMachineRequest;
 
       expect(captured.machineId, 'lookup-99');
     });

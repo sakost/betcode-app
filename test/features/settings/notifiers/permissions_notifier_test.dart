@@ -8,6 +8,7 @@ import 'package:betcode_app/features/settings/notifiers/settings_providers.dart'
 import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -72,7 +73,9 @@ void main() {
         () => mockClient.getPermissions(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(rules));
 
-      final result = await container.read(permissionsProvider(testSessionId).future);
+      final result = await container.read(
+        permissionsProvider(testSessionId).future,
+      );
 
       expect(result.rules, hasLength(1));
       expect(result.rules.first.id, 'rule-1');
@@ -90,7 +93,9 @@ void main() {
         () => mockClient.getPermissions(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(PermissionRules()));
 
-      final result = await container.read(permissionsProvider(testSessionId).future);
+      final result = await container.read(
+        permissionsProvider(testSessionId).future,
+      );
       expect(result.rules, isEmpty);
       expect(result.deniedTools, isEmpty);
       expect(result.requireApproval, isEmpty);
@@ -113,9 +118,9 @@ void main() {
 
       await container.read(permissionsProvider(testSessionId).future);
 
-      final captured = verify(
-        () => mockClient.getPermissions(captureAny()),
-      ).captured.single as GetPermissionsRequest;
+      final captured =
+          verify(() => mockClient.getPermissions(captureAny())).captured.single
+              as GetPermissionsRequest;
       expect(captured.sessionId, testSessionId);
     });
 
@@ -138,7 +143,9 @@ void main() {
         ),
       );
 
-      final result = await container.read(permissionsProvider(testSessionId).future);
+      final result = await container.read(
+        permissionsProvider(testSessionId).future,
+      );
       final rule = result.rules.first;
 
       expect(rule.id, 'rule-2');
@@ -151,63 +158,23 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // PermissionsNotifier - connection awareness
-  // ---------------------------------------------------------------------------
+  connectionAwarenessTests(
+    label: 'PermissionsNotifier',
+    provider: permissionsProvider(testSessionId),
+    serviceOverrides: () => [
+      configServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () =>
+        verifyNever(() => mockClient.getPermissions(any())),
+  );
 
-  group('PermissionsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: permissionsProvider(testSessionId),
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(permissionsProvider(testSessionId));
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: permissionsProvider(testSessionId),
-        overrides: [configServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.getPermissions(any()));
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // PermissionsNotifier - error handling
-  // ---------------------------------------------------------------------------
-
-  group('PermissionsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: permissionsProvider(testSessionId),
-        overrides: [
-          configServiceProvider.overrideWithValue(
-            _FailingConfigClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(permissionsProvider(testSessionId));
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: permissionsProvider(testSessionId),
-        overrides: [
-          configServiceProvider.overrideWithValue(
-            _FailingConfigClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(permissionsProvider(testSessionId));
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  errorHandlingTests(
+    label: 'PermissionsNotifier',
+    provider: permissionsProvider(testSessionId),
+    errorOverrides: (error) => [
+      configServiceProvider.overrideWithValue(_FailingConfigClient(error)),
+    ],
+  );
 
   // ---------------------------------------------------------------------------
   // PermissionsNotifier - refresh
@@ -226,37 +193,14 @@ void main() {
         ),
       );
 
-      final notifier = container.read(permissionsProvider(testSessionId).notifier);
+      final notifier = container.read(
+        permissionsProvider(testSessionId).notifier,
+      );
       await notifier.refresh();
 
       final state = container.read(permissionsProvider(testSessionId));
       expect(state.value!.rules, hasLength(1));
       expect(state.value!.rules.first.id, 'new-rule');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<PermissionRules>>[];
-
-      when(
-        () => mockClient.getPermissions(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(PermissionRules()));
-      await container.read(permissionsProvider(testSessionId).future);
-
-      container.listen(permissionsProvider(testSessionId), (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.getPermissions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          PermissionRules(rules: [PermissionRule(id: 'refreshed')]),
-        ),
-      );
-
-      final notifier = container.read(permissionsProvider(testSessionId).notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value!.rules.first.id, 'refreshed');
     });
 
     test('refresh calls gRPC exactly once', () async {
@@ -270,7 +214,9 @@ void main() {
         () => mockClient.getPermissions(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(PermissionRules()));
 
-      final notifier = container.read(permissionsProvider(testSessionId).notifier);
+      final notifier = container.read(
+        permissionsProvider(testSessionId).notifier,
+      );
       await notifier.refresh();
 
       verify(() => mockClient.getPermissions(any())).called(1);

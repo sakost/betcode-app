@@ -7,10 +7,8 @@ import 'package:grpc/grpc.dart';
 ///
 /// Extends [StreamView] (not [Fake]) so that standard Stream methods
 /// like [toList], [map], [forEach], etc. work correctly through [listen].
-class FakeResponseStream<T> extends StreamView<T>
-    implements ResponseStream<T> {
-  FakeResponseStream(StreamController<T> controller)
-      : super(controller.stream);
+class FakeResponseStream<T> extends StreamView<T> implements ResponseStream<T> {
+  FakeResponseStream(StreamController<T> controller) : super(controller.stream);
 
   @override
   ResponseFuture<T> get single =>

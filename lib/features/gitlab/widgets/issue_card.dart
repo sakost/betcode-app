@@ -32,11 +32,7 @@ class IssueCard extends StatelessWidget {
             children: [
               // Confidential icon
               if (issue.confidential) ...[
-                Icon(
-                  Icons.lock,
-                  size: 16,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                Icon(Icons.lock, size: 16, color: colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
               ],
               Expanded(
@@ -68,10 +64,7 @@ class IssueCard extends StatelessWidget {
           // Author
           if (issue.author.isNotEmpty) ...[
             const SizedBox(height: 4),
-            IconLabelRow(
-              icon: Icons.person_outline,
-              label: issue.author,
-            ),
+            IconLabelRow(icon: Icons.person_outline, label: issue.author),
           ],
 
           // Labels
@@ -84,13 +77,10 @@ class IssueCard extends StatelessWidget {
                   .map(
                     (label) => Chip(
                       label: Text(label),
-                      materialTapTargetSize:
-                          MaterialTapTargetSize.shrinkWrap,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
-                      labelPadding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                      ),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
                     ),
                   )
                   .toList(),

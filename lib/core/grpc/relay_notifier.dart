@@ -27,7 +27,9 @@ class RelayConfigNotifier extends Notifier<RelayConfig?> {
       await manager.connect(config.host, config.port, useTls: config.useTls);
       state = config;
     } catch (e) {
-      debugPrint('[RelayConfigNotifier] Failed to connect to relay on init: $e');
+      debugPrint(
+        '[RelayConfigNotifier] Failed to connect to relay on init: $e',
+      );
       state = null;
     }
   }

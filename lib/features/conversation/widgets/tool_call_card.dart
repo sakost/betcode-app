@@ -63,28 +63,23 @@ class ToolCallCard extends StatelessWidget {
 
   /// Shared title widget for both tool and permission expansion tiles.
   Text _buildTitle(ThemeData theme) => Text(
-        toolName,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontFamily: 'JetBrains Mono',
-        ),
-      );
+    toolName,
+    style: theme.textTheme.titleSmall?.copyWith(fontFamily: 'JetBrains Mono'),
+  );
 
   /// Shared subtitle widget for both tool and permission expansion tiles.
   Text _buildSubtitle(ThemeData theme) => Text(
-        description,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodySmall,
-      );
+    description,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: theme.textTheme.bodySmall,
+  );
 
   /// Wraps an [ExpansionTile] in the standard padded card chrome.
   Widget _wrapInCard(Widget tile) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          child: tile,
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    child: Card(clipBehavior: Clip.antiAlias, child: tile),
+  );
 
   Widget _buildToolCard(BuildContext context) {
     final theme = Theme.of(context);

@@ -141,7 +141,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   void _startConversation() {
-    final workingDirectory = widget.workingDirectory ?? _resolveWorkingDirectory();
+    final workingDirectory =
+        widget.workingDirectory ?? _resolveWorkingDirectory();
     if (workingDirectory == null) {
       debugPrint('[ConversationScreen] Cannot start: no working directory');
       ScaffoldMessenger.of(context).showSnackBar(

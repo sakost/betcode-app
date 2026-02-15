@@ -209,8 +209,9 @@ class _InputBarState extends State<InputBar> {
                     style: IconButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       foregroundColor: colorScheme.onPrimary,
-                      disabledBackgroundColor:
-                          colorScheme.onSurface.withAlpha(30),
+                      disabledBackgroundColor: colorScheme.onSurface.withAlpha(
+                        30,
+                      ),
                     ),
                   ),
               ],

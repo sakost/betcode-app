@@ -81,9 +81,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
   /// Fetches a single repository by ID.
   Future<GitRepoDetail> getRepo(String id) async {
     final client = ref.read(gitRepoServiceProvider);
-    return await client
-        .getRepo(GetRepoRequest(id: id))
-        .timeout(_rpcTimeout);
+    return await client.getRepo(GetRepoRequest(id: id)).timeout(_rpcTimeout);
   }
 
   /// Updates a repository's configuration and refreshes the list.
@@ -108,9 +106,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
     if (customPath != null) request.customPath = customPath;
     if (setupScript != null) request.setupScript = setupScript;
     if (autoGitignore != null) request.autoGitignore = autoGitignore;
-    final result = await client
-        .updateRepo(request)
-        .timeout(_mutationTimeout);
+    final result = await client.updateRepo(request).timeout(_mutationTimeout);
     await refresh();
     return result;
   }

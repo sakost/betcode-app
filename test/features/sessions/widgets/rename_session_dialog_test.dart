@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
 
-Widget _app({required String currentName, required ValueSetter<String?> onResult}) {
+Widget _app({
+  required String currentName,
+  required ValueSetter<String?> onResult,
+}) {
   return MaterialApp(
     home: Builder(
       builder: (context) => Scaffold(
@@ -63,7 +66,9 @@ void main() {
       expect(renameButton.onPressed, isNotNull);
     });
 
-    testWidgets('Rename button becomes disabled after clearing text', (t) async {
+    testWidgets('Rename button becomes disabled after clearing text', (
+      t,
+    ) async {
       await t.pumpWidget(_app(currentName: 'Test', onResult: (_) {}));
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
@@ -80,7 +85,9 @@ void main() {
 
     testWidgets('Cancel returns null', (t) async {
       String? result = 'not-set';
-      await t.pumpWidget(_app(currentName: 'Test', onResult: (r) => result = r));
+      await t.pumpWidget(
+        _app(currentName: 'Test', onResult: (r) => result = r),
+      );
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
 

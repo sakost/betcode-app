@@ -1,11 +1,9 @@
-
 import 'package:drift/drift.dart' show Batch;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
@@ -13,6 +11,7 @@ import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart'
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -158,192 +157,58 @@ void main() {
     });
   });
 
-  group('SessionsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          agentServiceProvider.overrideWithValue(mockClient),
-          appDatabaseProvider.overrideWithValue(mockDb),
-        ],
-      );
-      addTearDown(disconnectedContainer.dispose);
+  connectionAwarenessTests(
+    label: 'SessionsNotifier',
+    provider: sessionsProvider,
+    serviceOverrides: () => [
+      agentServiceProvider.overrideWithValue(mockClient),
+      appDatabaseProvider.overrideWithValue(mockDb),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listSessions(any())),
+  );
 
-      disconnectedContainer.read(sessionsProvider);
-      await Future<void>.delayed(Duration.zero);
+  errorHandlingTests(
+    label: 'SessionsNotifier',
+    provider: sessionsProvider,
+    errorOverrides: (error) => [
+      agentServiceProvider.overrideWithValue(_FailingAgentClient(error)),
+      appDatabaseProvider.overrideWithValue(mockDb),
+    ],
+  );
 
-      final state = disconnectedContainer.read(sessionsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('does not call gRPC when disconnected', () async {
-      final disconnectedContainer = createTestContainer(
-        status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          agentServiceProvider.overrideWithValue(mockClient),
-          appDatabaseProvider.overrideWithValue(mockDb),
-        ],
-      );
-      addTearDown(disconnectedContainer.dispose);
-
-      disconnectedContainer.read(sessionsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      verifyNever(() => mockClient.listSessions(any()));
-    });
-  });
-
-  group('SessionsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final errContainer = createTestContainer(
-        overrides: [
-          agentServiceProvider.overrideWithValue(
-            _FailingAgentClient(GrpcError.unavailable('connection refused')),
+  refreshTests(
+    RefreshTestConfig<List<SessionSummary>>(
+      provider: sessionsProvider,
+      label: 'SessionsNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listSessions(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListSessionsResponse(sessions: [makeSession('s-1')]),
           ),
-          appDatabaseProvider.overrideWithValue(mockDb),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      // Trigger build and let microtasks settle.
-      errContainer.read(sessionsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      // Riverpod 3.x retries failed builds so the state is
-      // AsyncLoading(error: ..., retrying) rather than AsyncError.
-      final state = errContainer.read(sessionsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final errContainer = createTestContainer(
-        overrides: [
-          agentServiceProvider.overrideWithValue(
-            _FailingAgentClient(GrpcError.unavailable('daemon unreachable')),
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listSessions(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListSessionsResponse(
+              sessions: [makeSession('s-1'), makeSession('s-new')],
+            ),
           ),
-          appDatabaseProvider.overrideWithValue(mockDb),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(sessionsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final state = errContainer.read(sessionsProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
-
-  group('SessionsNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      // Initial fetch
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListSessionsResponse(sessions: [makeSession('s-1')]),
-        ),
-      );
-      await container.read(sessionsProvider.future);
-
-      // Refresh with updated data
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListSessionsResponse(
-            sessions: [makeSession('s-1'), makeSession('s-new')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(sessionsProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(sessionsProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].id, 's-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<SessionSummary>>>[];
-
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListSessionsResponse(sessions: [makeSession('s-1')]),
-        ),
-      );
-      await container.read(sessionsProvider.future);
-
-      container.listen(sessionsProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListSessionsResponse(sessions: [makeSession('s-2')]),
-        ),
-      );
-
-      final notifier = container.read(sessionsProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.id, 's-2');
-    });
-
-    test('recovers from error state on refresh', () async {
-      // Use a mock that we can re-stub after the initial error.
-      final errClient = MockAgentServiceClient();
-      when(
-        () => errClient.listSessions(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          agentServiceProvider.overrideWithValue(errClient),
-          appDatabaseProvider.overrideWithValue(mockDb),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      // Trigger build and let error settle.
-      errContainer.read(sessionsProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      // Now re-stub to succeed.
-      when(() => errClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListSessionsResponse(sessions: [makeSession('recovered')]),
-        ),
-      );
-
-      final notifier = errContainer.read(sessionsProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(sessionsProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.id, 'recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listSessions(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
-      await container.read(sessionsProvider.future);
-
-      // Reset call count
-      reset(mockClient);
-      when(
-        () => mockClient.listSessions(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
-
-      final notifier = container.read(sessionsProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listSessions(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listSessions(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listSessions(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].id,
+    ),
+  );
 
   group('SessionsNotifier - renameSession', () {
     test('calls renameSession RPC with correct arguments', () async {
@@ -355,9 +220,9 @@ void main() {
       );
       await container.read(sessionsProvider.future);
 
-      when(() => mockClient.renameSession(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(RenameSessionResponse()),
-      );
+      when(
+        () => mockClient.renameSession(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(RenameSessionResponse()));
 
       final notifier = container.read(sessionsProvider.notifier);
       await notifier.renameSession(sessionId: 's-1', name: 'My Session');
@@ -378,9 +243,9 @@ void main() {
       );
       await container.read(sessionsProvider.future);
 
-      when(() => mockClient.renameSession(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(RenameSessionResponse()),
-      );
+      when(
+        () => mockClient.renameSession(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(RenameSessionResponse()));
 
       // After rename, refresh returns session with new name
       final renamedSession = makeSession('s-1');
@@ -399,6 +264,12 @@ void main() {
     });
   });
 
+  void stubSessionsEmpty() {
+    when(
+      () => mockClient.listSessions(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListSessionsResponse()));
+  }
+
   group('SessionsNotifier - compactSession', () {
     test('calls compactSession RPC with correct session ID', () async {
       // Build initial state
@@ -410,19 +281,21 @@ void main() {
       await container.read(sessionsProvider.future);
 
       when(() => mockClient.compactSession(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(CompactSessionResponse(
-          messagesBefore: 100,
-          messagesAfter: 50,
-          tokensSaved: 5000,
-        )),
+        (_) => FakeResponseFuture.value(
+          CompactSessionResponse(
+            messagesBefore: 100,
+            messagesAfter: 50,
+            tokensSaved: 5000,
+          ),
+        ),
       );
 
       final notifier = container.read(sessionsProvider.notifier);
       final result = await notifier.compactSession('s-1');
 
-      final captured = verify(() => mockClient.compactSession(captureAny()))
-          .captured
-          .single as CompactSessionRequest;
+      final captured =
+          verify(() => mockClient.compactSession(captureAny())).captured.single
+              as CompactSessionRequest;
       expect(captured.sessionId, 's-1');
       expect(result.messagesBefore, 100);
       expect(result.messagesAfter, 50);
@@ -430,14 +303,15 @@ void main() {
     });
 
     test('refreshes sessions after compaction', () async {
-      when(() => mockClient.listSessions(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListSessionsResponse()),
+      await initNotifier(
+        container: container,
+        provider: sessionsProvider,
+        stubEmpty: stubSessionsEmpty,
       );
-      await container.read(sessionsProvider.future);
 
-      when(() => mockClient.compactSession(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(CompactSessionResponse()),
-      );
+      when(
+        () => mockClient.compactSession(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(CompactSessionResponse()));
 
       final notifier = container.read(sessionsProvider.notifier);
       await notifier.compactSession('s-1');

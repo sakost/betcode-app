@@ -106,16 +106,24 @@ void main() {
         },
       );
 
+      /// Stubs token storage and initializes notifier.
+      Future<void> stubAndInitialize({
+        String? accessToken,
+        String? refreshToken,
+      }) async {
+        when(
+          () => mockStorage.readToken(),
+        ).thenAnswer((_) async => accessToken);
+        when(
+          () => mockStorage.readRefreshToken(),
+        ).thenAnswer((_) async => refreshToken);
+        await readNotifier().initialize();
+      }
+
       test(
         'transitions to AuthUnauthenticated when no tokens in storage',
         () async {
-          when(() => mockStorage.readToken()).thenAnswer((_) async => null);
-          when(
-            () => mockStorage.readRefreshToken(),
-          ).thenAnswer((_) async => null);
-
-          await readNotifier().initialize();
-
+          await stubAndInitialize();
           expect(readState(), isA<AuthUnauthenticated>());
         },
       );
@@ -123,15 +131,7 @@ void main() {
       test(
         'transitions to AuthUnauthenticated when only access token exists',
         () async {
-          when(
-            () => mockStorage.readToken(),
-          ).thenAnswer((_) async => 'access-only');
-          when(
-            () => mockStorage.readRefreshToken(),
-          ).thenAnswer((_) async => null);
-
-          await readNotifier().initialize();
-
+          await stubAndInitialize(accessToken: 'access-only');
           expect(readState(), isA<AuthUnauthenticated>());
         },
       );
@@ -139,13 +139,7 @@ void main() {
       test(
         'transitions to AuthUnauthenticated when only refresh token exists',
         () async {
-          when(() => mockStorage.readToken()).thenAnswer((_) async => null);
-          when(
-            () => mockStorage.readRefreshToken(),
-          ).thenAnswer((_) async => 'refresh-only');
-
-          await readNotifier().initialize();
-
+          await stubAndInitialize(refreshToken: 'refresh-only');
           expect(readState(), isA<AuthUnauthenticated>());
         },
       );
@@ -171,12 +165,7 @@ void main() {
                   .millisecondsSinceEpoch ~/
               1000,
         );
-        when(() => mockStorage.readToken()).thenAnswer((_) async => jwt);
-        when(
-          () => mockStorage.readRefreshToken(),
-        ).thenAnswer((_) async => 'refresh');
-
-        await readNotifier().initialize();
+        await stubAndInitialize(accessToken: jwt, refreshToken: 'refresh');
 
         final s = readState();
         expect(s, isA<AuthAuthenticated>());
@@ -187,30 +176,20 @@ void main() {
         final futureTime = DateTime.now().add(const Duration(hours: 2));
         final exp = futureTime.millisecondsSinceEpoch ~/ 1000;
         final jwt = createTestJwt(sub: 'user-1', exp: exp);
-        when(() => mockStorage.readToken()).thenAnswer((_) async => jwt);
-        when(
-          () => mockStorage.readRefreshToken(),
-        ).thenAnswer((_) async => 'refresh');
-
-        await readNotifier().initialize();
+        await stubAndInitialize(accessToken: jwt, refreshToken: 'refresh');
 
         final s = readState();
         expect(s, isA<AuthAuthenticated>());
         final auth = s as AuthAuthenticated;
-        // Should be within 2 seconds of the expected time
         final diff = auth.expiresAt.difference(futureTime).inSeconds.abs();
         expect(diff, lessThanOrEqualTo(2));
       });
 
       test('uses empty userId for malformed JWT', () async {
-        when(
-          () => mockStorage.readToken(),
-        ).thenAnswer((_) async => 'not-a-jwt');
-        when(
-          () => mockStorage.readRefreshToken(),
-        ).thenAnswer((_) async => 'refresh');
-
-        await readNotifier().initialize();
+        await stubAndInitialize(
+          accessToken: 'not-a-jwt',
+          refreshToken: 'refresh',
+        );
 
         final s = readState();
         expect(s, isA<AuthAuthenticated>());
@@ -219,17 +198,11 @@ void main() {
 
       test('uses default expiry for JWT without exp claim', () async {
         final jwt = createTestJwt(sub: 'user-1');
-        when(() => mockStorage.readToken()).thenAnswer((_) async => jwt);
-        when(
-          () => mockStorage.readRefreshToken(),
-        ).thenAnswer((_) async => 'refresh');
-
-        await readNotifier().initialize();
+        await stubAndInitialize(accessToken: jwt, refreshToken: 'refresh');
 
         final s = readState();
         expect(s, isA<AuthAuthenticated>());
         final auth = s as AuthAuthenticated;
-        // Default expiry should be roughly 15 minutes from now
         final diff = auth.expiresAt.difference(DateTime.now()).inMinutes;
         expect(diff, closeTo(15, 1));
       });
@@ -351,13 +324,7 @@ void main() {
         mockAuthClient = MockAuthServiceClient();
       });
 
-      test('updates state with new tokens', () async {
-        await authenticateNotifier(
-          accessToken: 'old-access',
-          refreshToken: 'old-refresh',
-          userId: 'user-1',
-        );
-
+      void stubRefreshSuccess() {
         when(() => mockAuthClient.refreshToken(any())).thenAnswer(
           (_) => FakeResponseFuture.value(
             RefreshTokenResponse(
@@ -367,6 +334,15 @@ void main() {
             ),
           ),
         );
+      }
+
+      test('updates state with new tokens', () async {
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
+        stubRefreshSuccess();
 
         final result = await readNotifier().refreshTokens(mockAuthClient);
 
@@ -384,16 +360,7 @@ void main() {
           refreshToken: 'old-refresh',
           userId: 'user-1',
         );
-
-        when(() => mockAuthClient.refreshToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.value(
-            RefreshTokenResponse(
-              accessToken: 'new-access',
-              refreshToken: 'new-refresh',
-              expiresInSecs: Int64(7200),
-            ),
-          ),
-        );
+        stubRefreshSuccess();
 
         await readNotifier().refreshTokens(mockAuthClient);
 
@@ -433,36 +400,43 @@ void main() {
         mockAuthClient = MockAuthServiceClient();
       });
 
-      test('calls revokeToken RPC with correct refresh token', () async {
+      /// Common setup: authenticate, allow clearAll, stub revokeToken response.
+      Future<void> setupRevoke({
+        ResponseFuture<RevokeTokenResponse> Function()? stubResponse,
+      }) async {
         await authenticateNotifier(
           accessToken: 'fake-access',
           refreshToken: 'fake-refresh',
           userId: 'user-1',
         );
         when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+        if (stubResponse != null) {
+          when(
+            () => mockAuthClient.revokeToken(any()),
+          ).thenAnswer((_) => stubResponse());
+        }
+      }
 
-        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+      test('calls revokeToken RPC with correct refresh token', () async {
+        await setupRevoke(
+          stubResponse: () =>
+              FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
         );
 
         await readNotifier().revokeToken(mockAuthClient);
 
-        final captured = verify(
-          () => mockAuthClient.revokeToken(captureAny()),
-        ).captured.single as RevokeTokenRequest;
+        final captured =
+            verify(
+                  () => mockAuthClient.revokeToken(captureAny()),
+                ).captured.single
+                as RevokeTokenRequest;
         expect(captured.refreshToken, 'fake-refresh');
       });
 
       test('returns true when revocation succeeds', () async {
-        await authenticateNotifier(
-          accessToken: 'fake-access',
-          refreshToken: 'fake-refresh',
-          userId: 'user-1',
-        );
-        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+        await setupRevoke(
+          stubResponse: () =>
+              FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
         );
 
         final result = await readNotifier().revokeToken(mockAuthClient);
@@ -470,15 +444,9 @@ void main() {
       });
 
       test('logs out after successful revocation', () async {
-        await authenticateNotifier(
-          accessToken: 'fake-access',
-          refreshToken: 'fake-refresh',
-          userId: 'user-1',
-        );
-        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+        await setupRevoke(
+          stubResponse: () =>
+              FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
         );
 
         await readNotifier().revokeToken(mockAuthClient);
@@ -492,17 +460,9 @@ void main() {
       });
 
       test('returns false and logs out on gRPC error', () async {
-        await authenticateNotifier(
-          accessToken: 'fake-access',
-          refreshToken: 'fake-refresh',
-          userId: 'user-1',
-        );
-        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.error(
-            GrpcError.unavailable('server down'),
-          ),
+        await setupRevoke(
+          stubResponse: () =>
+              FakeResponseFuture.error(GrpcError.unavailable('server down')),
         );
 
         final result = await readNotifier().revokeToken(mockAuthClient);
@@ -511,15 +471,9 @@ void main() {
       });
 
       test('returns true when server reports revoked=false', () async {
-        await authenticateNotifier(
-          accessToken: 'fake-access',
-          refreshToken: 'fake-refresh',
-          userId: 'user-1',
-        );
-        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
-
-        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
-          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: false)),
+        await setupRevoke(
+          stubResponse: () =>
+              FakeResponseFuture.value(RevokeTokenResponse(revoked: false)),
         );
 
         final result = await readNotifier().revokeToken(mockAuthClient);

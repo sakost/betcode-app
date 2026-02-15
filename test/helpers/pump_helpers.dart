@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod/misc.dart' show Override;
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
@@ -48,25 +49,13 @@ class TestConnectedRelayNotifier extends RelayConfigNotifier {
 // Widget builders
 // ---------------------------------------------------------------------------
 
-/// Builds a fully-routed, authenticated app for widget tests.
-///
-/// Overrides [secureStorageProvider], [authNotifierProvider], and
-/// [relayConfigNotifierProvider] so that the router's redirect guard treats
-/// the user as logged in. Pass extra [overrides] to layer on
-/// feature-specific provider stubs.
-Widget buildAuthApp({
+/// Internal helper that builds a routed app with the given overrides.
+Widget _buildRoutedApp({
   String? initialLocation,
-  List overrides = const [],
-  required MockSecureStorageService mockStorage,
+  required List<Override> overrides,
 }) {
   return ProviderScope(
-    overrides: [
-      secureStorageProvider.overrideWithValue(mockStorage),
-      authNotifierProvider.overrideWith(TestAuthenticatedNotifier.new),
-      relayConfigNotifierProvider
-          .overrideWith(TestConnectedRelayNotifier.new),
-      ...overrides,
-    ],
+    overrides: overrides,
     child: Consumer(
       builder: (context, ref, _) {
         final router = ref.watch(routerProvider);
@@ -82,6 +71,28 @@ Widget buildAuthApp({
   );
 }
 
+/// Builds a fully-routed, authenticated app for widget tests.
+///
+/// Overrides [secureStorageProvider], [authNotifierProvider], and
+/// [relayConfigNotifierProvider] so that the router's redirect guard treats
+/// the user as logged in. Pass extra [overrides] to layer on
+/// feature-specific provider stubs.
+Widget buildAuthApp({
+  String? initialLocation,
+  List<Override> overrides = const [],
+  required MockSecureStorageService mockStorage,
+}) {
+  return _buildRoutedApp(
+    initialLocation: initialLocation,
+    overrides: [
+      secureStorageProvider.overrideWithValue(mockStorage),
+      authNotifierProvider.overrideWith(TestAuthenticatedNotifier.new),
+      relayConfigNotifierProvider.overrideWith(TestConnectedRelayNotifier.new),
+      ...overrides,
+    ],
+  );
+}
+
 /// Builds a fully-routed, unauthenticated app for widget tests.
 ///
 /// Only overrides [secureStorageProvider] (no auth / relay overrides), so the
@@ -89,25 +100,14 @@ Widget buildAuthApp({
 /// redirects to `/login`. Pass extra [overrides] as needed.
 Widget buildUnauthApp({
   String? initialLocation,
-  List overrides = const [],
+  List<Override> overrides = const [],
   required MockSecureStorageService mockStorage,
 }) {
-  return ProviderScope(
+  return _buildRoutedApp(
+    initialLocation: initialLocation,
     overrides: [
       secureStorageProvider.overrideWithValue(mockStorage),
       ...overrides,
     ],
-    child: Consumer(
-      builder: (context, ref, _) {
-        final router = ref.watch(routerProvider);
-        if (initialLocation != null) {
-          router.go(initialLocation);
-        }
-        return MaterialApp.router(
-          routerConfig: router,
-          theme: AppTheme.lightTheme,
-        );
-      },
-    ),
   );
 }

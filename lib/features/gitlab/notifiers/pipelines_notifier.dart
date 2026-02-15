@@ -46,7 +46,9 @@ class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
   }) async {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
-        .getPipeline(GetPipelineRequest(project: project, pipelineId: pipelineId))
+        .getPipeline(
+          GetPipelineRequest(project: project, pipelineId: pipelineId),
+        )
         .timeout(_rpcTimeout);
     return response.pipeline;
   }

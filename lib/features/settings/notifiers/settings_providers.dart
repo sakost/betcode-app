@@ -22,13 +22,13 @@ final mcpServersProvider =
 
 /// Provides the [PermissionRules] fetched from the daemon, scoped by session ID.
 final permissionsProvider =
-    AsyncNotifierProvider.family<PermissionsNotifier, PermissionRules, String>(
-      (sessionId) {
-        final notifier = PermissionsNotifier();
-        notifier.sessionId = sessionId;
-        return notifier;
-      },
-    );
+    AsyncNotifierProvider.family<PermissionsNotifier, PermissionRules, String>((
+      sessionId,
+    ) {
+      final notifier = PermissionsNotifier();
+      notifier.sessionId = sessionId;
+      return notifier;
+    });
 
 /// Provides the [HealthDetailsResponse] fetched from the daemon.
 final healthProvider =

@@ -6,11 +6,13 @@ import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/commands/notifiers/commands_notifier.dart';
 import 'package:betcode_app/features/commands/notifiers/commands_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/fake_response_stream.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -126,62 +128,43 @@ void main() {
     });
   });
 
-  group('CommandsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: commandsProvider,
-        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(commandsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'CommandsNotifier',
+    provider: commandsProvider,
+    serviceOverrides: () => [
+      commandServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () =>
+        verifyNever(() => mockClient.getCommandRegistry(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: commandsProvider,
-        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.getCommandRegistry(any()));
-    });
-  });
+  errorHandlingTests(
+    label: 'CommandsNotifier',
+    provider: commandsProvider,
+    errorOverrides: (error) => [
+      commandServiceProvider.overrideWithValue(_FailingCommandClient(error)),
+    ],
+  );
 
-  group('CommandsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: commandsProvider,
-        overrides: [
-          commandServiceProvider.overrideWithValue(
-            _FailingCommandClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(commandsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
+  void stubRegistryEmpty() {
+    when(
+      () => mockClient.getCommandRegistry(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(GetCommandRegistryResponse()));
+  }
 
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: commandsProvider,
-        overrides: [
-          commandServiceProvider.overrideWithValue(
-            _FailingCommandClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(commandsProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  /// Returns an initialized notifier ready for method calls.
+  Future<CommandsNotifier> initCommandsNotifier() async {
+    await initNotifier(
+      container: container,
+      provider: commandsProvider,
+      stubEmpty: stubRegistryEmpty,
+    );
+    return container.read(commandsProvider.notifier);
+  }
 
   group('CommandsNotifier - listAgents', () {
     test('returns AgentInfo list', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
+      final notifier = await initCommandsNotifier();
 
       final agents = [
         AgentInfo(name: 'agent-1', kind: AgentKind.AGENT_KIND_CLAUDE_INTERNAL),
@@ -191,7 +174,6 @@ void main() {
         (_) => FakeResponseFuture.value(ListAgentsResponse(agents: agents)),
       );
 
-      final notifier = container.read(commandsProvider.notifier);
       final result = await notifier.listAgents(query: 'test', maxResults: 10);
 
       expect(result, hasLength(2));
@@ -200,16 +182,12 @@ void main() {
     });
 
     test('passes correct query and maxResults to gRPC', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
+      final notifier = await initCommandsNotifier();
 
       when(
         () => mockClient.listAgents(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(ListAgentsResponse()));
 
-      final notifier = container.read(commandsProvider.notifier);
       await notifier.listAgents(query: 'claude', maxResults: 5);
 
       final captured =
@@ -221,10 +199,7 @@ void main() {
     });
 
     test('preserves AgentInfo fields from response', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
+      final notifier = await initCommandsNotifier();
 
       when(() => mockClient.listAgents(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -242,7 +217,6 @@ void main() {
         ),
       );
 
-      final notifier = container.read(commandsProvider.notifier);
       final result = await notifier.listAgents();
 
       expect(result, hasLength(1));
@@ -257,10 +231,7 @@ void main() {
 
   group('CommandsNotifier - listPath', () {
     test('returns PathEntry list', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
+      final notifier = await initCommandsNotifier();
 
       final entries = [
         PathEntry(
@@ -273,7 +244,6 @@ void main() {
         (_) => FakeResponseFuture.value(ListPathResponse(entries: entries)),
       );
 
-      final notifier = container.read(commandsProvider.notifier);
       final result = await notifier.listPath(query: '/home', maxResults: 10);
 
       expect(result, hasLength(2));
@@ -284,16 +254,12 @@ void main() {
     });
 
     test('passes correct query and maxResults to gRPC', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
+      final notifier = await initCommandsNotifier();
 
       when(
         () => mockClient.listPath(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(ListPathResponse()));
 
-      final notifier = container.read(commandsProvider.notifier);
       await notifier.listPath(query: '/tmp', maxResults: 15);
 
       final captured =
@@ -305,100 +271,73 @@ void main() {
     });
   });
 
-  group('CommandsNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetCommandRegistryResponse(commands: [makeCommand('cmd-1')]),
-        ),
-      );
-      await container.read(commandsProvider.future);
-
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetCommandRegistryResponse(
-            commands: [makeCommand('cmd-1'), makeCommand('cmd-new')],
+  refreshTests(
+    RefreshTestConfig<List<CommandEntry>>(
+      provider: commandsProvider,
+      label: 'CommandsNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            GetCommandRegistryResponse(commands: [makeCommand('cmd-1')]),
           ),
-        ),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(commandsProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].name, 'cmd-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<CommandEntry>>>[];
-
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetCommandRegistryResponse(commands: [makeCommand('cmd-1')]),
-        ),
-      );
-      await container.read(commandsProvider.future);
-
-      container.listen(commandsProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          GetCommandRegistryResponse(commands: [makeCommand('cmd-2')]),
-        ),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.name, 'cmd-2');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      reset(mockClient);
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.getCommandRegistry(any())).called(1);
-    });
-  });
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            GetCommandRegistryResponse(
+              commands: [makeCommand('cmd-1'), makeCommand('cmd-new')],
+            ),
+          ),
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
+        );
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.getCommandRegistry(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].name,
+    ),
+  );
 
   // ---------------------------------------------------------------------------
   // CommandsNotifier - executeServiceCommand (server-streaming)
   // ---------------------------------------------------------------------------
 
   group('CommandsNotifier - executeServiceCommand', () {
-    test('returns stream of ServiceCommandOutput', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
+    /// Initializes notifier and stubs executeServiceCommand to use the returned
+    /// controller.
+    Future<
+      ({
+        CommandsNotifier notifier,
+        StreamController<ServiceCommandOutput> controller,
+      })
+    >
+    initForExec() async {
+      await initNotifier(
+        container: container,
+        provider: commandsProvider,
+        stubEmpty: stubRegistryEmpty,
       );
-      await container.read(commandsProvider.future);
-
       final controller = StreamController<ServiceCommandOutput>();
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
+      when(
+        () => mockClient.executeServiceCommand(any()),
+      ).thenAnswer((_) => FakeResponseStream(controller));
       final notifier = container.read(commandsProvider.notifier);
+      return (notifier: notifier, controller: controller);
+    }
+
+    test('returns stream of ServiceCommandOutput', () async {
+      final (:notifier, :controller) = await initForExec();
       final stream = notifier.executeServiceCommand(
         command: 'deploy',
         args: ['--prod'],
       );
-
-      // Subscribe first via toList(), then add events and close.
       final eventsFuture = stream.toList();
 
       controller.add(ServiceCommandOutput(stdoutLine: 'Deploying...'));
@@ -407,7 +346,6 @@ void main() {
       unawaited(controller.close());
 
       final events = await eventsFuture;
-
       expect(events, hasLength(3));
       expect(events[0].stdoutLine, 'Deploying...');
       expect(events[1].stdoutLine, 'Done.');
@@ -415,68 +353,43 @@ void main() {
     });
 
     test('passes correct command and args to gRPC', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      final controller = StreamController<ServiceCommandOutput>();
-      addTearDown(() { controller.close(); });
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
+      final (:notifier, :controller) = await initForExec();
+      addTearDown(() {
+        controller.close();
+      });
       notifier.executeServiceCommand(
         command: 'test-cmd',
         args: ['--flag', 'value'],
       );
 
       final captured =
-          verify(() => mockClient.executeServiceCommand(captureAny()))
-              .captured
-              .single as ExecuteServiceCommandRequest;
+          verify(
+                () => mockClient.executeServiceCommand(captureAny()),
+              ).captured.single
+              as ExecuteServiceCommandRequest;
       expect(captured.command, 'test-cmd');
       expect(captured.args, ['--flag', 'value']);
     });
 
     test('defaults to empty args', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      final controller = StreamController<ServiceCommandOutput>();
-      addTearDown(() { controller.close(); });
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
+      final (:notifier, :controller) = await initForExec();
+      addTearDown(() {
+        controller.close();
+      });
       notifier.executeServiceCommand(command: 'simple');
 
       final captured =
-          verify(() => mockClient.executeServiceCommand(captureAny()))
-              .captured
-              .single as ExecuteServiceCommandRequest;
+          verify(
+                () => mockClient.executeServiceCommand(captureAny()),
+              ).captured.single
+              as ExecuteServiceCommandRequest;
       expect(captured.command, 'simple');
       expect(captured.args, isEmpty);
     });
 
     test('emits stderr lines', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      final controller = StreamController<ServiceCommandOutput>();
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
+      final (:notifier, :controller) = await initForExec();
       final stream = notifier.executeServiceCommand(command: 'fail');
-
       final eventsFuture = stream.toList();
 
       controller.add(ServiceCommandOutput(stderrLine: 'Error occurred'));
@@ -484,53 +397,27 @@ void main() {
       unawaited(controller.close());
 
       final events = await eventsFuture;
-
       expect(events, hasLength(2));
       expect(events[0].stderrLine, 'Error occurred');
       expect(events[1].exitCode, 1);
     });
 
     test('emits error output variant', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      final controller = StreamController<ServiceCommandOutput>();
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
+      final (:notifier, :controller) = await initForExec();
       final stream = notifier.executeServiceCommand(command: 'bad');
-
       final eventsFuture = stream.toList();
 
       controller.add(ServiceCommandOutput(error: 'command not found'));
       unawaited(controller.close());
 
       final events = await eventsFuture;
-
       expect(events, hasLength(1));
       expect(events.first.error, 'command not found');
-      expect(
-        events.first.whichOutput(),
-        ServiceCommandOutput_Output.error,
-      );
+      expect(events.first.whichOutput(), ServiceCommandOutput_Output.error);
     });
 
     test('propagates stream errors', () async {
-      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
-      );
-      await container.read(commandsProvider.future);
-
-      final controller = StreamController<ServiceCommandOutput>();
-      when(() => mockClient.executeServiceCommand(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(commandsProvider.notifier);
+      final (:notifier, :controller) = await initForExec();
       final stream = notifier.executeServiceCommand(command: 'err');
 
       controller.addError(GrpcError.unavailable('stream broken'));

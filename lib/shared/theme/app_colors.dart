@@ -8,8 +8,8 @@ abstract final class AppColors {
   static const Color reconnecting = Color(0xFFFF9800);
 
   // Agent status
-  static const Color agentThinking = Color(0xFFFFC107);    // Amber
-  static const Color agentExecuting = Color(0xFF2196F3);   // Blue
+  static const Color agentThinking = Color(0xFFFFC107); // Amber
+  static const Color agentExecuting = Color(0xFF2196F3); // Blue
   static const Color agentIdle = Color(0xFF9E9E9E);
   static const Color agentError = Color(0xFFE53935);
   static const Color agentWaiting = Color(0xFF9C27B0);

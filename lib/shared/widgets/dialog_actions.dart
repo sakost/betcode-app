@@ -18,9 +18,6 @@ List<Widget> buildDialogActions(
       onPressed: onCancel ?? () => Navigator.of(context).pop(),
       child: const Text('Cancel'),
     ),
-    FilledButton(
-      onPressed: onConfirm,
-      child: Text(confirmLabel),
-    ),
+    FilledButton(onPressed: onConfirm, child: Text(confirmLabel)),
   ];
 }

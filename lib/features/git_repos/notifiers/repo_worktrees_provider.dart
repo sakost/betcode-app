@@ -9,12 +9,16 @@ import '../../../generated/betcode/v1/worktree.pb.dart';
 /// Provides the list of [WorktreeDetail] objects for a specific repo.
 ///
 /// Fetches worktrees filtered by [repoId] from the daemon via gRPC.
-final repoWorktreesProvider = AsyncNotifierProvider.family<
-    RepoWorktreesNotifier, List<WorktreeDetail>, String>((repoId) {
-  final notifier = RepoWorktreesNotifier();
-  notifier.repoId = repoId;
-  return notifier;
-});
+final repoWorktreesProvider =
+    AsyncNotifierProvider.family<
+      RepoWorktreesNotifier,
+      List<WorktreeDetail>,
+      String
+    >((repoId) {
+      final notifier = RepoWorktreesNotifier();
+      notifier.repoId = repoId;
+      return notifier;
+    });
 
 class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   static const _rpcTimeout = Duration(seconds: 10);

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:betcode_app/features/git_repos/notifiers/git_repos_notifier.dart';
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/features/git_repos/screens/repo_detail_screen.dart';
@@ -12,28 +11,14 @@ import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 
+import '../../../helpers/git_repo_test_helpers.dart';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 Widget _app(Widget child) =>
     MaterialApp(theme: AppTheme.lightTheme, home: child);
-
-GitRepoDetail _makeRepo({
-  String id = 'repo-1',
-  String name = 'my-project',
-  String repoPath = '/home/user/projects/my-project',
-  WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
-  int worktreeCount = 3,
-}) {
-  return GitRepoDetail(
-    id: id,
-    name: name,
-    repoPath: repoPath,
-    worktreeMode: worktreeMode,
-    worktreeCount: worktreeCount,
-  );
-}
 
 WorktreeDetail _makeWorktree({
   String id = 'wt-1',
@@ -53,21 +38,6 @@ WorktreeDetail _makeWorktree({
     existsOnDisk: existsOnDisk,
     sessionCount: sessionCount,
   );
-}
-
-class _FakeGitReposNotifier extends GitReposNotifier {
-  _FakeGitReposNotifier(this._value);
-
-  final AsyncValue<List<GitRepoDetail>> _value;
-
-  @override
-  Future<List<GitRepoDetail>> build() {
-    return _value.when(
-      data: (d) => Future.value(d),
-      loading: () => Completer<List<GitRepoDetail>>().future,
-      error: (e, st) => Future.error(e, st),
-    );
-  }
 }
 
 class _FakeRepoWorktreesNotifier extends RepoWorktreesNotifier {
@@ -93,10 +63,10 @@ ProviderScope _withProviders(
 }) {
   return ProviderScope(
     overrides: [
-      gitReposProvider.overrideWith(() => _FakeGitReposNotifier(repos)),
-      repoWorktreesProvider(repoId).overrideWith(
-        () => _FakeRepoWorktreesNotifier(worktrees),
-      ),
+      gitReposProvider.overrideWith(() => FakeGitReposNotifier(repos)),
+      repoWorktreesProvider(
+        repoId,
+      ).overrideWith(() => _FakeRepoWorktreesNotifier(worktrees)),
     ],
     child: child,
   );
@@ -110,7 +80,7 @@ Widget _repoDetailApp({
 }) {
   return _withProviders(
     _app(RepoDetailScreen(repoId: repoId)),
-    repos: AsyncData([repo ?? _makeRepo()]),
+    repos: AsyncData([repo ?? makeTestRepo()]),
     worktrees: worktrees,
     repoId: repoId,
   );
@@ -181,7 +151,7 @@ void main() {
 
     testWidgets('shows repo name in app bar', (t) async {
       await t.pumpWidget(
-        _repoDetailApp(repo: _makeRepo(name: 'payments-api')),
+        _repoDetailApp(repo: makeTestRepo(name: 'payments-api')),
       );
       await t.pumpAndSettle();
 
@@ -231,10 +201,7 @@ void main() {
       await t.pumpWidget(
         _repoDetailApp(
           worktrees: AsyncData([
-            _makeWorktree(
-              branch: 'main',
-              path: '/home/user/worktrees/main',
-            ),
+            _makeWorktree(branch: 'main', path: '/home/user/worktrees/main'),
           ]),
         ),
       );
@@ -246,9 +213,7 @@ void main() {
 
     testWidgets('worktree card shows session count', (t) async {
       await t.pumpWidget(
-        _repoDetailApp(
-          worktrees: AsyncData([_makeWorktree(sessionCount: 5)]),
-        ),
+        _repoDetailApp(worktrees: AsyncData([_makeWorktree(sessionCount: 5)])),
       );
       await t.pumpAndSettle();
 
@@ -284,11 +249,12 @@ void main() {
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
-    testWidgets('falls back to path-derived name when repo name is empty',
-        (t) async {
+    testWidgets('falls back to path-derived name when repo name is empty', (
+      t,
+    ) async {
       await t.pumpWidget(
         _repoDetailApp(
-          repo: _makeRepo(
+          repo: makeTestRepo(
             name: '',
             repoPath: '/home/user/projects/awesome-tool',
           ),

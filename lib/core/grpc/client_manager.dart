@@ -136,7 +136,9 @@ class GrpcClientManager {
         try {
           await _healthCheckFn(_channel!);
         } on Object catch (e) {
-          debugPrint('[GrpcClientManager] Health check failed (connecting anyway): $e');
+          debugPrint(
+            '[GrpcClientManager] Health check failed (connecting anyway): $e',
+          );
         }
       }
 
@@ -218,7 +220,9 @@ class GrpcClientManager {
       try {
         await connect(host, port, useTls: useTls);
       } on Object catch (e) {
-        debugPrint('[GrpcClientManager] Reconnect attempt ${attempt + 1} failed: $e');
+        debugPrint(
+          '[GrpcClientManager] Reconnect attempt ${attempt + 1} failed: $e',
+        );
         _reconnectLoop(host, port, useTls: useTls, attempt: attempt + 1);
       }
     });

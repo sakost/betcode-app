@@ -10,6 +10,7 @@ import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dar
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -84,6 +85,12 @@ void main() {
     sessionCount: sessionCount,
   );
 
+  void stubListEmpty() {
+    when(
+      () => mockClient.listWorktrees(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
+  }
+
   group('WorktreesNotifier - build', () {
     test('fetches worktrees from gRPC', () async {
       final worktrees = [makeWorktree('wt-1'), makeWorktree('wt-2')];
@@ -101,9 +108,7 @@ void main() {
     });
 
     test('returns empty list when no worktrees exist', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
+      stubListEmpty();
 
       final result = await container.read(worktreesProvider.future);
       expect(result, isEmpty);
@@ -142,167 +147,65 @@ void main() {
     });
   });
 
-  group('WorktreesNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: worktreesProvider,
-        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(worktreesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'WorktreesNotifier',
+    provider: worktreesProvider,
+    serviceOverrides: () => [
+      worktreeServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listWorktrees(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: worktreesProvider,
-        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listWorktrees(any()));
-    });
-  });
+  errorHandlingTests(
+    label: 'WorktreesNotifier',
+    provider: worktreesProvider,
+    errorOverrides: (error) => [
+      worktreeServiceProvider.overrideWithValue(_FailingWorktreeClient(error)),
+      selectedMachineIdProvider.overrideWith(_FakeSelectedMachineNotifier.new),
+    ],
+  );
 
-  group('WorktreesNotifier - error handling', () {
-    List errorOverrides(GrpcError error) => [
-          worktreeServiceProvider.overrideWithValue(
-            _FailingWorktreeClient(error),
+  refreshTests(
+    RefreshTestConfig<List<WorktreeDetail>>(
+      provider: worktreesProvider,
+      label: 'WorktreesNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listWorktrees(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
           ),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listWorktrees(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListWorktreesResponse(
+              worktrees: [makeWorktree('wt-1'), makeWorktree('wt-new')],
+            ),
           ),
-        ];
-
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: worktreesProvider,
-        overrides: errorOverrides(GrpcError.unavailable('connection refused')),
-      );
-      final state = ec.read(worktreesProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: worktreesProvider,
-        overrides: errorOverrides(GrpcError.unavailable('daemon unreachable')),
-      );
-      final state = ec.read(worktreesProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
-
-  group('WorktreesNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
-        ),
-      );
-      await container.read(worktreesProvider.future);
-
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListWorktreesResponse(
-            worktrees: [makeWorktree('wt-1'), makeWorktree('wt-new')],
-          ),
-        ),
-      );
-
-      final notifier = container.read(worktreesProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(worktreesProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].id, 'wt-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<WorktreeDetail>>>[];
-
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
-        ),
-      );
-      await container.read(worktreesProvider.future);
-
-      container.listen(worktreesProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListWorktreesResponse(worktrees: [makeWorktree('wt-2')]),
-        ),
-      );
-
-      final notifier = container.read(worktreesProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.id, 'wt-2');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockWorktreeServiceClient();
-      when(
-        () => errClient.listWorktrees(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(errClient),
-          selectedMachineIdProvider.overrideWith(
-            _FakeSelectedMachineNotifier.new,
-          ),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(worktreesProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      when(() => errClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListWorktreesResponse(worktrees: [makeWorktree('recovered')]),
-        ),
-      );
-
-      final notifier = errContainer.read(worktreesProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(worktreesProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.id, 'recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-      await container.read(worktreesProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-
-      final notifier = container.read(worktreesProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listWorktrees(any())).called(1);
-    });
-  });
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listWorktrees(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listWorktrees(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].id,
+    ),
+  );
 
   group('WorktreesNotifier - createWorktree', () {
     test('calls gRPC createWorktree and refreshes', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-      await container.read(worktreesProvider.future);
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.createWorktree(any()),
@@ -326,10 +229,11 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-      await container.read(worktreesProvider.future);
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.createWorktree(any()),
@@ -354,10 +258,11 @@ void main() {
     });
 
     test('uses empty string for setupScript when not provided', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-      await container.read(worktreesProvider.future);
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.createWorktree(any()),
@@ -390,9 +295,7 @@ void main() {
       when(() => mockClient.removeWorktree(any())).thenAnswer(
         (_) => FakeResponseFuture.value(RemoveWorktreeResponse(removed: true)),
       );
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
+      stubListEmpty();
 
       final notifier = container.read(worktreesProvider.notifier);
       await notifier.removeWorktree('wt-1');
@@ -402,10 +305,11 @@ void main() {
     });
 
     test('passes correct id to gRPC', () async {
-      when(
-        () => mockClient.listWorktrees(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
-      await container.read(worktreesProvider.future);
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.removeWorktree(any())).thenAnswer(
         (_) => FakeResponseFuture.value(RemoveWorktreeResponse(removed: true)),
@@ -424,11 +328,11 @@ void main() {
 
   group('WorktreesNotifier - getWorktree', () {
     test('returns WorktreeDetail for given id', () async {
-      // Set up initial build
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
       );
-      await container.read(worktreesProvider.future);
 
       final detail = WorktreeDetail(
         id: 'wt-42',
@@ -437,9 +341,9 @@ void main() {
         branch: 'feature/new-thing',
         repoId: 'repo-1',
       );
-      when(() => mockClient.getWorktree(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(detail),
-      );
+      when(
+        () => mockClient.getWorktree(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(detail));
 
       final notifier = container.read(worktreesProvider.notifier);
       final result = await notifier.getWorktree('wt-42');
@@ -452,10 +356,11 @@ void main() {
     });
 
     test('passes correct id to gRPC', () async {
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
       );
-      await container.read(worktreesProvider.future);
 
       when(() => mockClient.getWorktree(any())).thenAnswer(
         (_) => FakeResponseFuture.value(WorktreeDetail(id: 'wt-99')),
@@ -464,9 +369,9 @@ void main() {
       final notifier = container.read(worktreesProvider.notifier);
       await notifier.getWorktree('wt-99');
 
-      final captured = verify(() => mockClient.getWorktree(captureAny()))
-          .captured
-          .single as GetWorktreeRequest;
+      final captured =
+          verify(() => mockClient.getWorktree(captureAny())).captured.single
+              as GetWorktreeRequest;
       expect(captured.id, 'wt-99');
     });
   });

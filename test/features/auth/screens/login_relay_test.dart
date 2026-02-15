@@ -101,9 +101,12 @@ void main() {
   }
 
   group('Login relay flow', () {
-    testWidgets('connectTo called before login', (tester) async {
-      final testNotifier = TestRelayConfigNotifier();
-
+    /// Pumps the login app with the given notifier, fills in form fields,
+    /// scrolls to the Login button and taps it.
+    Future<void> pumpAndSubmitLogin(
+      WidgetTester tester, {
+      required TestRelayConfigNotifier testNotifier,
+    }) async {
       await tester.pumpWidget(
         _buildLoginApp(
           mockStorage: mockStorage,
@@ -112,16 +115,17 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-
       await fillFormFields(tester);
-
-      // Scroll to and submit
       await tester.ensureVisible(find.widgetWithText(FilledButton, 'Login'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Login'));
       await tester.pumpAndSettle();
+    }
 
-      // connectTo should have been called
+    testWidgets('connectTo called before login', (tester) async {
+      final testNotifier = TestRelayConfigNotifier();
+      await pumpAndSubmitLogin(tester, testNotifier: testNotifier);
+
       expect(testNotifier.connectToCallCount, equals(1));
       expect(
         testNotifier.lastConnectConfig,
@@ -133,25 +137,8 @@ void main() {
       final testNotifier = TestRelayConfigNotifier(
         connectError: Exception('connection refused'),
       );
+      await pumpAndSubmitLogin(tester, testNotifier: testNotifier);
 
-      await tester.pumpWidget(
-        _buildLoginApp(
-          mockStorage: mockStorage,
-          mockManager: mockManager,
-          testNotifier: testNotifier,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await fillFormFields(tester);
-
-      // Scroll to and submit
-      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-
-      // Should show relay error snackbar
       expect(
         find.text('Relay connection failed: Exception: connection refused'),
         findsOneWidget,
@@ -160,33 +147,10 @@ void main() {
 
     testWidgets('error on login failure after relay success', (tester) async {
       final testNotifier = TestRelayConfigNotifier();
-
-      // Make the authServiceProvider throw by not having a real channel.
-      // The grpcClientManagerProvider.channel will throw StateError since
-      // mockManager has no real channel configured.
       when(() => mockManager.channel).thenThrow(StateError('No channel'));
+      await pumpAndSubmitLogin(tester, testNotifier: testNotifier);
 
-      await tester.pumpWidget(
-        _buildLoginApp(
-          mockStorage: mockStorage,
-          mockManager: mockManager,
-          testNotifier: testNotifier,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await fillFormFields(tester);
-
-      // Scroll to and submit
-      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-
-      // Relay connect should have succeeded
       expect(testNotifier.connectToCallCount, equals(1));
-
-      // Login error should be shown (since channel is mocked to throw)
       expect(find.textContaining('Login failed:'), findsOneWidget);
     });
 
@@ -201,25 +165,8 @@ void main() {
       final testNotifier = TestRelayConfigNotifier(
         initialConfig: existingConfig,
       );
+      await pumpAndSubmitLogin(tester, testNotifier: testNotifier);
 
-      await tester.pumpWidget(
-        _buildLoginApp(
-          mockStorage: mockStorage,
-          mockManager: mockManager,
-          testNotifier: testNotifier,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await fillFormFields(tester);
-
-      // Scroll to and submit
-      await tester.ensureVisible(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
-      await tester.pumpAndSettle();
-
-      // connectTo should NOT have been called because config matches
       expect(testNotifier.connectToCallCount, equals(0));
     });
   });

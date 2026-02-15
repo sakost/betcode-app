@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/version.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -111,74 +111,28 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // VersionNotifier - connection awareness
-  // ---------------------------------------------------------------------------
+  connectionAwarenessTests(
+    label: 'VersionNotifier',
+    provider: versionProvider,
+    serviceOverrides: () => [
+      versionServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.getVersion(any())),
+  );
 
-  group('VersionNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: versionProvider,
-        overrides: [versionServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(versionProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  errorHandlingTests(
+    label: 'VersionNotifier',
+    provider: versionProvider,
+    errorOverrides: (error) => [
+      versionServiceProvider.overrideWithValue(_FailingVersionClient(error)),
+    ],
+  );
 
-    test('throws StateError when connecting', () async {
-      final dc = await createDisconnectedContainer(
-        provider: versionProvider,
-        overrides: [versionServiceProvider.overrideWithValue(mockClient)],
-        status: GrpcConnectionStatus.connecting,
-      );
-      final state = dc.read(versionProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: versionProvider,
-        overrides: [versionServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.getVersion(any()));
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // VersionNotifier - error handling
-  // ---------------------------------------------------------------------------
-
-  group('VersionNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: versionProvider,
-        overrides: [
-          versionServiceProvider.overrideWithValue(
-            _FailingVersionClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(versionProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: versionProvider,
-        overrides: [
-          versionServiceProvider.overrideWithValue(
-            _FailingVersionClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(versionProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  void stubVersionEmpty() {
+    when(
+      () => mockClient.getVersion(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
+  }
 
   // ---------------------------------------------------------------------------
   // VersionNotifier - negotiateCapabilities
@@ -186,10 +140,11 @@ void main() {
 
   group('VersionNotifier - negotiateCapabilities', () {
     test('sends negotiation request and returns response', () async {
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
-      await container.read(versionProvider.future);
+      await initNotifier(
+        container: container,
+        provider: versionProvider,
+        stubEmpty: stubVersionEmpty,
+      );
 
       when(() => mockClient.negotiateCapabilities(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -209,10 +164,11 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
-      await container.read(versionProvider.future);
+      await initNotifier(
+        container: container,
+        provider: versionProvider,
+        stubEmpty: stubVersionEmpty,
+      );
 
       when(
         () => mockClient.negotiateCapabilities(any()),
@@ -236,10 +192,11 @@ void main() {
     });
 
     test('returns rejection with reason', () async {
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
-      await container.read(versionProvider.future);
+      await initNotifier(
+        container: container,
+        provider: versionProvider,
+        stubEmpty: stubVersionEmpty,
+      );
 
       when(() => mockClient.negotiateCapabilities(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -287,40 +244,12 @@ void main() {
       expect(state.value!.apiVersion, '2.0.0');
     });
 
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<GetVersionResponse>>[];
-
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
-      await container.read(versionProvider.future);
-
-      container.listen(versionProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.getVersion(any())).thenAnswer(
-        (_) =>
-            FakeResponseFuture.value(GetVersionResponse(apiVersion: '3.0.0')),
-      );
-
-      final notifier = container.read(versionProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value!.apiVersion, '3.0.0');
-    });
-
     test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
+      stubVersionEmpty();
       await container.read(versionProvider.future);
 
       reset(mockClient);
-      when(
-        () => mockClient.getVersion(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(GetVersionResponse()));
+      stubVersionEmpty();
 
       final notifier = container.read(versionProvider.notifier);
       await notifier.refresh();

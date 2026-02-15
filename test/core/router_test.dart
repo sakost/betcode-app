@@ -21,7 +21,9 @@ void main() {
       testWidgets('unauthenticated user accessing $route -> /login', (
         tester,
       ) async {
-        await tester.pumpWidget(buildUnauthApp(initialLocation: route, mockStorage: mockStorage));
+        await tester.pumpWidget(
+          buildUnauthApp(initialLocation: route, mockStorage: mockStorage),
+        );
         await tester.pumpAndSettle();
         expect(find.text('Login'), findsOneWidget);
       });
@@ -30,16 +32,18 @@ void main() {
     testWidgets('authenticated user accessing /register -> /sessions', (
       tester,
     ) async {
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/register', mockStorage: mockStorage));
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/register', mockStorage: mockStorage),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
       expect(find.text('Register'), findsNothing);
     });
 
-    testWidgets('authenticated user on /login -> /sessions', (
-      tester,
-    ) async {
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/login', mockStorage: mockStorage));
+    testWidgets('authenticated user on /login -> /sessions', (tester) async {
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/login', mockStorage: mockStorage),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
     });
@@ -49,7 +53,9 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(800, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/sessions', mockStorage: mockStorage));
+      await tester.pumpWidget(
+        buildAuthApp(initialLocation: '/sessions', mockStorage: mockStorage),
+      );
       await tester.pumpAndSettle();
       expect(find.text('Login'), findsNothing);
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -59,27 +65,40 @@ void main() {
   group('Router - deep linking', () {
     testWidgets('conversation with sessionId parameter', (tester) async {
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/sessions/sess-42', mockStorage: mockStorage),
+        buildAuthApp(
+          initialLocation: '/sessions/sess-42',
+          mockStorage: mockStorage,
+        ),
       );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
 
-    testWidgets('/sessions/new routes to ConversationScreen with null sessionId',
-        (tester) async {
-      await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/sessions/new', mockStorage: mockStorage),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
-      expect(find.text('Conversation'), findsOneWidget);
-    });
+    testWidgets(
+      '/sessions/new routes to ConversationScreen with null sessionId',
+      (tester) async {
+        await tester.pumpWidget(
+          buildAuthApp(
+            initialLocation: '/sessions/new',
+            mockStorage: mockStorage,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(find.text('Conversation'), findsOneWidget);
+      },
+    );
 
     testWidgets('machines with machineId parameter', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
-      await tester.pumpWidget(buildAuthApp(initialLocation: '/machines/m-1', mockStorage: mockStorage));
+      await tester.pumpWidget(
+        buildAuthApp(
+          initialLocation: '/machines/m-1',
+          mockStorage: mockStorage,
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(NavigationBar), findsOneWidget);
     });
@@ -89,7 +108,10 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
       await tester.pumpWidget(
-        buildAuthApp(initialLocation: '/code/repos/repo-42', mockStorage: mockStorage),
+        buildAuthApp(
+          initialLocation: '/code/repos/repo-42',
+          mockStorage: mockStorage,
+        ),
       );
       // Use pump() instead of pumpAndSettle() because RepoDetailScreen
       // shows a CircularProgressIndicator while loading worktrees, which
@@ -108,14 +130,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Read the router instance before state change.
-      final container =
-          ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MaterialApp)),
+      );
       final routerBefore = container.read(routerProvider);
 
       // Trigger an auth state change by invalidating the provider.
       // The router should use refreshListenable, NOT recreate.
-      container.read(authNotifierProvider.notifier).state =
-          AuthState.authenticated(
+      container
+          .read(authNotifierProvider.notifier)
+          .state = AuthState.authenticated(
         accessToken: 'tok2',
         refreshToken: 'ref2',
         userId: 'u2',
@@ -124,8 +148,11 @@ void main() {
       await tester.pumpAndSettle();
 
       final routerAfter = container.read(routerProvider);
-      expect(identical(routerBefore, routerAfter), isTrue,
-          reason: 'GoRouter should be the same instance after auth change');
+      expect(
+        identical(routerBefore, routerAfter),
+        isTrue,
+        reason: 'GoRouter should be the same instance after auth change',
+      );
     });
   });
 
@@ -150,8 +177,9 @@ void main() {
     ) async {
       await pumpLargeAuthApp(tester);
 
-      final container =
-          ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(MaterialApp)),
+      );
       final router = container.read(routerProvider);
 
       // Extract shell route tab paths from the route configuration.
@@ -164,12 +192,14 @@ void main() {
           .toList();
 
       // Extract nav destination labels.
-      final navBar =
-          tester.widget<NavigationBar>(find.byType(NavigationBar));
+      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
 
       // Same count — routes and destinations stay in sync.
-      expect(tabPaths, hasLength(navBar.destinations.length),
-          reason: 'Shell route count must match navigation destination count');
+      expect(
+        tabPaths,
+        hasLength(navBar.destinations.length),
+        reason: 'Shell route count must match navigation destination count',
+      );
       expect(tabPaths, ['/machines', '/sessions', '/code', '/settings']);
     });
 
@@ -188,10 +218,12 @@ void main() {
 
       // "Sessions" appears in both the screen title and the nav bar,
       // so target the one inside NavigationBar.
-      await tester.tap(find.descendant(
-        of: find.byType(NavigationBar),
-        matching: find.text('Sessions'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Sessions'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));

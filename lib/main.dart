@@ -30,10 +30,13 @@ Future<void> main() async {
   // Eagerly load machines so auto-select can pick the sole machine before
   // the conversation screen tries to send gRPC calls that require
   // the x-machine-id header. Fire-and-forget — don't block app startup.
-  container.read(machinesProvider.future).then(
-    (_) => debugPrint('[main] Machines loaded'),
-    onError: (Object e) => debugPrint('[main] Machines pre-load failed: $e'),
-  );
+  container
+      .read(machinesProvider.future)
+      .then(
+        (_) => debugPrint('[main] Machines loaded'),
+        onError: (Object e) =>
+            debugPrint('[main] Machines pre-load failed: $e'),
+      );
 
   debugPrint('[main] Starting app');
   runApp(

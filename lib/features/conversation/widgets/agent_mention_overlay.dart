@@ -21,8 +21,9 @@ class AgentMentionOverlay extends StatelessWidget {
 
     final lower = query.toLowerCase();
     final filtered = agents.entries
-        .where((e) =>
-            lower.isEmpty || e.value.name.toLowerCase().contains(lower))
+        .where(
+          (e) => lower.isEmpty || e.value.name.toLowerCase().contains(lower),
+        )
         .toList();
 
     if (filtered.isEmpty) return const SizedBox.shrink();

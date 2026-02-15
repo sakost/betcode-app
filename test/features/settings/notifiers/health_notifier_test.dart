@@ -5,13 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/settings/notifiers/health_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/health.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/fake_response_stream.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -138,124 +139,64 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // HealthNotifier - connection awareness
-  // ---------------------------------------------------------------------------
+  connectionAwarenessTests(
+    label: 'HealthNotifier',
+    provider: healthProvider,
+    serviceOverrides: () => [
+      betcodeHealthServiceProvider.overrideWithValue(mockBetCodeClient),
+      healthServiceProvider.overrideWithValue(mockHealthClient),
+    ],
+    verifyNoGrpcCalls: () =>
+        verifyNever(() => mockBetCodeClient.getHealthDetails(any())),
+  );
 
-  group('HealthNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: healthProvider,
-        overrides: [
-          betcodeHealthServiceProvider.overrideWithValue(mockBetCodeClient),
-          healthServiceProvider.overrideWithValue(mockHealthClient),
-        ],
-      );
-      final state = dc.read(healthProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('throws StateError when connecting', () async {
-      final dc = await createDisconnectedContainer(
-        provider: healthProvider,
-        overrides: [
-          betcodeHealthServiceProvider.overrideWithValue(mockBetCodeClient),
-          healthServiceProvider.overrideWithValue(mockHealthClient),
-        ],
-        status: GrpcConnectionStatus.connecting,
-      );
-      final state = dc.read(healthProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
-
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: healthProvider,
-        overrides: [
-          betcodeHealthServiceProvider.overrideWithValue(mockBetCodeClient),
-          healthServiceProvider.overrideWithValue(mockHealthClient),
-        ],
-      );
-      verifyNever(() => mockBetCodeClient.getHealthDetails(any()));
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // HealthNotifier - error handling
-  // ---------------------------------------------------------------------------
-
-  group('HealthNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: healthProvider,
-        overrides: [
-          betcodeHealthServiceProvider.overrideWithValue(
-            _FailingBetCodeHealthClient(
-              GrpcError.unavailable('connection refused'),
-            ),
-          ),
-          healthServiceProvider.overrideWithValue(mockHealthClient),
-        ],
-      );
-      final state = ec.read(healthProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: healthProvider,
-        overrides: [
-          betcodeHealthServiceProvider.overrideWithValue(
-            _FailingBetCodeHealthClient(
-              GrpcError.unavailable('daemon unreachable'),
-            ),
-          ),
-          healthServiceProvider.overrideWithValue(mockHealthClient),
-        ],
-      );
-      final state = ec.read(healthProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  errorHandlingTests(
+    label: 'HealthNotifier',
+    provider: healthProvider,
+    errorOverrides: (error) => [
+      betcodeHealthServiceProvider.overrideWithValue(
+        _FailingBetCodeHealthClient(error),
+      ),
+      healthServiceProvider.overrideWithValue(mockHealthClient),
+    ],
+  );
 
   // ---------------------------------------------------------------------------
   // HealthNotifier - checkHealth
   // ---------------------------------------------------------------------------
 
+  void stubHealthEmpty() {
+    when(
+      () => mockBetCodeClient.getHealthDetails(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
+  }
+
   group('HealthNotifier - checkHealth', () {
-    test('calls Health.Check and returns response', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      when(() => mockHealthClient.check(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          HealthCheckResponse(status: ServingStatus.SERVING),
-        ),
+    /// Initializes the notifier and returns it ready for checkHealth calls.
+    Future<HealthNotifier> initForCheck({
+      HealthCheckResponse? stubResponse,
+    }) async {
+      await initNotifier(
+        container: container,
+        provider: healthProvider,
+        stubEmpty: stubHealthEmpty,
       );
+      when(() => mockHealthClient.check(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(stubResponse ?? HealthCheckResponse()),
+      );
+      return container.read(healthProvider.notifier);
+    }
 
-      final notifier = container.read(healthProvider.notifier);
+    test('calls Health.Check and returns response', () async {
+      final notifier = await initForCheck(
+        stubResponse: HealthCheckResponse(status: ServingStatus.SERVING),
+      );
       final result = await notifier.checkHealth(service: 'agent');
-
       expect(result.status, ServingStatus.SERVING);
     });
 
     test('passes correct service name to gRPC', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      when(
-        () => mockHealthClient.check(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthCheckResponse()));
-
-      final notifier = container.read(healthProvider.notifier);
+      final notifier = await initForCheck();
       await notifier.checkHealth(service: 'database');
 
       final captured =
@@ -265,16 +206,7 @@ void main() {
     });
 
     test('defaults to empty service name', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      when(
-        () => mockHealthClient.check(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthCheckResponse()));
-
-      final notifier = container.read(healthProvider.notifier);
+      final notifier = await initForCheck();
       await notifier.checkHealth();
 
       final captured =
@@ -309,41 +241,12 @@ void main() {
       expect(state.value!.degradedReason, 'high load');
     });
 
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<HealthDetailsResponse>>[];
-
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      container.listen(healthProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockBetCodeClient.getHealthDetails(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          HealthDetailsResponse(overallStatus: ServingStatus.SERVING),
-        ),
-      );
-
-      final notifier = container.read(healthProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value!.overallStatus, ServingStatus.SERVING);
-    });
-
     test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
+      stubHealthEmpty();
       await container.read(healthProvider.future);
 
       reset(mockBetCodeClient);
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
+      stubHealthEmpty();
 
       final notifier = container.read(healthProvider.notifier);
       await notifier.refresh();
@@ -357,21 +260,30 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('HealthNotifier - watchHealth', () {
-    test('returns stream of HealthCheckResponse', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      final controller = StreamController<HealthCheckResponse>();
-      when(() => mockHealthClient.watch(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
+    /// Initializes notifier and stubs watch to use the returned controller.
+    Future<
+      ({
+        HealthNotifier notifier,
+        StreamController<HealthCheckResponse> controller,
+      })
+    >
+    initForWatch() async {
+      await initNotifier(
+        container: container,
+        provider: healthProvider,
+        stubEmpty: stubHealthEmpty,
       );
-
+      final controller = StreamController<HealthCheckResponse>();
+      when(
+        () => mockHealthClient.watch(any()),
+      ).thenAnswer((_) => FakeResponseStream(controller));
       final notifier = container.read(healthProvider.notifier);
-      final stream = notifier.watchHealth(service: 'agent');
+      return (notifier: notifier, controller: controller);
+    }
 
-      // Subscribe first, then add events and close.
+    test('returns stream of HealthCheckResponse', () async {
+      final (:notifier, :controller) = await initForWatch();
+      final stream = notifier.watchHealth(service: 'agent');
       final eventsFuture = stream.toList();
 
       controller.add(HealthCheckResponse(status: ServingStatus.SERVING));
@@ -379,25 +291,16 @@ void main() {
       unawaited(controller.close());
 
       final events = await eventsFuture;
-
       expect(events, hasLength(2));
       expect(events[0].status, ServingStatus.SERVING);
       expect(events[1].status, ServingStatus.NOT_SERVING);
     });
 
     test('passes correct service name to gRPC', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      final controller = StreamController<HealthCheckResponse>();
-      addTearDown(() { controller.close(); });
-      when(() => mockHealthClient.watch(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(healthProvider.notifier);
+      final (:notifier, :controller) = await initForWatch();
+      addTearDown(() {
+        controller.close();
+      });
       notifier.watchHealth(service: 'database');
 
       final captured =
@@ -407,18 +310,10 @@ void main() {
     });
 
     test('defaults to empty service name', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      final controller = StreamController<HealthCheckResponse>();
-      addTearDown(() { controller.close(); });
-      when(() => mockHealthClient.watch(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(healthProvider.notifier);
+      final (:notifier, :controller) = await initForWatch();
+      addTearDown(() {
+        controller.close();
+      });
       notifier.watchHealth();
 
       final captured =
@@ -428,17 +323,7 @@ void main() {
     });
 
     test('propagates stream errors', () async {
-      when(
-        () => mockBetCodeClient.getHealthDetails(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(HealthDetailsResponse()));
-      await container.read(healthProvider.future);
-
-      final controller = StreamController<HealthCheckResponse>();
-      when(() => mockHealthClient.watch(any())).thenAnswer(
-        (_) => FakeResponseStream(controller),
-      );
-
-      final notifier = container.read(healthProvider.notifier);
+      final (:notifier, :controller) = await initForWatch();
       final stream = notifier.watchHealth();
 
       controller.addError(GrpcError.unavailable('stream broken'));

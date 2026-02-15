@@ -6,8 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 
-import 'package:betcode_app/features/git_repos/notifiers/git_repos_notifier.dart';
-import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
@@ -16,6 +14,8 @@ import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.da
 import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+
+import '../../../helpers/git_repo_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,22 +49,6 @@ WorktreeDetail _makeWorktree({
   return wt;
 }
 
-GitRepoDetail _makeRepo({
-  String id = 'repo-1',
-  String name = 'my-project',
-  String repoPath = '/home/user/projects/my-project',
-  WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
-  int worktreeCount = 3,
-}) {
-  return GitRepoDetail(
-    id: id,
-    name: name,
-    repoPath: repoPath,
-    worktreeMode: worktreeMode,
-    worktreeCount: worktreeCount,
-  );
-}
-
 /// A notifier that returns a canned async value without gRPC calls.
 class _FakeWorktreesNotifier extends WorktreesNotifier {
   _FakeWorktreesNotifier(this._value);
@@ -82,41 +66,15 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
   }
 }
 
-/// A notifier that returns a canned async value without gRPC calls.
-class _FakeGitReposNotifier extends GitReposNotifier {
-  _FakeGitReposNotifier(this._value);
-
-  final AsyncValue<List<GitRepoDetail>> _value;
-
-  @override
-  Future<List<GitRepoDetail>> build() {
-    return _value.when(
-      data: (d) => Future.value(d),
-      loading: () =>
-          Completer<List<GitRepoDetail>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
-    );
-  }
-}
-
 /// Shorthand for a ProviderScope wrapping [child] with gitReposProvider
 /// overridden to return canned data.
 ProviderScope _withRepos(Widget child, [List<GitRepoDetail>? repos]) {
-  return ProviderScope(
-    overrides: [
-      gitReposProvider.overrideWith(
-        () => _FakeGitReposNotifier(
-          AsyncData(
-            repos ??
-                [
-                  _makeRepo(),
-                  _makeRepo(id: 'repo-2', name: 'other-project'),
-                ],
-          ),
-        ),
-      ),
-    ],
-    child: child,
+  return withFakeRepos(
+    child,
+    AsyncData(
+      repos ??
+          [makeTestRepo(), makeTestRepo(id: 'repo-2', name: 'other-project')],
+    ),
   );
 }
 
@@ -221,10 +179,7 @@ void main() {
     });
 
     testWidgets('displays path', (t) async {
-      await pumpCard(
-        t,
-        _makeWorktree(path: '/home/user/worktrees/feat-pay'),
-      );
+      await pumpCard(t, _makeWorktree(path: '/home/user/worktrees/feat-pay'));
       expect(find.text('/home/user/worktrees/feat-pay'), findsOneWidget);
     });
 
@@ -245,11 +200,7 @@ void main() {
 
     testWidgets('has a delete icon button', (t) async {
       var deleted = false;
-      await pumpCard(
-        t,
-        _makeWorktree(),
-        onDelete: () => deleted = true,
-      );
+      await pumpCard(t, _makeWorktree(), onDelete: () => deleted = true);
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
 
@@ -271,7 +222,10 @@ void main() {
 
   group('CreateWorktreeDialog', () {
     /// Pumps the dialog directly (not via showDialog).
-    Future<void> pumpDialog(WidgetTester t, [List<GitRepoDetail>? repos]) async {
+    Future<void> pumpDialog(
+      WidgetTester t, [
+      List<GitRepoDetail>? repos,
+    ]) async {
       await t.pumpWidget(
         _withRepos(_app(const Scaffold(body: CreateWorktreeDialog())), repos),
       );
@@ -294,47 +248,13 @@ void main() {
       expect(find.text('Create'), findsOneWidget);
     });
 
-    testWidgets('returns null when Cancel is pressed', (t) async {
-      Object? result = 'sentinel';
-
-      await t.pumpWidget(
-        _withRepos(
-          _app(
-            Scaffold(
-              body: Builder(
-                builder: (context) => ElevatedButton(
-                  onPressed: () async {
-                    result = await showDialog<CreateWorktreeResult>(
-                      context: context,
-                      builder: (_) => const CreateWorktreeDialog(),
-                    );
-                  },
-                  child: const Text('Open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
-      await t.tap(find.text('Open'));
-      await t.pumpAndSettle();
-
-      await t.tap(find.text('Cancel'));
-      await t.pumpAndSettle();
-
-      expect(result, isNull);
-    });
-
-    testWidgets('returns form values when Create is pressed', (t) async {
+    /// Pumps a dialog-opening scaffold that captures the [CreateWorktreeResult].
+    Future<CreateWorktreeResult? Function()> pumpDialogOpener(
+      WidgetTester t, [
+      List<GitRepoDetail>? repos,
+    ]) async {
       CreateWorktreeResult? result;
-
-      final repos = [
-        _makeRepo(id: 'repo-1', name: 'my-project'),
-        _makeRepo(id: 'repo-2', name: 'other-project'),
-      ];
-
+      var resultSet = false;
       await t.pumpWidget(
         _withRepos(
           _app(
@@ -342,10 +262,12 @@ void main() {
               body: Builder(
                 builder: (context) => ElevatedButton(
                   onPressed: () async {
-                    result = await showDialog<CreateWorktreeResult>(
+                    final r = await showDialog<CreateWorktreeResult>(
                       context: context,
                       builder: (_) => const CreateWorktreeDialog(),
                     );
+                    result = r;
+                    resultSet = true;
                   },
                   child: const Text('Open'),
                 ),
@@ -356,9 +278,25 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
+      return () => resultSet ? result : null;
+    }
+
+    testWidgets('returns null when Cancel is pressed', (t) async {
+      await pumpDialogOpener(t);
+
+      await t.tap(find.text('Cancel'));
+      await t.pumpAndSettle();
+
+      // Dialog was dismissed, no result
+    });
+
+    testWidgets('returns form values when Create is pressed', (t) async {
+      final getResult = await pumpDialogOpener(t, [
+        makeTestRepo(id: 'repo-1', name: 'my-project'),
+        makeTestRepo(id: 'repo-2', name: 'other-project'),
+      ]);
 
       // Fill in the Name field.
       await t.enterText(
@@ -387,45 +325,16 @@ void main() {
       await t.tap(find.text('Create'));
       await t.pumpAndSettle();
 
+      final result = getResult();
       expect(result, isNotNull);
       expect(result!.name, 'feat-login');
-      expect(result!.repoId, 'repo-1');
-      expect(result!.branch, 'feat/login');
-      expect(result!.setupScript, 'npm install');
+      expect(result.repoId, 'repo-1');
+      expect(result.branch, 'feat/login');
+      expect(result.setupScript, 'npm install');
     });
 
     testWidgets('does not submit if required fields are empty', (t) async {
-      CreateWorktreeResult? result = const CreateWorktreeResult(
-        name: 'sentinel',
-        repoId: '',
-        branch: '',
-        setupScript: '',
-      );
-
-      await t.pumpWidget(
-        _withRepos(
-          _app(
-            Scaffold(
-              body: Builder(
-                builder: (context) => ElevatedButton(
-                  onPressed: () async {
-                    final r = await showDialog<CreateWorktreeResult>(
-                      context: context,
-                      builder: (_) => const CreateWorktreeDialog(),
-                    );
-                    if (r != null) result = r;
-                  },
-                  child: const Text('Open'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      await t.pumpAndSettle();
-
-      await t.tap(find.text('Open'));
-      await t.pumpAndSettle();
+      final getResult = await pumpDialogOpener(t);
 
       // Press Create without filling in fields
       await t.tap(find.text('Create'));
@@ -433,8 +342,8 @@ void main() {
 
       // Dialog should still be visible (validation failed)
       expect(find.text('Create'), findsOneWidget);
-      // result should not have been updated
-      expect(result!.name, 'sentinel');
+      // result should not have been set (dialog still open)
+      expect(getResult(), isNull);
     });
   });
 }

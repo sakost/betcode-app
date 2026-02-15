@@ -25,12 +25,8 @@ class WorktreesScreen extends ConsumerWidget {
         emptySubtitle: 'Create a worktree to start working on a branch.',
         itemBuilder: (context, worktree) => WorktreeCard(
           worktree: worktree,
-          onDelete: () => _confirmDelete(
-            context,
-            ref,
-            worktree.id,
-            worktree.name,
-          ),
+          onDelete: () =>
+              _confirmDelete(context, ref, worktree.id, worktree.name),
         ),
       ),
       floatingActionButton: FloatingActionButton(

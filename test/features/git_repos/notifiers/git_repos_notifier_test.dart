@@ -8,6 +8,7 @@ import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dar
 import 'package:betcode_app/generated/betcode/v1/git_repo.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -51,9 +52,7 @@ void main() {
     mockClient = MockGitRepoServiceClient();
 
     container = createTestContainer(
-      overrides: [
-        gitRepoServiceProvider.overrideWithValue(mockClient),
-      ],
+      overrides: [gitRepoServiceProvider.overrideWithValue(mockClient)],
     );
   });
 
@@ -73,13 +72,17 @@ void main() {
     worktreeCount: worktreeCount,
   );
 
+  void stubListEmpty() {
+    when(
+      () => mockClient.listRepos(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
+  }
+
   group('GitReposNotifier - build', () {
     test('fetches repos from gRPC', () async {
       final repos = [makeRepo('repo-1'), makeRepo('repo-2')];
       when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: repos),
-        ),
+        (_) => FakeResponseFuture.value(ListReposResponse(repos: repos)),
       );
 
       final result = await container.read(gitReposProvider.future);
@@ -90,9 +93,7 @@ void main() {
     });
 
     test('returns empty list when no repos exist', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
+      stubListEmpty();
 
       final result = await container.read(gitReposProvider.future);
       expect(result, isEmpty);
@@ -133,62 +134,30 @@ void main() {
     });
   });
 
-  group('GitReposNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: gitReposProvider,
-        overrides: [gitRepoServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(gitReposProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'GitReposNotifier',
+    provider: gitReposProvider,
+    serviceOverrides: () => [
+      gitRepoServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listRepos(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: gitReposProvider,
-        overrides: [gitRepoServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listRepos(any()));
-    });
-  });
-
-  group('GitReposNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: gitReposProvider,
-        overrides: [
-          gitRepoServiceProvider.overrideWithValue(
-            _FailingGitRepoClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(gitReposProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: gitReposProvider,
-        overrides: [
-          gitRepoServiceProvider.overrideWithValue(
-            _FailingGitRepoClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(gitReposProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  errorHandlingTests(
+    label: 'GitReposNotifier',
+    provider: gitReposProvider,
+    errorOverrides: (error) => [
+      gitRepoServiceProvider.overrideWithValue(_FailingGitRepoClient(error)),
+    ],
+  );
 
   group('GitReposNotifier - registerRepo', () {
     test('calls gRPC registerRepo and refreshes', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.registerRepo(any()),
@@ -208,10 +177,11 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.registerRepo(any()),
@@ -240,10 +210,11 @@ void main() {
     });
 
     test('uses empty string for optional params when not provided', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.registerRepo(any()),
@@ -276,13 +247,9 @@ void main() {
       await container.read(gitReposProvider.future);
 
       when(() => mockClient.unregisterRepo(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          UnregisterRepoResponse(removed: true),
-        ),
+        (_) => FakeResponseFuture.value(UnregisterRepoResponse(removed: true)),
       );
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
+      stubListEmpty();
 
       final notifier = container.read(gitReposProvider.notifier);
       await notifier.unregisterRepo('repo-1');
@@ -292,15 +259,14 @@ void main() {
     });
 
     test('passes correct id to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.unregisterRepo(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          UnregisterRepoResponse(removed: true),
-        ),
+        (_) => FakeResponseFuture.value(UnregisterRepoResponse(removed: true)),
       );
 
       final notifier = container.read(gitReposProvider.notifier);
@@ -314,15 +280,14 @@ void main() {
     });
 
     test('passes removeWorktrees flag to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.unregisterRepo(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          UnregisterRepoResponse(removed: true),
-        ),
+        (_) => FakeResponseFuture.value(UnregisterRepoResponse(removed: true)),
       );
 
       final notifier = container.read(gitReposProvider.notifier);
@@ -337,113 +302,47 @@ void main() {
     });
   });
 
-  group('GitReposNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: [makeRepo('repo-1')]),
-        ),
-      );
-      await container.read(gitReposProvider.future);
-
-      when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(
-            repos: [makeRepo('repo-1'), makeRepo('repo-new')],
+  refreshTests(
+    RefreshTestConfig<List<GitRepoDetail>>(
+      provider: gitReposProvider,
+      label: 'GitReposNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listRepos(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListReposResponse(repos: [makeRepo('repo-1')]),
           ),
-        ),
-      );
-
-      final notifier = container.read(gitReposProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(gitReposProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].id, 'repo-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<GitRepoDetail>>>[];
-
-      when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: [makeRepo('repo-1')]),
-        ),
-      );
-      await container.read(gitReposProvider.future);
-
-      container.listen(gitReposProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: [makeRepo('repo-2')]),
-        ),
-      );
-
-      final notifier = container.read(gitReposProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.id, 'repo-2');
-    });
-
-    test('recovers from error state on refresh', () async {
-      final errClient = MockGitRepoServiceClient();
-      when(
-        () => errClient.listRepos(any()),
-      ).thenThrow(GrpcError.unavailable());
-
-      final errContainer = createTestContainer(
-        overrides: [
-          gitRepoServiceProvider.overrideWithValue(errClient),
-        ],
-      );
-      addTearDown(errContainer.dispose);
-
-      errContainer.read(gitReposProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      when(() => errClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: [makeRepo('recovered')]),
-        ),
-      );
-
-      final notifier = errContainer.read(gitReposProvider.notifier);
-      await notifier.refresh();
-
-      final state = errContainer.read(gitReposProvider);
-      expect(state.hasValue, isTrue);
-      expect(state.value!.first.id, 'recovered');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-
-      final notifier = container.read(gitReposProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listRepos(any())).called(1);
-    });
-  });
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listRepos(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListReposResponse(
+              repos: [makeRepo('repo-1'), makeRepo('repo-new')],
+            ),
+          ),
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listRepos(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listRepos(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].id,
+    ),
+  );
 
   group('GitReposNotifier - getRepo', () {
     test('returns GitRepoDetail for given id', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final expectedRepo = makeRepo('repo-42', name: 'betcode');
       when(
@@ -458,10 +357,11 @@ void main() {
     });
 
     test('passes correct id to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.getRepo(any()),
@@ -480,19 +380,19 @@ void main() {
 
   group('GitReposNotifier - updateRepo', () {
     test('calls gRPC updateRepo and refreshes', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final updatedRepo = makeRepo('repo-1', name: 'updated-name');
       when(
         () => mockClient.updateRepo(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(updatedRepo));
       when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: [updatedRepo]),
-        ),
+        (_) =>
+            FakeResponseFuture.value(ListReposResponse(repos: [updatedRepo])),
       );
 
       final notifier = container.read(gitReposProvider.notifier);
@@ -504,10 +404,11 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.updateRepo(any()),
@@ -538,10 +439,11 @@ void main() {
     });
 
     test('returns the updated GitRepoDetail', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final updatedRepo = makeRepo('repo-1', name: 'new-name');
       when(
@@ -555,56 +457,54 @@ void main() {
       expect(result.name, 'new-name');
     });
 
-    test('only sets provided fields, leaves others at protobuf defaults',
-        () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+    test(
+      'only sets provided fields, leaves others at protobuf defaults',
+      () async {
+        await initNotifier(
+          container: container,
+          provider: gitReposProvider,
+          stubEmpty: stubListEmpty,
+        );
 
-      when(
-        () => mockClient.updateRepo(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(makeRepo('repo-1')));
+        when(
+          () => mockClient.updateRepo(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(makeRepo('repo-1')));
 
-      final notifier = container.read(gitReposProvider.notifier);
-      await notifier.updateRepo(id: 'repo-1', name: 'only-name');
+        final notifier = container.read(gitReposProvider.notifier);
+        await notifier.updateRepo(id: 'repo-1', name: 'only-name');
 
-      final captured =
-          verify(() => mockClient.updateRepo(captureAny())).captured.single
-              as UpdateRepoRequest;
+        final captured =
+            verify(() => mockClient.updateRepo(captureAny())).captured.single
+                as UpdateRepoRequest;
 
-      // id and name should be set
-      expect(captured.id, 'repo-1');
-      expect(captured.name, 'only-name');
+        // id and name should be set
+        expect(captured.id, 'repo-1');
+        expect(captured.name, 'only-name');
 
-      // All other fields should NOT be set (at protobuf defaults)
-      expect(captured.hasWorktreeMode(), isFalse);
-      expect(captured.hasLocalSubfolder(), isFalse);
-      expect(captured.hasCustomPath(), isFalse);
-      expect(captured.hasSetupScript(), isFalse);
-      expect(captured.hasAutoGitignore(), isFalse);
-    });
+        // All other fields should NOT be set (at protobuf defaults)
+        expect(captured.hasWorktreeMode(), isFalse);
+        expect(captured.hasLocalSubfolder(), isFalse);
+        expect(captured.hasCustomPath(), isFalse);
+        expect(captured.hasSetupScript(), isFalse);
+        expect(captured.hasAutoGitignore(), isFalse);
+      },
+    );
   });
 
   group('GitReposNotifier - scanRepos', () {
     test('calls gRPC scanRepos and refreshes', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final discovered = [makeRepo('scan-1'), makeRepo('scan-2')];
-      when(
-        () => mockClient.scanRepos(any()),
-      ).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: discovered),
-        ),
+      when(() => mockClient.scanRepos(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListReposResponse(repos: discovered)),
       );
       when(() => mockClient.listRepos(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: discovered),
-        ),
+        (_) => FakeResponseFuture.value(ListReposResponse(repos: discovered)),
       );
 
       final notifier = container.read(gitReposProvider.notifier);
@@ -615,16 +515,15 @@ void main() {
     });
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(
         () => mockClient.scanRepos(any()),
-      ).thenAnswer(
-        (_) => FakeResponseFuture.value(ListReposResponse()),
-      );
+      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
 
       final notifier = container.read(gitReposProvider.notifier);
       await notifier.scanRepos(scanPath: '/home/user/projects', maxDepth: 5);
@@ -638,27 +537,23 @@ void main() {
     });
 
     test('returns the discovered repos', () async {
-      when(
-        () => mockClient.listRepos(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListReposResponse()));
-      await container.read(gitReposProvider.future);
+      await initNotifier(
+        container: container,
+        provider: gitReposProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final discovered = [
         makeRepo('scan-1', name: 'project-a'),
         makeRepo('scan-2', name: 'project-b'),
         makeRepo('scan-3', name: 'project-c'),
       ];
-      when(
-        () => mockClient.scanRepos(any()),
-      ).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListReposResponse(repos: discovered),
-        ),
+      when(() => mockClient.scanRepos(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListReposResponse(repos: discovered)),
       );
 
       final notifier = container.read(gitReposProvider.notifier);
-      final result =
-          await notifier.scanRepos(scanPath: '/home/user/projects');
+      final result = await notifier.scanRepos(scanPath: '/home/user/projects');
 
       expect(result, hasLength(3));
       expect(result[0].id, 'scan-1');

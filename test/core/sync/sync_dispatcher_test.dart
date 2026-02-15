@@ -178,35 +178,41 @@ void main() {
   // Agent service dispatch tests
   // -----------------------------------------------------------------------
 
+  /// Dispatches [item] and returns the captured [AgentRequest] list
+  /// and [CallOptions] from the mocked converse() call.
+  Future<({List<AgentRequest> requests, CallOptions options})>
+  dispatchAndCapture(SyncQueueData item) async {
+    await dispatcher.dispatch(item);
+
+    final captured = verify(
+      () => mockAgentClient.converse(
+        captureAny(),
+        options: captureAny(named: 'options'),
+      ),
+    ).captured;
+
+    final stream = captured[0] as Stream<AgentRequest>;
+    final requests = await stream.toList();
+    final options = captured[1] as CallOptions;
+    return (requests: requests, options: options);
+  }
+
   group('dispatch user_message', () {
     test('calls converse() with stream containing AgentRequest', () async {
       final msg = UserMessage(content: 'hello');
-      final payload = msg.writeToBuffer();
-
       final item = makeQueueItem(
         requestType: 'user_message',
-        payload: Uint8List.fromList(payload),
+        payload: Uint8List.fromList(msg.writeToBuffer()),
         idempotencyKey: 'key-user-msg',
       );
 
-      await dispatcher.dispatch(item);
+      final result = await dispatchAndCapture(item);
 
-      final captured = verify(
-        () => mockAgentClient.converse(
-          captureAny(),
-          options: captureAny(named: 'options'),
-        ),
-      ).captured;
-
-      final stream = captured[0] as Stream<AgentRequest>;
-      final requests = await stream.toList();
-      expect(requests, hasLength(1));
-      expect(requests[0].hasMessage(), isTrue);
-      expect(requests[0].message.content, 'hello');
-
-      final options = captured[1] as CallOptions;
+      expect(result.requests, hasLength(1));
+      expect(result.requests[0].hasMessage(), isTrue);
+      expect(result.requests[0].message.content, 'hello');
       expect(
-        options.metadata,
+        result.options.metadata,
         containsPair('x-idempotency-key', 'key-user-msg'),
       );
     });
@@ -215,28 +221,17 @@ void main() {
   group('dispatch permission_response', () {
     test('calls converse() with AgentRequest containing permission', () async {
       final perm = PermissionResponse(requestId: 'perm-42');
-      final payload = perm.writeToBuffer();
-
       final item = makeQueueItem(
         requestType: 'permission_response',
-        payload: Uint8List.fromList(payload),
+        payload: Uint8List.fromList(perm.writeToBuffer()),
         idempotencyKey: 'key-perm',
       );
 
-      await dispatcher.dispatch(item);
+      final result = await dispatchAndCapture(item);
 
-      final captured = verify(
-        () => mockAgentClient.converse(
-          captureAny(),
-          options: captureAny(named: 'options'),
-        ),
-      ).captured;
-
-      final stream = captured[0] as Stream<AgentRequest>;
-      final requests = await stream.toList();
-      expect(requests, hasLength(1));
-      expect(requests[0].hasPermission(), isTrue);
-      expect(requests[0].permission.requestId, 'perm-42');
+      expect(result.requests, hasLength(1));
+      expect(result.requests[0].hasPermission(), isTrue);
+      expect(result.requests[0].permission.requestId, 'perm-42');
     });
   });
 
@@ -245,28 +240,17 @@ void main() {
       'calls converse() with AgentRequest containing questionResponse',
       () async {
         final qr = UserQuestionResponse(questionId: 'q-7');
-        final payload = qr.writeToBuffer();
-
         final item = makeQueueItem(
           requestType: 'question_response',
-          payload: Uint8List.fromList(payload),
+          payload: Uint8List.fromList(qr.writeToBuffer()),
           idempotencyKey: 'key-question',
         );
 
-        await dispatcher.dispatch(item);
+        final result = await dispatchAndCapture(item);
 
-        final captured = verify(
-          () => mockAgentClient.converse(
-            captureAny(),
-            options: captureAny(named: 'options'),
-          ),
-        ).captured;
-
-        final stream = captured[0] as Stream<AgentRequest>;
-        final requests = await stream.toList();
-        expect(requests, hasLength(1));
-        expect(requests[0].hasQuestionResponse(), isTrue);
-        expect(requests[0].questionResponse.questionId, 'q-7');
+        expect(result.requests, hasLength(1));
+        expect(result.requests[0].hasQuestionResponse(), isTrue);
+        expect(result.requests[0].questionResponse.questionId, 'q-7');
       },
     );
   });
@@ -274,28 +258,17 @@ void main() {
   group('dispatch cancel_request', () {
     test('calls converse() with AgentRequest containing cancel', () async {
       final cancel = CancelRequest(reason: 'user pressed cancel');
-      final payload = cancel.writeToBuffer();
-
       final item = makeQueueItem(
         requestType: 'cancel_request',
-        payload: Uint8List.fromList(payload),
+        payload: Uint8List.fromList(cancel.writeToBuffer()),
         idempotencyKey: 'key-cancel',
       );
 
-      await dispatcher.dispatch(item);
+      final result = await dispatchAndCapture(item);
 
-      final captured = verify(
-        () => mockAgentClient.converse(
-          captureAny(),
-          options: captureAny(named: 'options'),
-        ),
-      ).captured;
-
-      final stream = captured[0] as Stream<AgentRequest>;
-      final requests = await stream.toList();
-      expect(requests, hasLength(1));
-      expect(requests[0].hasCancel(), isTrue);
-      expect(requests[0].cancel.reason, 'user pressed cancel');
+      expect(result.requests, hasLength(1));
+      expect(result.requests[0].hasCancel(), isTrue);
+      expect(result.requests[0].cancel.reason, 'user pressed cancel');
     });
   });
 

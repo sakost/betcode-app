@@ -48,11 +48,7 @@ class MachineCard extends StatelessWidget {
               ),
               if (isSelected) ...[
                 const SizedBox(width: 4),
-                Icon(
-                  Icons.check_circle,
-                  size: 18,
-                  color: colorScheme.primary,
-                ),
+                Icon(Icons.check_circle, size: 18, color: colorScheme.primary),
               ],
               const SizedBox(width: 8),
               _buildStatusBadge(machine.status),

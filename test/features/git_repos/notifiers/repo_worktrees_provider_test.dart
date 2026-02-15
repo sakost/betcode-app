@@ -1,4 +1,3 @@
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
@@ -16,8 +15,7 @@ import '../../../helpers/test_container.dart';
 // Mocks & fakes
 // ---------------------------------------------------------------------------
 
-class MockWorktreeServiceClient extends Mock
-    implements WorktreeServiceClient {}
+class MockWorktreeServiceClient extends Mock implements WorktreeServiceClient {}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -66,9 +64,7 @@ void main() {
       );
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       final result = await container.read(
@@ -81,34 +77,30 @@ void main() {
     });
 
     test('passes repoId to gRPC request', () async {
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
-      );
+      when(
+        () => mockClient.listWorktrees(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       await container.read(repoWorktreesProvider('repo-42').future);
 
-      final captured = verify(
-        () => mockClient.listWorktrees(captureAny()),
-      ).captured.single as ListWorktreesRequest;
+      final captured =
+          verify(() => mockClient.listWorktrees(captureAny())).captured.single
+              as ListWorktreesRequest;
 
       expect(captured.repoId, 'repo-42');
     });
 
     test('returns empty list when no worktrees exist', () async {
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
-      );
+      when(
+        () => mockClient.listWorktrees(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       final result = await container.read(
@@ -122,9 +114,7 @@ void main() {
     test('stays in loading state when disconnected', () async {
       container = createTestContainer(
         status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       // Read the provider - it should throw StateError when disconnected.
@@ -139,9 +129,7 @@ void main() {
     test('does not call gRPC when disconnected', () async {
       container = createTestContainer(
         status: GrpcConnectionStatus.disconnected,
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       container.read(repoWorktreesProvider('repo-1'));
@@ -160,9 +148,7 @@ void main() {
       );
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       container.read(repoWorktreesProvider('repo-1'));
@@ -177,19 +163,17 @@ void main() {
   group('RepoWorktreesNotifier - createWorktree', () {
     test('calls gRPC createWorktree and refreshes list', () async {
       // Initial list fetch
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
-      );
+      when(
+        () => mockClient.listWorktrees(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
 
       // createWorktree response
-      when(() => mockClient.createWorktree(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeWorktree('wt-new')),
-      );
+      when(
+        () => mockClient.createWorktree(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeWorktree('wt-new')));
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       // Wait for initial fetch
@@ -202,9 +186,7 @@ void main() {
         ),
       );
 
-      final notifier = container.read(
-        repoWorktreesProvider('repo-1').notifier,
-      );
+      final notifier = container.read(repoWorktreesProvider('repo-1').notifier);
       await notifier.createWorktree(
         name: 'new-wt',
         repoId: 'repo-1',
@@ -213,9 +195,9 @@ void main() {
       );
 
       // Verify createWorktree was called with correct args
-      final captured = verify(
-        () => mockClient.createWorktree(captureAny()),
-      ).captured.single as CreateWorktreeRequest;
+      final captured =
+          verify(() => mockClient.createWorktree(captureAny())).captured.single
+              as CreateWorktreeRequest;
       expect(captured.name, 'new-wt');
       expect(captured.repoId, 'repo-1');
       expect(captured.branch, 'feature-x');
@@ -228,33 +210,29 @@ void main() {
     });
 
     test('passes empty string for null setupScript', () async {
-      when(() => mockClient.listWorktrees(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
-      );
-      when(() => mockClient.createWorktree(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(makeWorktree('wt-1')),
-      );
+      when(
+        () => mockClient.listWorktrees(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(ListWorktreesResponse()));
+      when(
+        () => mockClient.createWorktree(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(makeWorktree('wt-1')));
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       await container.read(repoWorktreesProvider('repo-1').future);
 
-      final notifier = container.read(
-        repoWorktreesProvider('repo-1').notifier,
-      );
+      final notifier = container.read(repoWorktreesProvider('repo-1').notifier);
       await notifier.createWorktree(
         name: 'wt',
         repoId: 'repo-1',
         branch: 'main',
       );
 
-      final captured = verify(
-        () => mockClient.createWorktree(captureAny()),
-      ).captured.single as CreateWorktreeRequest;
+      final captured =
+          verify(() => mockClient.createWorktree(captureAny())).captured.single
+              as CreateWorktreeRequest;
       expect(captured.setupScript, '');
     });
   });
@@ -268,9 +246,7 @@ void main() {
       );
 
       container = createTestContainer(
-        overrides: [
-          worktreeServiceProvider.overrideWithValue(mockClient),
-        ],
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
       );
 
       await container.read(repoWorktreesProvider('repo-1').future);
@@ -283,9 +259,7 @@ void main() {
         ),
       );
 
-      final notifier = container.read(
-        repoWorktreesProvider('repo-1').notifier,
-      );
+      final notifier = container.read(repoWorktreesProvider('repo-1').notifier);
       await notifier.refresh();
 
       final state = container.read(repoWorktreesProvider('repo-1'));

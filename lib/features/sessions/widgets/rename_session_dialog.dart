@@ -61,8 +61,7 @@ class _RenameSessionDialogState extends State<RenameSessionDialog> {
           valueListenable: _controller,
           builder: (context, value, _) {
             return FilledButton(
-              onPressed:
-                  value.text.trim().isEmpty ? null : _submit,
+              onPressed: value.text.trim().isEmpty ? null : _submit,
               child: const Text('Rename'),
             );
           },

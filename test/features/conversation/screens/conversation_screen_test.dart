@@ -108,10 +108,12 @@ Widget _buildAppWithWorktreeState({
 }) {
   return ProviderScope(
     overrides: [
-      conversationProvider(sessionId)
-          .overrideWith(() => MockConversationNotifier(state)),
-      worktreesProvider
-          .overrideWith(() => _FakeAsyncWorktreesNotifier(worktreeState)),
+      conversationProvider(
+        sessionId,
+      ).overrideWith(() => MockConversationNotifier(state)),
+      worktreesProvider.overrideWith(
+        () => _FakeAsyncWorktreesNotifier(worktreeState),
+      ),
       sessionsProvider.overrideWith(_FakeSessionsNotifier.new),
     ],
     child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
@@ -286,10 +288,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.textContaining('No worktrees available'), findsOneWidget);
-        expect(
-          find.byIcon(Icons.account_tree_outlined),
-          findsOneWidget,
-        );
+        expect(find.byIcon(Icons.account_tree_outlined), findsOneWidget);
         expect(find.text('Create Worktree'), findsOneWidget);
         expect(find.text('Start a conversation'), findsNothing);
       });
@@ -298,11 +297,7 @@ void main() {
         tester,
       ) async {
         final worktrees = [
-          WorktreeDetail(
-            id: 'wt-1',
-            name: 'main',
-            path: '/home/user/project',
-          ),
+          WorktreeDetail(id: 'wt-1', name: 'main', path: '/home/user/project'),
         ];
         await tester.pumpWidget(
           _buildAppWithWorktreeState(
@@ -318,27 +313,24 @@ void main() {
         expect(find.text('No worktrees available.'), findsNothing);
       });
 
-      testWidgets(
-        'does not show start button when worktrees have empty path',
-        (tester) async {
-          final worktrees = [
-            WorktreeDetail(id: 'wt-1', name: 'main', path: ''),
-          ];
-          await tester.pumpWidget(
-            _buildAppWithWorktreeState(
-              state: const ConversationState.initial(),
-              worktreeState: AsyncData(worktrees),
-            ),
-          );
-          await tester.pumpAndSettle();
+      testWidgets('does not show start button when worktrees have empty path', (
+        tester,
+      ) async {
+        final worktrees = [WorktreeDetail(id: 'wt-1', name: 'main', path: '')];
+        await tester.pumpWidget(
+          _buildAppWithWorktreeState(
+            state: const ConversationState.initial(),
+            worktreeState: AsyncData(worktrees),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-          // Worktrees exist but path is empty — _resolveWorkingDirectory
-          // returns null, so Start would fail. The UI should show the
-          // Start button (it checks worktrees.isEmpty, not paths), but
-          // tapping it would show a snackbar.
-          expect(find.text('Start a conversation'), findsOneWidget);
-        },
-      );
+        // Worktrees exist but path is empty — _resolveWorkingDirectory
+        // returns null, so Start would fail. The UI should show the
+        // Start button (it checks worktrees.isEmpty, not paths), but
+        // tapping it would show a snackbar.
+        expect(find.text('Start a conversation'), findsOneWidget);
+      });
     });
 
     // -----------------------------------------------------------------------

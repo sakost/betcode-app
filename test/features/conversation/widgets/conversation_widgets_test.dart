@@ -15,6 +15,21 @@ import 'package:betcode_app/shared/theme/app_colors.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
+/// Wraps [onPressed] in a minimal MaterialApp -> Scaffold -> Builder -> ElevatedButton('Open')
+/// tree, so dialog-opening tests only need to provide the dialog call.
+Widget _dialogApp(void Function(BuildContext) onPressed) {
+  return MaterialApp(
+    home: Scaffold(
+      body: Builder(
+        builder: (ctx) => ElevatedButton(
+          onPressed: () => onPressed(ctx),
+          child: const Text('Open'),
+        ),
+      ),
+    ),
+  );
+}
+
 final _qOptions = [
   const QuestionOptionData(value: 'a', label: 'Option A'),
   const QuestionOptionData(
@@ -214,9 +229,7 @@ void main() {
       expect(find.text('Denied'), findsOneWidget);
     });
 
-    testWidgets('onPermissionTap called when tapping awaiting card', (
-      t,
-    ) async {
+    testWidgets('onPermissionTap called when tapping awaiting card', (t) async {
       bool tapped = false;
       await t.pumpWidget(
         _app(
@@ -371,10 +384,7 @@ void main() {
       expect(t.widget<IconButton>(sendFinder).onPressed, isNull);
       await t.enterText(find.byType(TextField), 'hello');
       await t.pump();
-      expect(
-        t.widget<IconButton>(sendFinder).onPressed,
-        isNotNull,
-      );
+      expect(t.widget<IconButton>(sendFinder).onPressed, isNotNull);
     });
     testWidgets('onSubmit called with trimmed text, field cleared', (t) async {
       String? submitted;
@@ -442,19 +452,12 @@ void main() {
       'single select shows RadioListTile, submit disabled until selected',
       (t) async {
         await t.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (ctx) => ElevatedButton(
-                  onPressed: () => UserQuestionDialog.show(
-                    ctx,
-                    question: 'Pick',
-                    options: _qOptions,
-                    multiSelect: false,
-                  ),
-                  child: const Text('Open'),
-                ),
-              ),
+          _dialogApp(
+            (ctx) => UserQuestionDialog.show(
+              ctx,
+              question: 'Pick',
+              options: _qOptions,
+              multiSelect: false,
             ),
           ),
         );
@@ -480,19 +483,12 @@ void main() {
     );
     testWidgets('multi select shows CheckboxListTile', (t) async {
       await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => UserQuestionDialog.show(
-                  ctx,
-                  question: 'Pick',
-                  options: _qOptions,
-                  multiSelect: true,
-                ),
-                child: const Text('Open'),
-              ),
-            ),
+        _dialogApp(
+          (ctx) => UserQuestionDialog.show(
+            ctx,
+            question: 'Pick',
+            options: _qOptions,
+            multiSelect: true,
           ),
         ),
       );
@@ -503,23 +499,14 @@ void main() {
     testWidgets('cancel returns null', (t) async {
       Map<String, String>? result = const {'x': 'y'};
       await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () async {
-                  result = await UserQuestionDialog.show(
-                    ctx,
-                    question: 'Q',
-                    options: _qOptions,
-                    multiSelect: false,
-                  );
-                },
-                child: const Text('Open'),
-              ),
-            ),
-          ),
-        ),
+        _dialogApp((ctx) async {
+          result = await UserQuestionDialog.show(
+            ctx,
+            question: 'Q',
+            options: _qOptions,
+            multiSelect: false,
+          );
+        }),
       );
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
@@ -530,23 +517,14 @@ void main() {
     testWidgets('submit returns selected answers map', (t) async {
       Map<String, String>? result;
       await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () async {
-                  result = await UserQuestionDialog.show(
-                    ctx,
-                    question: 'Q',
-                    options: _qOptions,
-                    multiSelect: false,
-                  );
-                },
-                child: const Text('Open'),
-              ),
-            ),
-          ),
-        ),
+        _dialogApp((ctx) async {
+          result = await UserQuestionDialog.show(
+            ctx,
+            question: 'Q',
+            options: _qOptions,
+            multiSelect: false,
+          );
+        }),
       );
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
@@ -559,23 +537,14 @@ void main() {
     testWidgets('multi select submit returns multiple answers', (t) async {
       Map<String, String>? result;
       await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () async {
-                  result = await UserQuestionDialog.show(
-                    ctx,
-                    question: 'Q',
-                    options: _qOptions,
-                    multiSelect: true,
-                  );
-                },
-                child: const Text('Open'),
-              ),
-            ),
-          ),
-        ),
+        _dialogApp((ctx) async {
+          result = await UserQuestionDialog.show(
+            ctx,
+            question: 'Q',
+            options: _qOptions,
+            multiSelect: true,
+          );
+        }),
       );
       await t.tap(find.text('Open'));
       await t.pumpAndSettle();
@@ -589,19 +558,12 @@ void main() {
     });
     testWidgets('option description displayed', (t) async {
       await t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Builder(
-              builder: (ctx) => ElevatedButton(
-                onPressed: () => UserQuestionDialog.show(
-                  ctx,
-                  question: 'Q',
-                  options: _qOptions,
-                  multiSelect: false,
-                ),
-                child: const Text('Open'),
-              ),
-            ),
+        _dialogApp(
+          (ctx) => UserQuestionDialog.show(
+            ctx,
+            question: 'Q',
+            options: _qOptions,
+            multiSelect: false,
           ),
         ),
       );
@@ -645,22 +607,13 @@ void main() {
       testWidgets('${entry.key} returns ${entry.value}', (t) async {
         PermissionDecision? result;
         await t.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (ctx) => ElevatedButton(
-                  onPressed: () async {
-                    result = await PermissionSheet.show(
-                      ctx,
-                      toolName: 'B',
-                      description: 'd',
-                    );
-                  },
-                  child: const Text('Open'),
-                ),
-              ),
-            ),
-          ),
+          _dialogApp((ctx) async {
+            result = await PermissionSheet.show(
+              ctx,
+              toolName: 'B',
+              description: 'd',
+            );
+          }),
         );
         await t.tap(find.text('Open'));
         await t.pumpAndSettle();
@@ -715,9 +668,7 @@ void main() {
       expect(find.text('tester'), findsOneWidget);
     });
 
-    testWidgets('All chip is selected when selectedAgentId is null', (
-      t,
-    ) async {
+    testWidgets('All chip is selected when selectedAgentId is null', (t) async {
       await t.pumpWidget(
         _app(AgentBar(agents: agents, onAgentSelected: (_) {})),
       );
@@ -749,9 +700,7 @@ void main() {
       expect(coderChip.selected, isTrue);
     });
 
-    testWidgets('tapping All chip calls onAgentSelected with null', (
-      t,
-    ) async {
+    testWidgets('tapping All chip calls onAgentSelected with null', (t) async {
       String? selected = 'initial';
       await t.pumpWidget(
         _app(
@@ -772,9 +721,7 @@ void main() {
     ) async {
       String? selected;
       await t.pumpWidget(
-        _app(
-          AgentBar(agents: agents, onAgentSelected: (id) => selected = id),
-        ),
+        _app(AgentBar(agents: agents, onAgentSelected: (id) => selected = id)),
       );
       await t.tap(find.widgetWithText(ChoiceChip, 'coder'));
       await t.pump();
@@ -804,7 +751,8 @@ void main() {
       final dotFinder = find.byWidgetPredicate((w) {
         if (w is! Container) return false;
         final decoration = w.decoration;
-        return decoration is BoxDecoration && decoration.shape == BoxShape.circle;
+        return decoration is BoxDecoration &&
+            decoration.shape == BoxShape.circle;
       });
       expect(dotFinder, findsNWidgets(3));
     });

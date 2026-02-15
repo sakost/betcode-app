@@ -6,43 +6,7 @@ import 'package:grpc/grpc.dart';
 import 'package:betcode_app/core/grpc/interceptors.dart';
 
 import '../../helpers/fake_response_future.dart';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-ClientMethod<String, String> _method([String path = '/test/M']) =>
-    ClientMethod<String, String>(
-      path,
-      (s) => s.codeUnits,
-      (b) => String.fromCharCodes(b),
-    );
-
-class FakeResponseStream<T> extends Fake implements ResponseStream<T> {
-  FakeResponseStream(this._s);
-  final Stream<T> _s;
-
-  @override
-  StreamSubscription<T> listen(
-    void Function(T)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _s.listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
-}
-
-Future<Map<String, String>> _resolveMetadata(CallOptions options) async {
-  final md = Map<String, String>.of(options.metadata);
-  for (final p in options.metadataProviders) {
-    await p(md, '');
-  }
-  return md;
-}
+import '../interceptor_test_helpers.dart';
 
 // ---------------------------------------------------------------------------
 // Intercept helpers - capture CallOptions from unary/streaming calls
@@ -58,7 +22,7 @@ CallOptions captureUnaryOptions(
 }) {
   late CallOptions captured;
   interceptor.interceptUnary<String, String>(
-    method ?? _method(),
+    method ?? testMethod(),
     request,
     options ?? CallOptions(),
     (m, r, o) {
@@ -77,12 +41,12 @@ CallOptions captureStreamingOptions(
 }) {
   late CallOptions captured;
   interceptor.interceptStreaming<String, String>(
-    _method(),
+    testMethod(),
     const Stream.empty(),
     options ?? CallOptions(),
     (m, r, o) {
       captured = o;
-      return FakeResponseStream(const Stream.empty());
+      return FakeInterceptorResponseStream(const Stream.empty());
     },
   );
   return captured;
@@ -96,19 +60,19 @@ void main() {
   group('AuthInterceptor - unary', () {
     test('adds Bearer token when token is available', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'my-jwt');
-      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
+      final md = await resolveMetadata(captureUnaryOptions(interceptor));
       expect(md['authorization'], 'Bearer my-jwt');
     });
 
     test('omits authorization when token is null', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
-      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
+      final md = await resolveMetadata(captureUnaryOptions(interceptor));
       expect(md.containsKey('authorization'), isFalse);
     });
 
     test('preserves existing metadata', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
-      final md = await _resolveMetadata(
+      final md = await resolveMetadata(
         captureUnaryOptions(
           interceptor,
           options: CallOptions(metadata: {'x-custom': 'v'}),
@@ -123,7 +87,7 @@ void main() {
       late String capturedPath;
       late String capturedReq;
       interceptor.interceptUnary<String, String>(
-        _method('/svc/Do'),
+        testMethod('/svc/Do'),
         'hello',
         CallOptions(),
         (m, r, o) {
@@ -139,7 +103,7 @@ void main() {
     test('returns invoker response', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       final resp = interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req',
         CallOptions(),
         (m, r, o) => FakeResponseFuture.value('result'),
@@ -154,7 +118,7 @@ void main() {
       );
       late CallOptions o1, o2;
       interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'r',
         CallOptions(),
         (m, r, o) {
@@ -163,7 +127,7 @@ void main() {
         },
       );
       interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'r',
         CallOptions(),
         (m, r, o) {
@@ -171,8 +135,8 @@ void main() {
           return FakeResponseFuture.value('');
         },
       );
-      expect((await _resolveMetadata(o1))['authorization'], 'Bearer tok-1');
-      expect((await _resolveMetadata(o2))['authorization'], 'Bearer tok-2');
+      expect((await resolveMetadata(o1))['authorization'], 'Bearer tok-1');
+      expect((await resolveMetadata(o2))['authorization'], 'Bearer tok-2');
     });
   });
 
@@ -181,13 +145,13 @@ void main() {
       final interceptor = AuthInterceptor(
         tokenProvider: () async => 'stream-tok',
       );
-      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
+      final md = await resolveMetadata(captureStreamingOptions(interceptor));
       expect(md['authorization'], 'Bearer stream-tok');
     });
 
     test('omits authorization when token is null', () async {
       final interceptor = AuthInterceptor(tokenProvider: () async => null);
-      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
+      final md = await resolveMetadata(captureStreamingOptions(interceptor));
       expect(md.containsKey('authorization'), isFalse);
     });
 
@@ -196,12 +160,12 @@ void main() {
       final input = Stream<String>.fromIterable(['a']);
       late Stream<String> captured;
       interceptor.interceptStreaming<String, String>(
-        _method(),
+        testMethod(),
         input,
         CallOptions(),
         (m, r, o) {
           captured = r;
-          return FakeResponseStream(const Stream.empty());
+          return FakeInterceptorResponseStream(const Stream.empty());
         },
       );
       expect(captured, same(input));
@@ -209,9 +173,11 @@ void main() {
 
     test('returns invoker response stream', () {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
-      final expected = FakeResponseStream(Stream<String>.fromIterable(['x']));
+      final expected = FakeInterceptorResponseStream(
+        Stream<String>.fromIterable(['x']),
+      );
       final result = interceptor.interceptStreaming<String, String>(
-        _method(),
+        testMethod(),
         const Stream.empty(),
         CallOptions(),
         (m, r, o) => expected,
@@ -231,7 +197,7 @@ void main() {
     test('returns invoker response', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req',
         CallOptions(),
         (m, r, o) => FakeResponseFuture.value('result'),
@@ -242,7 +208,7 @@ void main() {
     test('does not swallow errors from invoker', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method(),
+        testMethod(),
         'req',
         CallOptions(),
         (m, r, o) => FakeResponseFuture.error(GrpcError.unavailable('down')),
@@ -253,7 +219,7 @@ void main() {
     test('successful response completes without error', () async {
       final interceptor = LoggingInterceptor();
       final resp = interceptor.interceptUnary<String, String>(
-        _method('/svc/Ok'),
+        testMethod('/svc/Ok'),
         'req',
         CallOptions(),
         (m, r, o) => FakeResponseFuture.value('ok'),
@@ -272,9 +238,11 @@ void main() {
 
     test('returns invoker response stream', () {
       final interceptor = LoggingInterceptor();
-      final expected = FakeResponseStream(Stream<String>.fromIterable(['d']));
+      final expected = FakeInterceptorResponseStream(
+        Stream<String>.fromIterable(['d']),
+      );
       final result = interceptor.interceptStreaming<String, String>(
-        _method(),
+        testMethod(),
         const Stream.empty(),
         CallOptions(),
         (m, r, o) => expected,
@@ -288,7 +256,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'mach-42',
       );
-      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
+      final md = await resolveMetadata(captureUnaryOptions(interceptor));
       expect(md['x-machine-id'], 'mach-42');
     });
 
@@ -296,7 +264,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => null,
       );
-      final md = await _resolveMetadata(captureUnaryOptions(interceptor));
+      final md = await resolveMetadata(captureUnaryOptions(interceptor));
       expect(md.containsKey('x-machine-id'), isFalse);
     });
 
@@ -304,7 +272,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'mach-1',
       );
-      final md = await _resolveMetadata(
+      final md = await resolveMetadata(
         captureUnaryOptions(
           interceptor,
           options: CallOptions(metadata: {'x-custom': 'v'}),
@@ -320,7 +288,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => 'stream-mach',
       );
-      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
+      final md = await resolveMetadata(captureStreamingOptions(interceptor));
       expect(md['x-machine-id'], 'stream-mach');
     });
 
@@ -328,7 +296,7 @@ void main() {
       final interceptor = MachineIdInterceptor(
         machineIdProvider: () async => null,
       );
-      final md = await _resolveMetadata(captureStreamingOptions(interceptor));
+      final md = await resolveMetadata(captureStreamingOptions(interceptor));
       expect(md.containsKey('x-machine-id'), isFalse);
     });
   });

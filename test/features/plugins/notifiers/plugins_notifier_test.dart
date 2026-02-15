@@ -8,6 +8,7 @@ import 'package:betcode_app/features/plugins/notifiers/plugins_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
+import '../../../helpers/notifier_test_helpers.dart';
 import '../../../helpers/test_container.dart';
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,12 @@ void main() {
     healthy: healthy,
   );
 
+  void stubListEmpty() {
+    when(
+      () => mockClient.listPlugins(any()),
+    ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+  }
+
   group('PluginsNotifier - build', () {
     test('fetches plugin list from gRPC', () async {
       final plugins = [makePlugin('plugin-1'), makePlugin('plugin-2')];
@@ -86,9 +93,7 @@ void main() {
     });
 
     test('returns empty list when no plugins exist', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      stubListEmpty();
 
       final result = await container.read(pluginsProvider.future);
       expect(result, isEmpty);
@@ -127,62 +132,30 @@ void main() {
     });
   });
 
-  group('PluginsNotifier - connection awareness', () {
-    test('throws StateError when disconnected', () async {
-      final dc = await createDisconnectedContainer(
-        provider: pluginsProvider,
-        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
-      );
-      final state = dc.read(pluginsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<StateError>());
-    });
+  connectionAwarenessTests(
+    label: 'PluginsNotifier',
+    provider: pluginsProvider,
+    serviceOverrides: () => [
+      commandServiceProvider.overrideWithValue(mockClient),
+    ],
+    verifyNoGrpcCalls: () => verifyNever(() => mockClient.listPlugins(any())),
+  );
 
-    test('does not call gRPC when disconnected', () async {
-      await createDisconnectedContainer(
-        provider: pluginsProvider,
-        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
-      );
-      verifyNever(() => mockClient.listPlugins(any()));
-    });
-  });
-
-  group('PluginsNotifier - error handling', () {
-    test('gRPC error is captured in state', () async {
-      final ec = await createErrorContainer(
-        provider: pluginsProvider,
-        overrides: [
-          commandServiceProvider.overrideWithValue(
-            _FailingPluginClient(GrpcError.unavailable('connection refused')),
-          ),
-        ],
-      );
-      final state = ec.read(pluginsProvider);
-      expect(state.hasError, isTrue);
-      expect(state.error, isA<GrpcError>());
-    });
-
-    test('gRPC error preserves error details', () async {
-      final ec = await createErrorContainer(
-        provider: pluginsProvider,
-        overrides: [
-          commandServiceProvider.overrideWithValue(
-            _FailingPluginClient(GrpcError.unavailable('daemon unreachable')),
-          ),
-        ],
-      );
-      final state = ec.read(pluginsProvider);
-      expect(state.hasError, isTrue);
-      expect((state.error! as GrpcError).message, 'daemon unreachable');
-    });
-  });
+  errorHandlingTests(
+    label: 'PluginsNotifier',
+    provider: pluginsProvider,
+    errorOverrides: (error) => [
+      commandServiceProvider.overrideWithValue(_FailingPluginClient(error)),
+    ],
+  );
 
   group('PluginsNotifier - getPluginStatus', () {
     test('returns PluginInfo for given name', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       final expectedPlugin = makePlugin('my-plugin', status: 'healthy');
       when(() => mockClient.getPluginStatus(any())).thenAnswer(
@@ -199,10 +172,11 @@ void main() {
     });
 
     test('passes correct name to gRPC', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.getPluginStatus(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
@@ -225,10 +199,11 @@ void main() {
     test(
       'calls gRPC addPlugin, refreshes list, and returns PluginInfo',
       () async {
-        when(
-          () => mockClient.listPlugins(any()),
-        ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-        await container.read(pluginsProvider.future);
+        await initNotifier(
+          container: container,
+          provider: pluginsProvider,
+          stubEmpty: stubListEmpty,
+        );
 
         final newPlugin = makePlugin('new-plugin');
         when(() => mockClient.addPlugin(any())).thenAnswer(
@@ -255,19 +230,18 @@ void main() {
     );
 
     test('passes correct parameters to gRPC', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.addPlugin(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           AddPluginResponse(plugin: makePlugin('test')),
         ),
       );
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      stubListEmpty();
 
       final notifier = container.read(pluginsProvider.notifier);
       await notifier.addPlugin(
@@ -299,9 +273,7 @@ void main() {
         when(() => mockClient.removePlugin(any())).thenAnswer(
           (_) => FakeResponseFuture.value(RemovePluginResponse(removed: true)),
         );
-        when(
-          () => mockClient.listPlugins(any()),
-        ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+        stubListEmpty();
 
         final notifier = container.read(pluginsProvider.notifier);
         final result = await notifier.removePlugin('old-plugin');
@@ -314,17 +286,16 @@ void main() {
     );
 
     test('passes correct name to gRPC', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.removePlugin(any())).thenAnswer(
         (_) => FakeResponseFuture.value(RemovePluginResponse(removed: true)),
       );
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      stubListEmpty();
 
       final notifier = container.read(pluginsProvider.notifier);
       await notifier.removePlugin('target-plugin');
@@ -374,19 +345,18 @@ void main() {
     );
 
     test('passes correct name to gRPC', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.enablePlugin(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           EnablePluginResponse(plugin: makePlugin('test')),
         ),
       );
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      stubListEmpty();
 
       final notifier = container.read(pluginsProvider.notifier);
       await notifier.enablePlugin('target-plugin');
@@ -436,19 +406,18 @@ void main() {
     );
 
     test('passes correct name to gRPC', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
+      await initNotifier(
+        container: container,
+        provider: pluginsProvider,
+        stubEmpty: stubListEmpty,
+      );
 
       when(() => mockClient.disablePlugin(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           DisablePluginResponse(plugin: makePlugin('test')),
         ),
       );
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      stubListEmpty();
 
       final notifier = container.read(pluginsProvider.notifier);
       await notifier.disablePlugin('target-plugin');
@@ -461,74 +430,37 @@ void main() {
     });
   });
 
-  group('PluginsNotifier - refresh', () {
-    test('re-fetches and updates state', () async {
-      when(() => mockClient.listPlugins(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPluginsResponse(plugins: [makePlugin('plugin-1')]),
-        ),
-      );
-      await container.read(pluginsProvider.future);
-
-      when(() => mockClient.listPlugins(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPluginsResponse(
-            plugins: [makePlugin('plugin-1'), makePlugin('plugin-new')],
+  refreshTests(
+    RefreshTestConfig<List<PluginInfo>>(
+      provider: pluginsProvider,
+      label: 'PluginsNotifier',
+      getContainer: () => container,
+      stubInitial: () {
+        when(() => mockClient.listPlugins(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListPluginsResponse(plugins: [makePlugin('plugin-1')]),
           ),
-        ),
-      );
-
-      final notifier = container.read(pluginsProvider.notifier);
-      await notifier.refresh();
-
-      final state = container.read(pluginsProvider);
-      expect(state.value, hasLength(2));
-      expect(state.value![1].name, 'plugin-new');
-    });
-
-    test('transitions through loading state during refresh', () async {
-      final states = <AsyncValue<List<PluginInfo>>>[];
-
-      when(() => mockClient.listPlugins(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPluginsResponse(plugins: [makePlugin('plugin-1')]),
-        ),
-      );
-      await container.read(pluginsProvider.future);
-
-      container.listen(pluginsProvider, (prev, next) {
-        states.add(next);
-      });
-
-      when(() => mockClient.listPlugins(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(
-          ListPluginsResponse(plugins: [makePlugin('plugin-2')]),
-        ),
-      );
-
-      final notifier = container.read(pluginsProvider.notifier);
-      await notifier.refresh();
-
-      expect(states.any((s) => s is AsyncLoading), isTrue);
-      expect(states.last.value, hasLength(1));
-      expect(states.last.value!.first.name, 'plugin-2');
-    });
-
-    test('refresh calls gRPC exactly once', () async {
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-      await container.read(pluginsProvider.future);
-
-      reset(mockClient);
-      when(
-        () => mockClient.listPlugins(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
-
-      final notifier = container.read(pluginsProvider.notifier);
-      await notifier.refresh();
-
-      verify(() => mockClient.listPlugins(any())).called(1);
-    });
-  });
+        );
+      },
+      stubRefreshed: () {
+        when(() => mockClient.listPlugins(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(
+            ListPluginsResponse(
+              plugins: [makePlugin('plugin-1'), makePlugin('plugin-new')],
+            ),
+          ),
+        );
+      },
+      resetMock: () => reset(mockClient),
+      stubAfterReset: () {
+        when(
+          () => mockClient.listPlugins(any()),
+        ).thenAnswer((_) => FakeResponseFuture.value(ListPluginsResponse()));
+      },
+      verifyListCalledOnce: () =>
+          verify(() => mockClient.listPlugins(any())).called(1),
+      getItemCount: (v) => v.length,
+      getSecondItemId: (v) => v[1].name,
+    ),
+  );
 }

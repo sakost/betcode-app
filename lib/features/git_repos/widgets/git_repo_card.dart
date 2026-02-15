@@ -28,10 +28,9 @@ class GitRepoCard extends StatelessWidget {
 
     final displayName = repo.name.isNotEmpty
         ? repo.name
-        : repo.repoPath.split('/').lastWhere(
-              (s) => s.isNotEmpty,
-              orElse: () => repo.repoPath,
-            );
+        : repo.repoPath
+              .split('/')
+              .lastWhere((s) => s.isNotEmpty, orElse: () => repo.repoPath);
 
     return TappableCard(
       onTap: onTap,
@@ -52,8 +51,7 @@ class GitRepoCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (repo.worktreeMode !=
-                  WorktreeMode.WORKTREE_MODE_UNSPECIFIED)
+              if (repo.worktreeMode != WorktreeMode.WORKTREE_MODE_UNSPECIFIED)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,

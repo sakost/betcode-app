@@ -14,9 +14,7 @@ ProviderContainer createTestContainer({
 }) {
   return ProviderContainer(
     overrides: [
-      connectionStatusProvider.overrideWithValue(
-        AsyncData(status),
-      ),
+      connectionStatusProvider.overrideWithValue(AsyncData(status)),
       ...overrides,
     ],
   );
@@ -33,10 +31,7 @@ Future<ProviderContainer> createDisconnectedContainer({
   required List overrides,
   GrpcConnectionStatus status = GrpcConnectionStatus.disconnected,
 }) async {
-  final container = createTestContainer(
-    status: status,
-    overrides: overrides,
-  );
+  final container = createTestContainer(status: status, overrides: overrides);
   addTearDown(container.dispose);
 
   container.read(provider);

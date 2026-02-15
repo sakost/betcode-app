@@ -23,11 +23,10 @@ class RepoDetailScreen extends ConsumerWidget {
 
     final repoName = repo != null && repo.name.isNotEmpty
         ? repo.name
-        : repo?.repoPath.split('/').lastWhere(
-              (s) => s.isNotEmpty,
-              orElse: () => 'Repository',
-            ) ??
-            'Repository';
+        : repo?.repoPath
+                  .split('/')
+                  .lastWhere((s) => s.isNotEmpty, orElse: () => 'Repository') ??
+              'Repository';
 
     return DefaultTabController(
       length: 4,
@@ -38,10 +37,7 @@ class RepoDetailScreen extends ConsumerWidget {
             tabs: [
               Tab(icon: Icon(Icons.account_tree_outlined), text: 'Worktrees'),
               Tab(icon: Icon(Icons.rocket_launch_outlined), text: 'Pipelines'),
-              Tab(
-                icon: Icon(Icons.merge_outlined),
-                text: 'Merge Requests',
-              ),
+              Tab(icon: Icon(Icons.merge_outlined), text: 'Merge Requests'),
               Tab(icon: Icon(Icons.bug_report_outlined), text: 'Issues'),
             ],
           ),
@@ -79,12 +75,14 @@ class RepoDetailScreen extends ConsumerWidget {
     );
     if (result == null) return;
     try {
-      await ref.read(repoWorktreesProvider(repoId).notifier).createWorktree(
-        name: result.name,
-        repoId: result.repoId,
-        branch: result.branch,
-        setupScript: result.setupScript,
-      );
+      await ref
+          .read(repoWorktreesProvider(repoId).notifier)
+          .createWorktree(
+            name: result.name,
+            repoId: result.repoId,
+            branch: result.branch,
+            setupScript: result.setupScript,
+          );
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Failed to create worktree: $e')),
@@ -127,10 +125,8 @@ class _WorktreesTab extends ConsumerWidget {
             itemCount: worktrees.length,
             itemBuilder: (context, index) => WorktreeCard(
               worktree: worktrees[index],
-              onStartConversation: () => context.go(
-                '/sessions/new',
-                extra: worktrees[index].path,
-              ),
+              onStartConversation: () =>
+                  context.go('/sessions/new', extra: worktrees[index].path),
             ),
           ),
         );
@@ -171,4 +167,3 @@ class _PlaceholderTab extends StatelessWidget {
     );
   }
 }
-
