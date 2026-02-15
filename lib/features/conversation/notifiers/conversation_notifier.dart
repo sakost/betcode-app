@@ -58,11 +58,22 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     }
   }
 
+  /// Explicitly closes the conversation stream and resets to initial state.
+  ///
+  /// Called when the user navigates away from the conversation screen so the
+  /// gRPC stream is released. This prevents stale streams from blocking
+  /// subsequent resume attempts for the same session.
+  void close() {
+    _cleanup();
+    state = const AsyncData(ConversationState.initial());
+  }
+
   /// Opens the bidi stream and sends a [StartConversation] request.
   ///
   /// [workingDirectory] is the absolute path on the daemon machine where the
-  /// Claude Code subprocess will be spawned. It must not be empty — the daemon
-  /// uses it as `current_dir` for the child process.
+  /// Claude Code subprocess will be spawned. Required for new sessions; for
+  /// resume (when [sessionId] is set), the daemon ignores it so it defaults
+  /// to empty string.
   ///
   /// If [sessionId] is non-null, it is sent as an existing session ID to
   /// resume. The daemon will reply with [SessionInfo] containing the
@@ -72,7 +83,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   /// stream is established so the user can type their first message. The
   /// daemon defers subprocess start until the first [UserMessage] arrives,
   /// so waiting for [SessionInfo] before showing the input bar would deadlock.
-  Future<void> startConversation({required String workingDirectory}) async {
+  Future<void> startConversation({String workingDirectory = ''}) async {
     debugPrint(
       '[Conversation] startConversation(workingDirectory: $workingDirectory, '
       'sessionId: $sessionId)',

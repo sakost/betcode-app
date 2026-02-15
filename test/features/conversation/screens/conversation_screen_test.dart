@@ -78,7 +78,7 @@ class _FakeSessionsNotifier extends SessionsNotifier {
 const _sessionId = 'test-session-1';
 
 Widget _buildApp({
-  String? sessionId = _sessionId,
+  String? sessionId,
   required ConversationState state,
   MockConversationNotifier? notifier,
   List<WorktreeDetail>? worktrees,
@@ -102,7 +102,7 @@ Widget _buildApp({
 /// Builds the app with worktrees in a specific async state (loading, error,
 /// or data). Used to test the initial conversation screen's worktree-aware UI.
 Widget _buildAppWithWorktreeState({
-  String? sessionId = _sessionId,
+  String? sessionId,
   required ConversationState state,
   required AsyncValue<List<WorktreeDetail>> worktreeState,
 }) {

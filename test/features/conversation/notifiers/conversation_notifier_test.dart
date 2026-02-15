@@ -858,4 +858,72 @@ void main() {
       });
     });
   });
+
+  group('close', () {
+    test('resets state to initial and cleans up stream', () async {
+      final n = notifier();
+      await goActive(n);
+
+      // Verify we're active.
+      expect(stateVal(), isA<ConversationActive>());
+
+      n.close();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(stateVal(), isA<ConversationInitial>());
+    });
+
+    test('can start a new conversation after close', () async {
+      final n = notifier();
+      await goActive(n, sessionId: 'sess-old');
+
+      n.close();
+      await Future<void>.delayed(Duration.zero);
+
+      // Need fresh event controller since old stream was cleaned up.
+      final newEventController = StreamController<pb.AgentEvent>();
+      when(() => mockClient.converse(any())).thenAnswer((inv) {
+        (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen(
+          capturedRequests.add,
+        );
+        return FakeResponseStream<pb.AgentEvent>(newEventController);
+      });
+
+      await n.startConversation(workingDirectory: '/tmp');
+      newEventController.add(
+        pb.AgentEvent(
+          sequence: Int64(1),
+          sessionInfo: pb.SessionInfo(sessionId: 'sess-new'),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(stateVal(), isA<ConversationActive>());
+      expect((stateVal() as ConversationActive).sessionId, 'sess-new');
+
+      await newEventController.close();
+    });
+
+    test('close is safe to call when already initial', () {
+      final n = notifier();
+      expect(stateVal(), isA<ConversationInitial>());
+      n.close(); // should not throw
+      expect(stateVal(), isA<ConversationInitial>());
+    });
+  });
+
+  group('startConversation without workingDirectory', () {
+    test('resume sends empty workingDirectory when not provided', () async {
+      await notifier('sess-resume').startConversation();
+      await Future<void>.delayed(Duration.zero);
+      expect(capturedRequests.first.start.sessionId, 'sess-resume');
+      expect(capturedRequests.first.start.workingDirectory, '');
+    });
+
+    test('new session sends provided workingDirectory', () async {
+      await notifier().startConversation(workingDirectory: '/my/dir');
+      await Future<void>.delayed(Duration.zero);
+      expect(capturedRequests.first.start.workingDirectory, '/my/dir');
+    });
+  });
 }

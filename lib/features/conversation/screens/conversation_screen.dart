@@ -36,13 +36,44 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+
+    // Auto-resume existing sessions without requiring user to press Start.
+    if (widget.sessionId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resumeConversation();
+      });
+    }
   }
 
   @override
   void dispose() {
+    // Close the conversation stream so the daemon session is released.
+    // This prevents stale streams from blocking subsequent resume attempts.
+    // Use bare catch: StateError (an Error, not Exception) is thrown when
+    // ref is accessed after the widget has been unmounted.
+    try {
+      ref.read(conversationProvider(widget.sessionId).notifier).close();
+    } catch (_) {
+      // Provider might already be disposed or ref is no longer valid.
+    }
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Resumes an existing session. Working directory is optional since the
+  /// daemon already knows it for existing sessions.
+  ///
+  /// Only fires when the current state is [ConversationInitial], preventing
+  /// duplicate resume attempts when the state has already transitioned.
+  void _resumeConversation() {
+    if (!mounted) return;
+    final asyncState = ref.read(conversationProvider(widget.sessionId));
+    if (asyncState.value is! ConversationInitial) return;
+    final workingDirectory = _resolveWorkingDirectory() ?? '';
+    ref
+        .read(conversationProvider(widget.sessionId).notifier)
+        .startConversation(workingDirectory: workingDirectory);
   }
 
   Widget? _buildBackButton() {

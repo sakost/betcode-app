@@ -64,6 +64,9 @@ void main() {
 
   group('Router - deep linking', () {
     testWidgets('conversation with sessionId parameter', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 60000));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
       await tester.pumpWidget(
         buildAuthApp(
           initialLocation: '/sessions/sess-42',
@@ -77,6 +80,9 @@ void main() {
     testWidgets(
       '/sessions/new routes to ConversationScreen with null sessionId',
       (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1200, 60000));
+        addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
         await tester.pumpWidget(
           buildAuthApp(
             initialLocation: '/sessions/new',
