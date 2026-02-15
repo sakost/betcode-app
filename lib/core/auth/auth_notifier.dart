@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:grpc/grpc.dart';
 
 import '../../generated/betcode/v1/auth.pbgrpc.dart';
 import '../storage/storage.dart';
@@ -93,9 +94,22 @@ class AuthNotifier extends Notifier<AuthState> {
       );
       return true;
     } catch (e) {
-      await logout();
+      if (_isAuthError(e)) {
+        await logout();
+      }
       return false;
     }
+  }
+
+  /// Returns true if the error indicates an authentication/authorization
+  /// failure (invalid or revoked token). Network and transient errors
+  /// return false — we keep the session alive so reconnection can retry.
+  static bool _isAuthError(Object error) {
+    if (error is GrpcError) {
+      return error.code == StatusCode.unauthenticated ||
+          error.code == StatusCode.permissionDenied;
+    }
+    return false;
   }
 
   /// Revokes the current refresh token via gRPC and logs out.

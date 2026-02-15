@@ -368,7 +368,7 @@ void main() {
         verify(() => mockStorage.writeRefreshToken('new-refresh')).called(1);
       });
 
-      test('logs out on refresh failure', () async {
+      test('logs out on auth error (unauthenticated)', () async {
         await authenticateNotifier(
           accessToken: 'old-access',
           refreshToken: 'old-refresh',
@@ -384,6 +384,78 @@ void main() {
 
         expect(result, isFalse);
         expect(readState(), isA<AuthUnauthenticated>());
+      });
+
+      test('logs out on auth error (permission denied)', () async {
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(
+          () => mockAuthClient.refreshToken(any()),
+        ).thenThrow(GrpcError.custom(
+          StatusCode.permissionDenied,
+          'token revoked',
+        ));
+
+        final result = await readNotifier().refreshTokens(mockAuthClient);
+
+        expect(result, isFalse);
+        expect(readState(), isA<AuthUnauthenticated>());
+      });
+
+      test('does NOT log out on network error (unavailable)', () async {
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
+
+        when(
+          () => mockAuthClient.refreshToken(any()),
+        ).thenThrow(GrpcError.unavailable('network disruption'));
+
+        final result = await readNotifier().refreshTokens(mockAuthClient);
+
+        expect(result, isFalse);
+        expect(readState(), isA<AuthAuthenticated>());
+      });
+
+      test('does NOT log out on deadline exceeded', () async {
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
+
+        when(
+          () => mockAuthClient.refreshToken(any()),
+        ).thenThrow(GrpcError.deadlineExceeded('timeout'));
+
+        final result = await readNotifier().refreshTokens(mockAuthClient);
+
+        expect(result, isFalse);
+        expect(readState(), isA<AuthAuthenticated>());
+      });
+
+      test('does NOT log out on non-gRPC exception', () async {
+        await authenticateNotifier(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          userId: 'user-1',
+        );
+
+        when(
+          () => mockAuthClient.refreshToken(any()),
+        ).thenThrow(Exception('SocketException: connection refused'));
+
+        final result = await readNotifier().refreshTokens(mockAuthClient);
+
+        expect(result, isFalse);
+        expect(readState(), isA<AuthAuthenticated>());
       });
 
       test('returns false when not authenticated', () async {
