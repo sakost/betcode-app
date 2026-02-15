@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/grpc/connection_state.dart';
@@ -36,5 +37,17 @@ class MergeRequestsNotifier extends AsyncNotifier<List<MergeRequestInfo>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _fetchMergeRequests());
+  }
+
+  /// Fetches a single merge request by project and IID.
+  Future<MergeRequestInfo> getMergeRequest({
+    required String project,
+    required Int64 iid,
+  }) async {
+    final client = ref.read(gitlabServiceProvider);
+    final response = await client
+        .getMergeRequest(GetMergeRequestRequest(project: project, iid: iid))
+        .timeout(_rpcTimeout);
+    return response.mergeRequest;
   }
 }

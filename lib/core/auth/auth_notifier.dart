@@ -21,6 +21,8 @@ Map<String, dynamic>? _decodeJwtPayload(String jwt) {
 }
 
 class AuthNotifier extends Notifier<AuthState> {
+  static const _mutationTimeout = Duration(seconds: 30);
+
   late final SecureStorageService _storage;
 
   @override
@@ -89,6 +91,25 @@ class AuthNotifier extends Notifier<AuthState> {
         userId: s.userId,
         expiresInSecs: response.expiresInSecs.toInt(),
       );
+      return true;
+    } catch (e) {
+      await logout();
+      return false;
+    }
+  }
+
+  /// Revokes the current refresh token via gRPC and logs out.
+  ///
+  /// Returns true if the RPC call succeeded and logout completed,
+  /// false otherwise. Always logs out regardless of the RPC result.
+  Future<bool> revokeToken(AuthServiceClient authClient) async {
+    final s = state;
+    if (s is! AuthAuthenticated) return false;
+    try {
+      await authClient
+          .revokeToken(RevokeTokenRequest(refreshToken: s.refreshToken))
+          .timeout(_mutationTimeout);
+      await logout();
       return true;
     } catch (e) {
       await logout();

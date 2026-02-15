@@ -117,7 +117,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       return;
     }
 
-    debugPrint('[Conversation] sendMessage: "${content.substring(0, content.length.clamp(0, 80))}"');
+    debugPrint(
+      '[Conversation] sendMessage: "${content.substring(0, content.length.clamp(0, 80))}"',
+    );
 
     final userMsg = ChatMessage.user(
       content: content,

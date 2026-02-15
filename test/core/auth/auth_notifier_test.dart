@@ -40,6 +40,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(RefreshTokenRequest());
+    registerFallbackValue(RevokeTokenRequest());
   });
 
   setUp(() {
@@ -422,6 +423,110 @@ void main() {
         final result = await readNotifier().refreshTokens(mockAuthClient);
         expect(result, isFalse);
         verifyNever(() => mockAuthClient.refreshToken(any()));
+      });
+    });
+
+    group('revokeToken', () {
+      late MockAuthServiceClient mockAuthClient;
+
+      setUp(() {
+        mockAuthClient = MockAuthServiceClient();
+      });
+
+      test('calls revokeToken RPC with correct refresh token', () async {
+        await authenticateNotifier(
+          accessToken: 'fake-access',
+          refreshToken: 'fake-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+        );
+
+        await readNotifier().revokeToken(mockAuthClient);
+
+        final captured = verify(
+          () => mockAuthClient.revokeToken(captureAny()),
+        ).captured.single as RevokeTokenRequest;
+        expect(captured.refreshToken, 'fake-refresh');
+      });
+
+      test('returns true when revocation succeeds', () async {
+        await authenticateNotifier(
+          accessToken: 'fake-access',
+          refreshToken: 'fake-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+        );
+
+        final result = await readNotifier().revokeToken(mockAuthClient);
+        expect(result, isTrue);
+      });
+
+      test('logs out after successful revocation', () async {
+        await authenticateNotifier(
+          accessToken: 'fake-access',
+          refreshToken: 'fake-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: true)),
+        );
+
+        await readNotifier().revokeToken(mockAuthClient);
+        expect(readState(), isA<AuthUnauthenticated>());
+      });
+
+      test('returns false when not authenticated', () async {
+        final result = await readNotifier().revokeToken(mockAuthClient);
+        expect(result, isFalse);
+        verifyNever(() => mockAuthClient.revokeToken(any()));
+      });
+
+      test('returns false and logs out on gRPC error', () async {
+        await authenticateNotifier(
+          accessToken: 'fake-access',
+          refreshToken: 'fake-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
+          (_) => FakeResponseFuture.error(
+            GrpcError.unavailable('server down'),
+          ),
+        );
+
+        final result = await readNotifier().revokeToken(mockAuthClient);
+        expect(result, isFalse);
+        expect(readState(), isA<AuthUnauthenticated>());
+      });
+
+      test('returns true when server reports revoked=false', () async {
+        await authenticateNotifier(
+          accessToken: 'fake-access',
+          refreshToken: 'fake-refresh',
+          userId: 'user-1',
+        );
+        when(() => mockStorage.clearAll()).thenAnswer((_) async {});
+
+        when(() => mockAuthClient.revokeToken(any())).thenAnswer(
+          (_) => FakeResponseFuture.value(RevokeTokenResponse(revoked: false)),
+        );
+
+        final result = await readNotifier().revokeToken(mockAuthClient);
+        // RPC succeeded so we return true regardless of response.revoked
+        expect(result, isTrue);
+        // Should still log out even when revoked=false
+        expect(readState(), isA<AuthUnauthenticated>());
       });
     });
   });

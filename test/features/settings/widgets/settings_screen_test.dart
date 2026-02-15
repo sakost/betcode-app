@@ -365,7 +365,7 @@ void main() {
 
   group('Relay connection section', () {
     /// Builds [_settingsApp] with relay and connection overrides.
-    Widget _relayApp({
+    Widget relayApp({
       RelayConfig? relay = const RelayConfig(host: 'relay.example.com', port: 443),
       GrpcConnectionStatus connectionStatus = GrpcConnectionStatus.connected,
     }) {
@@ -382,7 +382,7 @@ void main() {
     }
 
     testWidgets('shows relay connection section', (t) async {
-      await t.pumpWidget(_relayApp());
+      await t.pumpWidget(relayApp());
       await t.pumpAndSettle();
 
       expect(find.text('Relay Connection'), findsOneWidget);
@@ -390,7 +390,7 @@ void main() {
 
     testWidgets('shows host:port', (t) async {
       await t.pumpWidget(
-        _relayApp(
+        relayApp(
           relay: const RelayConfig(host: 'my-relay.io', port: 8443),
         ),
       );
@@ -402,7 +402,7 @@ void main() {
 
     testWidgets('shows Not configured when relay is null', (t) async {
       await t.pumpWidget(
-        _relayApp(
+        relayApp(
           relay: null,
           connectionStatus: GrpcConnectionStatus.disconnected,
         ),
@@ -413,7 +413,7 @@ void main() {
     });
 
     testWidgets('disconnect button calls disconnect then logout', (t) async {
-      await t.pumpWidget(_relayApp());
+      await t.pumpWidget(relayApp());
       await t.pumpAndSettle();
 
       expect(find.text('Disconnect'), findsOneWidget);

@@ -47,6 +47,19 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     state = await AsyncValue.guard(() => _fetchSessions());
   }
 
+  /// Triggers context compaction for a session.
+  ///
+  /// Returns the [CompactSessionResponse] with before/after message counts
+  /// and tokens saved. Refreshes the session list after compaction.
+  Future<CompactSessionResponse> compactSession(String sessionId) async {
+    final client = ref.read(agentServiceProvider);
+    final response = await client
+        .compactSession(CompactSessionRequest(sessionId: sessionId))
+        .timeout(_mutationTimeout);
+    await refresh();
+    return response;
+  }
+
   /// Renames a session via gRPC and refreshes the local list.
   ///
   /// Throws on gRPC/timeout errors so callers can display feedback.

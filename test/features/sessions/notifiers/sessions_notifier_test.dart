@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:drift/drift.dart' show Batch;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,6 +49,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(ListSessionsRequest());
     registerFallbackValue(RenameSessionRequest());
+    registerFallbackValue(CompactSessionRequest());
     registerFallbackValue((Batch _) async {});
   });
 
@@ -396,6 +396,54 @@ void main() {
 
       final state = container.read(sessionsProvider);
       expect(state.value!.first.name, 'Renamed');
+    });
+  });
+
+  group('SessionsNotifier - compactSession', () {
+    test('calls compactSession RPC with correct session ID', () async {
+      // Build initial state
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [makeSession('s-1')]),
+        ),
+      );
+      await container.read(sessionsProvider.future);
+
+      when(() => mockClient.compactSession(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(CompactSessionResponse(
+          messagesBefore: 100,
+          messagesAfter: 50,
+          tokensSaved: 5000,
+        )),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      final result = await notifier.compactSession('s-1');
+
+      final captured = verify(() => mockClient.compactSession(captureAny()))
+          .captured
+          .single as CompactSessionRequest;
+      expect(captured.sessionId, 's-1');
+      expect(result.messagesBefore, 100);
+      expect(result.messagesAfter, 50);
+      expect(result.tokensSaved, 5000);
+    });
+
+    test('refreshes sessions after compaction', () async {
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListSessionsResponse()),
+      );
+      await container.read(sessionsProvider.future);
+
+      when(() => mockClient.compactSession(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(CompactSessionResponse()),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.compactSession('s-1');
+
+      // listSessions is called once for build, once for refresh after compact
+      verify(() => mockClient.listSessions(any())).called(2);
     });
   });
 }

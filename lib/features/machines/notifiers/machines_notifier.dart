@@ -14,6 +14,9 @@ import 'machines_providers.dart';
 /// the user logs in or out. When the fetched list contains exactly one
 /// machine and no machine is currently selected, auto-selects it.
 class MachinesNotifier extends AsyncNotifier<List<MachineInfo>> {
+  static const _rpcTimeout = Duration(seconds: 10);
+  static const _mutationTimeout = Duration(seconds: 30);
+
   @override
   Future<List<MachineInfo>> build() async {
     final auth = ref.watch(authNotifierProvider);
@@ -26,7 +29,9 @@ class MachinesNotifier extends AsyncNotifier<List<MachineInfo>> {
 
   Future<List<MachineInfo>> _fetchMachines() async {
     final client = ref.read(machineServiceProvider);
-    final response = await client.listMachines(ListMachinesRequest());
+    final response = await client
+        .listMachines(ListMachinesRequest())
+        .timeout(_rpcTimeout);
     return response.machines.toList();
   }
 
@@ -38,6 +43,42 @@ class MachinesNotifier extends AsyncNotifier<List<MachineInfo>> {
       await _autoSelectIfSingle(machines);
       return machines;
     });
+  }
+
+  /// Registers a new machine via gRPC and refreshes the list.
+  Future<void> registerMachine({
+    required String machineId,
+    required String name,
+    Map<String, String>? metadata,
+  }) async {
+    final client = ref.read(machineServiceProvider);
+    final request = RegisterMachineRequest(
+      machineId: machineId,
+      name: name,
+    );
+    if (metadata != null) {
+      request.metadata.addAll(metadata);
+    }
+    await client.registerMachine(request).timeout(_mutationTimeout);
+    await refresh();
+  }
+
+  /// Removes a machine registration via gRPC and refreshes the list.
+  Future<void> removeMachine(String machineId) async {
+    final client = ref.read(machineServiceProvider);
+    await client
+        .removeMachine(RemoveMachineRequest(machineId: machineId))
+        .timeout(_mutationTimeout);
+    await refresh();
+  }
+
+  /// Gets details for a specific machine via gRPC.
+  Future<MachineInfo> getMachine(String machineId) async {
+    final client = ref.read(machineServiceProvider);
+    final response = await client
+        .getMachine(GetMachineRequest(machineId: machineId))
+        .timeout(_rpcTimeout);
+    return response.machine;
   }
 
   Future<void> _autoSelectIfSingle(List<MachineInfo> machines) async {

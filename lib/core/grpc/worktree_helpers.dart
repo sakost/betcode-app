@@ -1,4 +1,3 @@
-import '../../generated/betcode/v1/worktree.pb.dart';
 import '../../generated/betcode/v1/worktree.pbgrpc.dart';
 
 /// Shared helper for creating a worktree via gRPC.

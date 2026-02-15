@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/grpc/connection_state.dart';
@@ -36,5 +37,17 @@ class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _fetchPipelines());
+  }
+
+  /// Fetches a single pipeline by project and pipeline ID.
+  Future<PipelineInfo> getPipeline({
+    required String project,
+    required Int64 pipelineId,
+  }) async {
+    final client = ref.read(gitlabServiceProvider);
+    final response = await client
+        .getPipeline(GetPipelineRequest(project: project, pipelineId: pipelineId))
+        .timeout(_rpcTimeout);
+    return response.pipeline;
   }
 }

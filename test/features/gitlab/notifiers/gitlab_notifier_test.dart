@@ -59,6 +59,9 @@ void main() {
     registerFallbackValue(ListPipelinesRequest());
     registerFallbackValue(ListMergeRequestsRequest());
     registerFallbackValue(ListIssuesRequest());
+    registerFallbackValue(GetMergeRequestRequest());
+    registerFallbackValue(GetPipelineRequest());
+    registerFallbackValue(GetIssueRequest());
   });
 
   setUp(() {
@@ -749,6 +752,217 @@ void main() {
       await notifier.refresh();
 
       verify(() => mockClient.listIssues(any())).called(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // MergeRequestsNotifier - getMergeRequest
+  // -------------------------------------------------------------------------
+
+  group('MergeRequestsNotifier - getMergeRequest', () {
+    test('returns merge request info on success', () async {
+      // Stub list call so build() succeeds
+      when(() => mockClient.listMergeRequests(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
+      );
+      await container.read(mergeRequestsProvider.future);
+
+      final expectedMr = MergeRequestInfo(
+        id: Int64(42),
+        iid: Int64(123),
+        title: 'Refactor DB layer',
+        state: MergeRequestState.MERGE_REQUEST_STATE_OPENED,
+        sourceBranch: 'feature/db',
+        targetBranch: 'main',
+      );
+      when(() => mockClient.getMergeRequest(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetMergeRequestResponse(mergeRequest: expectedMr),
+        ),
+      );
+
+      final notifier = container.read(mergeRequestsProvider.notifier);
+      final result = await notifier.getMergeRequest(
+        project: 'my-group/my-project',
+        iid: Int64(123),
+      );
+
+      expect(result.id, Int64(42));
+      expect(result.iid, Int64(123));
+      expect(result.title, 'Refactor DB layer');
+      expect(result.state, MergeRequestState.MERGE_REQUEST_STATE_OPENED);
+      expect(result.sourceBranch, 'feature/db');
+      expect(result.targetBranch, 'main');
+    });
+
+    test('sends correct project and iid in request', () async {
+      when(() => mockClient.listMergeRequests(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListMergeRequestsResponse()),
+      );
+      await container.read(mergeRequestsProvider.future);
+
+      when(() => mockClient.getMergeRequest(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetMergeRequestResponse(
+            mergeRequest: MergeRequestInfo(iid: Int64(55)),
+          ),
+        ),
+      );
+
+      final notifier = container.read(mergeRequestsProvider.notifier);
+      await notifier.getMergeRequest(
+        project: 'org/repo',
+        iid: Int64(55),
+      );
+
+      final captured = verify(
+        () => mockClient.getMergeRequest(captureAny()),
+      ).captured.single as GetMergeRequestRequest;
+
+      expect(captured.project, 'org/repo');
+      expect(captured.iid, Int64(55));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // PipelinesNotifier - getPipeline
+  // -------------------------------------------------------------------------
+
+  group('PipelinesNotifier - getPipeline', () {
+    test('returns pipeline info on success', () async {
+      // Stub list call so build() succeeds
+      when(() => mockClient.listPipelines(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
+      );
+      await container.read(pipelinesProvider.future);
+
+      final expectedPipeline = PipelineInfo(
+        id: Int64(99),
+        status: PipelineStatus.PIPELINE_STATUS_SUCCESS,
+        refName: 'main',
+        sha: 'abc123deadbeef',
+        source: 'push',
+        webUrl: 'https://gitlab.com/p/99',
+      );
+      when(() => mockClient.getPipeline(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetPipelineResponse(pipeline: expectedPipeline),
+        ),
+      );
+
+      final notifier = container.read(pipelinesProvider.notifier);
+      final result = await notifier.getPipeline(
+        project: 'my-group/my-project',
+        pipelineId: Int64(99),
+      );
+
+      expect(result.id, Int64(99));
+      expect(result.status, PipelineStatus.PIPELINE_STATUS_SUCCESS);
+      expect(result.refName, 'main');
+      expect(result.sha, 'abc123deadbeef');
+      expect(result.source, 'push');
+      expect(result.webUrl, 'https://gitlab.com/p/99');
+    });
+
+    test('sends correct project and pipelineId in request', () async {
+      when(() => mockClient.listPipelines(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListPipelinesResponse()),
+      );
+      await container.read(pipelinesProvider.future);
+
+      when(() => mockClient.getPipeline(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetPipelineResponse(
+            pipeline: PipelineInfo(id: Int64(77)),
+          ),
+        ),
+      );
+
+      final notifier = container.read(pipelinesProvider.notifier);
+      await notifier.getPipeline(
+        project: 'org/repo',
+        pipelineId: Int64(77),
+      );
+
+      final captured = verify(
+        () => mockClient.getPipeline(captureAny()),
+      ).captured.single as GetPipelineRequest;
+
+      expect(captured.project, 'org/repo');
+      expect(captured.pipelineId, Int64(77));
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // IssuesNotifier - getIssue
+  // -------------------------------------------------------------------------
+
+  group('IssuesNotifier - getIssue', () {
+    test('returns issue info on success', () async {
+      // Stub list call so build() succeeds
+      when(() => mockClient.listIssues(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListIssuesResponse()),
+      );
+      await container.read(issuesProvider.future);
+
+      final expectedIssue = IssueInfo(
+        id: Int64(42),
+        iid: Int64(15),
+        title: 'Fix login bug',
+        state: IssueState.ISSUE_STATE_OPENED,
+        author: 'alice',
+        labels: ['bug', 'urgent'],
+        confidential: false,
+        webUrl: 'https://gitlab.com/issues/15',
+      );
+      when(() => mockClient.getIssue(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetIssueResponse(issue: expectedIssue),
+        ),
+      );
+
+      final notifier = container.read(issuesProvider.notifier);
+      final result = await notifier.getIssue(
+        project: 'my-group/my-project',
+        iid: Int64(15),
+      );
+
+      expect(result.id, Int64(42));
+      expect(result.iid, Int64(15));
+      expect(result.title, 'Fix login bug');
+      expect(result.state, IssueState.ISSUE_STATE_OPENED);
+      expect(result.author, 'alice');
+      expect(result.labels, ['bug', 'urgent']);
+      expect(result.confidential, isFalse);
+      expect(result.webUrl, 'https://gitlab.com/issues/15');
+    });
+
+    test('sends correct project and iid in request', () async {
+      when(() => mockClient.listIssues(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListIssuesResponse()),
+      );
+      await container.read(issuesProvider.future);
+
+      when(() => mockClient.getIssue(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetIssueResponse(
+            issue: IssueInfo(iid: Int64(33)),
+          ),
+        ),
+      );
+
+      final notifier = container.read(issuesProvider.notifier);
+      await notifier.getIssue(
+        project: 'org/repo',
+        iid: Int64(33),
+      );
+
+      final captured = verify(
+        () => mockClient.getIssue(captureAny()),
+      ).captured.single as GetIssueRequest;
+
+      expect(captured.project, 'org/repo');
+      expect(captured.iid, Int64(33));
     });
   });
 }

@@ -50,6 +50,7 @@ void main() {
     registerFallbackValue(ListWorktreesRequest());
     registerFallbackValue(CreateWorktreeRequest());
     registerFallbackValue(RemoveWorktreeRequest());
+    registerFallbackValue(GetWorktreeRequest());
   });
 
   setUp(() {
@@ -418,6 +419,55 @@ void main() {
               as RemoveWorktreeRequest;
 
       expect(captured.id, 'wt-42');
+    });
+  });
+
+  group('WorktreesNotifier - getWorktree', () {
+    test('returns WorktreeDetail for given id', () async {
+      // Set up initial build
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
+      );
+      await container.read(worktreesProvider.future);
+
+      final detail = WorktreeDetail(
+        id: 'wt-42',
+        name: 'feature-branch',
+        path: '/home/user/worktrees/feature-branch',
+        branch: 'feature/new-thing',
+        repoId: 'repo-1',
+      );
+      when(() => mockClient.getWorktree(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(detail),
+      );
+
+      final notifier = container.read(worktreesProvider.notifier);
+      final result = await notifier.getWorktree('wt-42');
+
+      expect(result.id, 'wt-42');
+      expect(result.name, 'feature-branch');
+      expect(result.path, '/home/user/worktrees/feature-branch');
+      expect(result.branch, 'feature/new-thing');
+      expect(result.repoId, 'repo-1');
+    });
+
+    test('passes correct id to gRPC', () async {
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(ListWorktreesResponse()),
+      );
+      await container.read(worktreesProvider.future);
+
+      when(() => mockClient.getWorktree(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(WorktreeDetail(id: 'wt-99')),
+      );
+
+      final notifier = container.read(worktreesProvider.notifier);
+      await notifier.getWorktree('wt-99');
+
+      final captured = verify(() => mockClient.getWorktree(captureAny()))
+          .captured
+          .single as GetWorktreeRequest;
+      expect(captured.id, 'wt-99');
     });
   });
 }

@@ -1,3 +1,4 @@
+import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/grpc/connection_state.dart';
@@ -36,5 +37,17 @@ class IssuesNotifier extends AsyncNotifier<List<IssueInfo>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _fetchIssues());
+  }
+
+  /// Fetches a single issue by project and IID.
+  Future<IssueInfo> getIssue({
+    required String project,
+    required Int64 iid,
+  }) async {
+    final client = ref.read(gitlabServiceProvider);
+    final response = await client
+        .getIssue(GetIssueRequest(project: project, iid: iid))
+        .timeout(_rpcTimeout);
+    return response.issue;
   }
 }

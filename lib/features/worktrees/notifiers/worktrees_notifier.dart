@@ -65,6 +65,14 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     await refresh();
   }
 
+  /// Fetches a single worktree by ID.
+  Future<WorktreeDetail> getWorktree(String id) async {
+    final client = ref.read(worktreeServiceProvider);
+    return await client
+        .getWorktree(GetWorktreeRequest(id: id))
+        .timeout(_rpcTimeout);
+  }
+
   /// Removes a worktree by ID via gRPC and refreshes the list.
   Future<void> removeWorktree(String id) async {
     final client = ref.read(worktreeServiceProvider);

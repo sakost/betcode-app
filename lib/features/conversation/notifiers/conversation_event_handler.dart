@@ -15,7 +15,9 @@ import '../models/conversation_state.dart';
 mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
-    debugPrint('[Conversation] Event received: ${event.whichEvent().name} seq=${event.sequence}');
+    debugPrint(
+      '[Conversation] Event received: ${event.whichEvent().name} seq=${event.sequence}',
+    );
     final seq = event.sequence.toInt();
     final current = state.value;
 
@@ -85,14 +87,20 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   // ---------------------------------------------------------------------------
 
   /// Regex to extract agent name from Task tool description.
-  static final _agentNameRegex = RegExp(r'(?:Launch agent|agent):\s*(.+)', caseSensitive: false);
+  static final _agentNameRegex = RegExp(
+    r'(?:Launch agent|agent):\s*(.+)',
+    caseSensitive: false,
+  );
 
   /// Whether a tool name indicates an agent-spawning tool.
-  bool _isAgentTool(String toolName) =>
-      toolName == 'Task';
+  bool _isAgentTool(String toolName) => toolName == 'Task';
 
   /// Extracts agent name from tool description or input JSON, falling back to "Agent N".
-  String _extractAgentName(String description, int agentIndex, {String? input}) {
+  String _extractAgentName(
+    String description,
+    int agentIndex, {
+    String? input,
+  }) {
     // Try regex on description first.
     final match = _agentNameRegex.firstMatch(description);
     if (match != null) return match.group(1)!.trim();
@@ -102,7 +110,8 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
       try {
         final json = jsonDecode(input);
         if (json is Map<String, dynamic>) {
-          final name = _extractStringField(json, 'name') ??
+          final name =
+              _extractStringField(json, 'name') ??
               _extractStringField(json, 'description');
           if (name != null && name.isNotEmpty) return name;
         }
@@ -136,7 +145,10 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   }
 
   /// Apply agent tracking to an active state (pure function, no state mutation).
-  ConversationActive _withAgentTracking(ConversationActive active, String? parentId) {
+  ConversationActive _withAgentTracking(
+    ConversationActive active,
+    String? parentId,
+  ) {
     if (parentId == null || parentId.isEmpty) return active;
     final agents = Map<String, AgentInfo>.from(active.agents);
     final agent = agents[parentId];
@@ -200,7 +212,11 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
     });
   }
 
-  void _onToolCallStart(pb.ToolCallStart tool, int seq, String? parentToolUseId) {
+  void _onToolCallStart(
+    pb.ToolCallStart tool,
+    int seq,
+    String? parentToolUseId,
+  ) {
     _updateActive((active) {
       final messages = [
         ...active.messages,
@@ -223,7 +239,11 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
             : null;
         agents[tool.toolId] = AgentInfo(
           id: tool.toolId,
-          name: _extractAgentName(tool.description, agentIndex, input: inputJson),
+          name: _extractAgentName(
+            tool.description,
+            agentIndex,
+            input: inputJson,
+          ),
           status: AgentStatus.AGENT_STATUS_EXECUTING_TOOL,
         );
       }
@@ -276,7 +296,11 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
     });
   }
 
-  void _onPermissionRequest(pb.PermissionRequest perm, int seq, String? parentToolUseId) {
+  void _onPermissionRequest(
+    pb.PermissionRequest perm,
+    int seq,
+    String? parentToolUseId,
+  ) {
     _updateActive((active) {
       final messages = [
         ...active.messages,
@@ -297,7 +321,11 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
     });
   }
 
-  void _onUserQuestion(pb.UserQuestion question, int seq, String? parentToolUseId) {
+  void _onUserQuestion(
+    pb.UserQuestion question,
+    int seq,
+    String? parentToolUseId,
+  ) {
     _updateActive((active) {
       final messages = [
         ...active.messages,
@@ -394,10 +422,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
     _updateActive((active) {
       final messages = [
         ...active.messages,
-        ChatMessage.user(
-          content: input.content,
-          timestamp: DateTime.now(),
-        ),
+        ChatMessage.user(content: input.content, timestamp: DateTime.now()),
       ];
       return active.copyWith(messages: messages, lastSequence: seq);
     });

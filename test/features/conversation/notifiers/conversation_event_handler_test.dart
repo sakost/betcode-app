@@ -356,19 +356,13 @@ void main() {
       notifier.handleEvent(
         pb.AgentEvent(
           sequence: Int64(2),
-          toolCallResult: pb.ToolCallResult(
-            toolId: 'agent-1',
-            output: 'done',
-          ),
+          toolCallResult: pb.ToolCallResult(toolId: 'agent-1', output: 'done'),
         ),
       );
 
       final active = notifier.state.value as ConversationActive;
       expect(active.agents['agent-1']!.isComplete, true);
-      expect(
-        active.agents['agent-1']!.status,
-        AgentStatus.AGENT_STATUS_IDLE,
-      );
+      expect(active.agents['agent-1']!.status, AgentStatus.AGENT_STATUS_IDLE);
     });
 
     test('status change with parentToolUseId updates agent status', () {
@@ -632,10 +626,7 @@ void main() {
       notifier.handleEvent(
         pb.AgentEvent(
           sequence: Int64(2),
-          toolCallResult: pb.ToolCallResult(
-            toolId: 't-1',
-            output: 'contents',
-          ),
+          toolCallResult: pb.ToolCallResult(toolId: 't-1', output: 'contents'),
         ),
       );
 

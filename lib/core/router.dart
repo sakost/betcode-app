@@ -91,8 +91,8 @@ final routerProvider = Provider<GoRouter>((ref) {
   // auth or relay config changes — without recreating the GoRouter.
   final refreshNotifier = _RouterRefreshNotifier();
 
-  ref.listen(authNotifierProvider, (_, __) => refreshNotifier.notify());
-  ref.listen(relayConfigNotifierProvider, (_, __) => refreshNotifier.notify());
+  ref.listen(authNotifierProvider, (_, _) => refreshNotifier.notify());
+  ref.listen(relayConfigNotifierProvider, (_, _) => refreshNotifier.notify());
   ref.onDispose(refreshNotifier.dispose);
 
   return GoRouter(

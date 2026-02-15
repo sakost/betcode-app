@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../generated/betcode/v1/agent.pbgrpc.dart';
 import '../../generated/betcode/v1/auth.pbgrpc.dart';
+import '../../generated/betcode/v1/commands.pbgrpc.dart';
 import '../../generated/betcode/v1/config.pbgrpc.dart';
 import '../../generated/betcode/v1/gitlab.pbgrpc.dart';
 import '../../generated/betcode/v1/health.pbgrpc.dart';
@@ -96,6 +97,16 @@ final betcodeHealthServiceProvider = Provider<BetCodeHealthClient>((ref) {
 final versionServiceProvider = Provider<VersionServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
   return VersionServiceClient(
+    manager.channel,
+    interceptors: manager.interceptors,
+  );
+});
+
+/// Provides the [CommandServiceClient] for command registry, completion,
+/// service command execution, and plugin management.
+final commandServiceProvider = Provider<CommandServiceClient>((ref) {
+  final manager = ref.watch(grpcClientManagerProvider);
+  return CommandServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
   );
