@@ -832,7 +832,9 @@ void main() {
         // Start a new conversation — should work (paused was reset by cleanup).
         final newEventController = StreamController<pb.AgentEvent>();
         when(() => mockClient.converse(any())).thenAnswer((inv) {
-          (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen((_) {});
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen(
+            (_) {},
+          );
           return FakeResponseStream<pb.AgentEvent>(newEventController);
         });
 
