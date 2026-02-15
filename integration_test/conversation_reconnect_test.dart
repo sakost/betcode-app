@@ -184,7 +184,7 @@ void main() {
         expect((restored as ConversationActive).errorMessage, isNull);
         expect(restored.messages, hasLength(1));
 
-        resumeController?.close();
+        await resumeController?.close();
       },
     );
 

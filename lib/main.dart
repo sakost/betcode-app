@@ -27,16 +27,14 @@ Future<void> main() async {
   await container.read(selectedMachineIdProvider.notifier).initialize();
   debugPrint('[main] Machine selection restored');
 
-  // Eagerly load machines so auto-select can pick the sole machine before
-  // the conversation screen tries to send gRPC calls that require
-  // the x-machine-id header. Fire-and-forget — don't block app startup.
-  container
-      .read(machinesProvider.future)
-      .then(
-        (_) => debugPrint('[main] Machines loaded'),
-        onError: (Object e) =>
-            debugPrint('[main] Machines pre-load failed: $e'),
-      );
+  // Load machines and auto-select the sole machine before the app renders,
+  // so gRPC calls that require the x-machine-id header have it available.
+  try {
+    await container.read(machinesProvider.future);
+    debugPrint('[main] Machines loaded');
+  } on Exception catch (e) {
+    debugPrint('[main] Machines pre-load failed: $e');
+  }
 
   debugPrint('[main] Starting app');
   runApp(

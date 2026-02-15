@@ -80,7 +80,7 @@ void main() {
 
       var invokerCalled = false;
       late CallOptions capturedOptions;
-      interceptor.interceptUnary<String, String>(
+      unawaited(interceptor.interceptUnary<String, String>(
         testMethod(),
         'req',
         CallOptions(),
@@ -89,7 +89,7 @@ void main() {
           capturedOptions = o;
           return FakeResponseFuture.value('ok');
         },
-      );
+      ));
       await resolveMetadata(capturedOptions);
       return invokerCalled;
     }
@@ -141,7 +141,7 @@ void main() {
 
       // Fire two RPCs concurrently
       late CallOptions opts1, opts2;
-      interceptor.interceptUnary<String, String>(
+      unawaited(interceptor.interceptUnary<String, String>(
         testMethod(),
         'req1',
         CallOptions(),
@@ -149,8 +149,8 @@ void main() {
           opts1 = o;
           return FakeResponseFuture.value('ok1');
         },
-      );
-      interceptor.interceptUnary<String, String>(
+      ));
+      unawaited(interceptor.interceptUnary<String, String>(
         testMethod(),
         'req2',
         CallOptions(),
@@ -158,7 +158,7 @@ void main() {
           opts2 = o;
           return FakeResponseFuture.value('ok2');
         },
-      );
+      ));
 
       await Future.wait([resolveMetadata(opts1), resolveMetadata(opts2)]);
       expect(refreshCallCount, 1);

@@ -138,7 +138,7 @@ class SyncEngine {
     if (!_isSyncing && !_paused) {
       final status = await _connectivity.currentStatus;
       if (status == NetworkStatus.online) {
-        _drainQueue();
+        unawaited(_drainQueue());
       }
     }
   }

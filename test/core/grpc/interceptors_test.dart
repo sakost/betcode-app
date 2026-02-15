@@ -117,7 +117,7 @@ void main() {
         tokenProvider: () async => 'tok-${++n}',
       );
       late CallOptions o1, o2;
-      interceptor.interceptUnary<String, String>(
+      unawaited(interceptor.interceptUnary<String, String>(
         testMethod(),
         'r',
         CallOptions(),
@@ -125,8 +125,8 @@ void main() {
           o1 = o;
           return FakeResponseFuture.value('');
         },
-      );
-      interceptor.interceptUnary<String, String>(
+      ));
+      unawaited(interceptor.interceptUnary<String, String>(
         testMethod(),
         'r',
         CallOptions(),
@@ -134,7 +134,7 @@ void main() {
           o2 = o;
           return FakeResponseFuture.value('');
         },
-      );
+      ));
       expect((await resolveMetadata(o1))['authorization'], 'Bearer tok-1');
       expect((await resolveMetadata(o2))['authorization'], 'Bearer tok-2');
     });
