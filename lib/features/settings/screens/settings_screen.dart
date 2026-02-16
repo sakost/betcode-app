@@ -1,13 +1,12 @@
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
+import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
+import 'package:betcode_app/shared/widgets/connection_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/auth/auth.dart';
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../generated/betcode/v1/config.pb.dart';
-import '../../../shared/widgets/connection_indicator.dart';
-import '../notifiers/settings_providers.dart';
-import '../widgets/mcp_server_card.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});

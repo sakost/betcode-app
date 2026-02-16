@@ -1,9 +1,8 @@
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/features/conversation/models/input_command.dart';
+import 'package:betcode_app/features/conversation/widgets/agent_mention_overlay.dart';
+import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
 import 'package:flutter/material.dart';
-
-import '../models/conversation_state.dart';
-import '../models/input_command.dart';
-import 'agent_mention_overlay.dart';
-import 'command_palette.dart';
 
 /// The message input bar at the bottom of the conversation screen.
 ///
@@ -11,8 +10,8 @@ import 'command_palette.dart';
 /// is processing a turn. Supports slash-command palette and @-mention overlay.
 class InputBar extends StatefulWidget {
   const InputBar({
-    super.key,
     required this.onSubmit,
+    super.key,
     this.enabled = true,
     this.hintText = 'Type a message...',
     this.onCancel,
@@ -54,8 +53,9 @@ class _InputBarState extends State<InputBar> {
 
   @override
   void dispose() {
-    _controller.removeListener(_onTextChanged);
-    _controller.dispose();
+    _controller
+      ..removeListener(_onTextChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -172,8 +172,8 @@ class _InputBarState extends State<InputBar> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.attach_file),
+                const IconButton(
+                  icon: Icon(Icons.attach_file),
                   onPressed: null,
                 ),
                 Expanded(

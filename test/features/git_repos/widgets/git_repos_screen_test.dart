@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/git_repos/screens/git_repos_screen.dart';
 import 'package:betcode_app/features/git_repos/widgets/git_repo_card.dart';
 import 'package:betcode_app/features/git_repos/widgets/register_repo_dialog.dart';
-import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/git_repo_test_helpers.dart';
 
@@ -137,7 +135,7 @@ void main() {
       await t.pumpWidget(
         _app(
           GitRepoCard(
-            repo: makeTestRepo(worktreeMode: WorktreeMode.WORKTREE_MODE_GLOBAL),
+            repo: makeTestRepo(),
             onDelete: () {},
           ),
         ),

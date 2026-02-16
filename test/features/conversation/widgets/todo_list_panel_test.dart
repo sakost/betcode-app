@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -32,15 +31,15 @@ void main() {
 
     testWidgets('shows count badge with completed / total', (t) async {
       final todos = [
-        _item(id: '1', subject: 'A', status: TodoStatus.TODO_STATUS_COMPLETED),
-        _item(id: '2', subject: 'B', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(subject: 'A', status: TodoStatus.TODO_STATUS_COMPLETED),
+        _item(id: '2', subject: 'B'),
         _item(
           id: '3',
           subject: 'C',
           status: TodoStatus.TODO_STATUS_IN_PROGRESS,
         ),
         _item(id: '4', subject: 'D', status: TodoStatus.TODO_STATUS_COMPLETED),
-        _item(id: '5', subject: 'E', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(id: '5', subject: 'E'),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 
@@ -50,7 +49,7 @@ void main() {
 
     testWidgets('pending item shows unchecked checkbox icon', (t) async {
       final todos = [
-        _item(subject: 'Pending task', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(subject: 'Pending task'),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 
@@ -112,7 +111,6 @@ void main() {
         _item(
           subject: 'Fix bug',
           description: 'Detailed description of bug',
-          status: TodoStatus.TODO_STATUS_PENDING,
         ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
@@ -128,8 +126,6 @@ void main() {
       final todos = [
         _item(
           subject: 'No desc',
-          description: '',
-          status: TodoStatus.TODO_STATUS_PENDING,
         ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
@@ -144,7 +140,6 @@ void main() {
     testWidgets('multiple items rendered in order', (t) async {
       final todos = [
         _item(
-          id: '1',
           subject: 'First',
           status: TodoStatus.TODO_STATUS_COMPLETED,
         ),
@@ -156,7 +151,6 @@ void main() {
         _item(
           id: '3',
           subject: 'Third',
-          status: TodoStatus.TODO_STATUS_PENDING,
         ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
@@ -173,7 +167,7 @@ void main() {
 
     testWidgets('panel is initially collapsed', (t) async {
       final todos = [
-        _item(subject: 'Hidden item', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(subject: 'Hidden item'),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 
@@ -183,7 +177,7 @@ void main() {
 
     testWidgets('panel can be expanded and collapsed', (t) async {
       final todos = [
-        _item(subject: 'Toggle item', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(subject: 'Toggle item'),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 
@@ -226,7 +220,6 @@ void main() {
           subject: 'Fix bug',
           activeForm: 'Fixing bug',
           description: 'A real description',
-          status: TodoStatus.TODO_STATUS_PENDING,
         ),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
@@ -241,7 +234,7 @@ void main() {
 
     testWidgets('shows todos icon in header', (t) async {
       final todos = [
-        _item(subject: 'Task', status: TodoStatus.TODO_STATUS_PENDING),
+        _item(),
       ];
       await t.pumpWidget(_app(TodoListPanel(todos: todos)));
 

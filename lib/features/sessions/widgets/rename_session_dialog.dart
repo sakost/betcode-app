@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 ///
 /// Returns the trimmed new name on confirm, or `null` on cancel.
 class RenameSessionDialog extends StatefulWidget {
-  const RenameSessionDialog({super.key, required this.currentName});
+  const RenameSessionDialog({required this.currentName, super.key});
 
   /// The current session name, pre-filled in the text field.
   final String currentName;

@@ -1,6 +1,5 @@
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
 
 part 'conversation_state.freezed.dart';
 

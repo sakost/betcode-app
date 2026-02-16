@@ -1,6 +1,5 @@
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
 
 /// A collapsible card showing a tool invocation and its result.
 ///
@@ -14,9 +13,9 @@ import '../../../generated/betcode/v1/common.pb.dart';
 /// - Tapping while awaiting calls [onPermissionTap] instead of toggling
 class ToolCallCard extends StatelessWidget {
   const ToolCallCard({
-    super.key,
     required this.toolName,
     required this.description,
+    super.key,
     this.input,
     this.output,
     this.isError = false,

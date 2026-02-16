@@ -1,11 +1,10 @@
 import 'dart:convert';
 
+import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:betcode_app/core/storage/storage.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
-
-import '../../generated/betcode/v1/auth.pbgrpc.dart';
-import '../storage/storage.dart';
-import 'auth_state.dart';
 
 /// Decodes the payload of a JWT without verifying the signature.
 /// Returns null if the token is malformed.
@@ -16,11 +15,13 @@ Map<String, dynamic>? _decodeJwtPayload(String jwt) {
     final normalized = base64Url.normalize(parts[1]);
     final payload = utf8.decode(base64Url.decode(normalized));
     return jsonDecode(payload) as Map<String, dynamic>;
-  } catch (_) {
+  } on FormatException {
     return null;
   }
 }
 
+/// Manages authentication state (login, token refresh, logout) backed by
+/// [SecureStorageService] for persistence and gRPC for server-side operations.
 class AuthNotifier extends Notifier<AuthState> {
   static const _mutationTimeout = Duration(seconds: 30);
 
@@ -32,6 +33,8 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState.unauthenticated();
   }
 
+  /// Loads stored tokens from secure storage and transitions to
+  /// [AuthAuthenticated] or [AuthUnauthenticated].
   Future<void> initialize() async {
     state = const AuthState.loading();
     try {
@@ -53,11 +56,12 @@ class AuthNotifier extends Notifier<AuthState> {
       } else {
         state = const AuthState.unauthenticated();
       }
-    } catch (e) {
+    } on Exception catch (e) {
       state = AuthState.error(e.toString());
     }
   }
 
+  /// Persists the given tokens and transitions to [AuthAuthenticated].
   Future<void> setTokens({
     required String accessToken,
     required String refreshToken,
@@ -74,11 +78,14 @@ class AuthNotifier extends Notifier<AuthState> {
     );
   }
 
+  /// Clears all stored credentials and transitions to [AuthUnauthenticated].
   Future<void> logout() async {
     await _storage.clearAll();
     state = const AuthState.unauthenticated();
   }
 
+  /// Attempts to refresh the access token via the given [authClient].
+  /// Returns true on success, false on failure. Logs out on auth errors.
   Future<bool> refreshTokens(AuthServiceClient authClient) async {
     final s = state;
     if (s is! AuthAuthenticated) return false;
@@ -93,7 +100,7 @@ class AuthNotifier extends Notifier<AuthState> {
         expiresInSecs: response.expiresInSecs.toInt(),
       );
       return true;
-    } catch (e) {
+    } on Exception catch (e) {
       if (_isAuthError(e)) {
         await logout();
       }
@@ -125,19 +132,22 @@ class AuthNotifier extends Notifier<AuthState> {
           .timeout(_mutationTimeout);
       await logout();
       return true;
-    } catch (e) {
+    } on Exception {
       await logout();
       return false;
     }
   }
 
+  /// Whether the current state is [AuthAuthenticated].
   bool get isAuthenticated => state is AuthAuthenticated;
 
+  /// The current JWT access token, or null if unauthenticated.
   String? get accessToken {
     final s = state;
     return s is AuthAuthenticated ? s.accessToken : null;
   }
 
+  /// Whether the access token expires within the next 2 minutes.
   bool get isTokenExpiringSoon {
     final s = state;
     if (s is! AuthAuthenticated) return false;
@@ -145,6 +155,7 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 }
 
+/// Provides the [AuthNotifier] that manages authentication state.
 final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );

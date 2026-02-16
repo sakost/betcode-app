@@ -1,11 +1,10 @@
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/notifier_test_helpers.dart';

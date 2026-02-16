@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/sync/sync_dispatcher.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -16,6 +15,7 @@ import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
 class MockAgentServiceClient extends Mock implements AgentServiceClient {}
 
+// ignore: unreachable_from_main, used via mocktail
 class MockWorktreeServiceClient extends Mock implements WorktreeServiceClient {}
 
 class _MockResponseStream extends Mock implements ResponseStream<AgentEvent> {}
@@ -154,7 +154,7 @@ void main() {
     registerFallbackValue(_FakeCallOptions());
     registerFallbackValue(_FakeCreateWorktreeRequest());
     registerFallbackValue(_FakeRemoveWorktreeRequest());
-    registerFallbackValue(Stream<AgentRequest>.empty());
+    registerFallbackValue(const Stream<AgentRequest>.empty());
   });
 
   setUp(() {
@@ -201,7 +201,6 @@ void main() {
     test('calls converse() with stream containing AgentRequest', () async {
       final msg = UserMessage(content: 'hello');
       final item = makeQueueItem(
-        requestType: 'user_message',
         payload: Uint8List.fromList(msg.writeToBuffer()),
         idempotencyKey: 'key-user-msg',
       );
@@ -350,7 +349,6 @@ void main() {
       final payload = msg.writeToBuffer();
 
       final item = makeQueueItem(
-        requestType: 'user_message',
         payload: Uint8List.fromList(payload),
         idempotencyKey: 'unique-idem-key-42',
       );

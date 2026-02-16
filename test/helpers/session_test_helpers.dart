@@ -1,7 +1,6 @@
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
-
-import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 
 /// Creates a test [SessionSummary] with sensible defaults.
 ///

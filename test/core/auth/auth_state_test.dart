@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('AuthState', () {
@@ -34,7 +34,7 @@ void main() {
       late AuthState state;
 
       setUp(() {
-        expiresAt = DateTime(2026, 3, 1, 12, 0, 0);
+        expiresAt = DateTime(2026, 3, 1, 12);
         state = AuthState.authenticated(
           accessToken: 'access-123',
           refreshToken: 'refresh-456',
@@ -104,7 +104,7 @@ void main() {
 
       test('copyWith can replace multiple fields', () {
         final auth = state as AuthAuthenticated;
-        final newExpiry = DateTime(2026, 6, 1);
+        final newExpiry = DateTime(2026, 6);
         final copied = auth.copyWith(userId: 'new-user', expiresAt: newExpiry);
         expect(copied.accessToken, 'access-123');
         expect(copied.refreshToken, 'refresh-456');
@@ -121,7 +121,7 @@ void main() {
 
       test('stores message correctly', () {
         const state = AuthState.error('network failure');
-        final error = state as AuthError;
+        const error = state as AuthError;
         expect(error.message, 'network failure');
       });
 
@@ -157,7 +157,7 @@ void main() {
           accessToken: 'token',
           refreshToken: 'refresh',
           userId: 'uid',
-          expiresAt: DateTime(2026, 1, 1),
+          expiresAt: DateTime(2026),
         );
         expect(a, isNot(equals(b)));
       });

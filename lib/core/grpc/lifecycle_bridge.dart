@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/grpc/client_manager.dart';
 import 'package:flutter/foundation.dart';
 
-import 'client_manager.dart';
-
-/// Bridges app lifecycle events to [GrpcClientManager], adding extended
-/// background detection that tears down the gRPC channel after 5 minutes.
+/// Bridges app lifecycle events to the gRPC client manager, adding
+/// extended background detection that tears down the channel after
+/// 5 minutes.
 ///
 /// On pause, it delegates to [GrpcClientManager.pause] immediately and starts
 /// a 5-minute timer. If the timer fires before the app resumes, the channel
@@ -15,7 +15,7 @@ import 'client_manager.dart';
 /// and — if the channel was torn down — reconnects using the stored connection
 /// parameters.
 class GrpcLifecycleBridge {
-  /// Creates a [GrpcLifecycleBridge] for the given [manager].
+  /// Creates a [GrpcLifecycleBridge] for the given manager.
   GrpcLifecycleBridge(this._manager);
 
   final GrpcClientManager _manager;
@@ -65,7 +65,7 @@ class GrpcLifecycleBridge {
       '[GrpcLifecycleBridge] Tearing down channel after extended background',
     );
     _tornDown = true;
-    _manager.disconnect();
+    unawaited(_manager.disconnect());
   }
 
   void _reconnect() {
@@ -73,7 +73,11 @@ class GrpcLifecycleBridge {
     final port = _manager.port;
     if (host == null || port == null) return;
 
-    debugPrint('[GrpcLifecycleBridge] Reconnecting after extended background');
-    _manager.connect(host, port, useTls: _manager.useTls);
+    debugPrint(
+      '[GrpcLifecycleBridge] Reconnecting after extended background',
+    );
+    unawaited(
+      _manager.connect(host, port, useTls: _manager.useTls),
+    );
   }
 }

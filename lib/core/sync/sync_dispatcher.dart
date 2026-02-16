@@ -1,10 +1,9 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/storage/database.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 import 'package:grpc/grpc.dart';
-
-import '../../generated/betcode/v1/agent.pbgrpc.dart';
-import '../../generated/betcode/v1/worktree.pbgrpc.dart';
-import '../storage/database.dart';
 
 /// Routes sync queue items to the appropriate gRPC service based on
 /// [SyncQueueData.requestType].
@@ -13,6 +12,7 @@ import '../storage/database.dart';
 /// correct service client. An idempotency key is included in gRPC metadata
 /// so the server can safely deduplicate replayed requests.
 class SyncDispatcher {
+  /// Creates a [SyncDispatcher] with the given gRPC service clients.
   SyncDispatcher({
     required AgentServiceClient agentClient,
     required WorktreeServiceClient worktreeClient,
@@ -24,7 +24,7 @@ class SyncDispatcher {
 
   /// Dispatch a queued item to the appropriate gRPC service.
   ///
-  /// Throws [ArgumentError] if [item.requestType] is not recognized.
+  /// Throws [ArgumentError] if the item's `requestType` is not recognized.
   Future<void> dispatch(SyncQueueData item) async {
     final options = CallOptions(
       metadata: {'x-idempotency-key': item.idempotencyKey},
@@ -82,8 +82,7 @@ class SyncDispatcher {
     AgentRequest request,
     CallOptions options,
   ) async {
-    final controller = StreamController<AgentRequest>();
-    controller.add(request);
+    final controller = StreamController<AgentRequest>()..add(request);
     // Don't await close() — it waits for a listener to consume the done event,
     // but the stream hasn't been subscribed to yet at this point.
     unawaited(controller.close());

@@ -1,9 +1,8 @@
+import 'package:betcode_app/core/grpc/relay_reconnect_provider.dart';
+import 'package:betcode_app/core/router.dart';
+import 'package:betcode_app/shared/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'core/grpc/relay_reconnect_provider.dart';
-import 'core/router.dart';
-import 'shared/theme/theme.dart';
 
 class BetCodeApp extends ConsumerWidget {
   const BetCodeApp({super.key});
@@ -18,7 +17,6 @@ class BetCodeApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
       routerConfig: router,
     );
   }

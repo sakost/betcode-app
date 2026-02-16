@@ -1,10 +1,10 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/gitlab.pb.dart';
 
 /// Manages the list of pipelines fetched from the daemon via gRPC.
 ///
@@ -22,6 +22,8 @@ class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
     return _fetchPipelines();
   }
 
@@ -36,7 +38,7 @@ class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
   /// Re-fetches pipelines from the daemon and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchPipelines());
+    state = await AsyncValue.guard(_fetchPipelines);
   }
 
   /// Fetches a single pipeline by project and pipeline ID.

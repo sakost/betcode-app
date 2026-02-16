@@ -1,9 +1,8 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/version.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/version.pb.dart';
 
 /// Manages version and capability data fetched from the daemon via gRPC.
 ///
@@ -26,13 +25,13 @@ class VersionNotifier extends AsyncNotifier<GetVersionResponse> {
 
   Future<GetVersionResponse> _fetchVersion() async {
     final client = ref.read(versionServiceProvider);
-    return await client.getVersion(GetVersionRequest()).timeout(_rpcTimeout);
+    return client.getVersion(GetVersionRequest()).timeout(_rpcTimeout);
   }
 
   /// Re-fetches version info and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchVersion());
+    state = await AsyncValue.guard(_fetchVersion);
   }
 
   /// Negotiates capabilities with the server.
@@ -42,7 +41,7 @@ class VersionNotifier extends AsyncNotifier<GetVersionResponse> {
     List<String> requestedFeatures = const [],
   }) async {
     final client = ref.read(versionServiceProvider);
-    return await client
+    return client
         .negotiateCapabilities(
           NegotiateRequest(
             clientVersion: clientVersion,

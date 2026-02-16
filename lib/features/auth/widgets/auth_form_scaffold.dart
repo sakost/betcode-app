@@ -1,12 +1,11 @@
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../core/auth/auth.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/relay_config.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/auth.pb.dart';
 
 /// Whether the auth form is used for login or registration.
 enum AuthMode { login, register }
@@ -19,7 +18,7 @@ enum AuthMode { login, register }
 ///   - Different RPC (login vs register).
 ///   - Different button / link text.
 class AuthFormScaffold extends ConsumerStatefulWidget {
-  const AuthFormScaffold({super.key, required this.mode});
+  const AuthFormScaffold({required this.mode, super.key});
 
   final AuthMode mode;
 
@@ -90,10 +89,12 @@ class _AuthFormScaffoldState extends ConsumerState<AuthFormScaffold> {
           await ref
               .read(relayConfigNotifierProvider.notifier)
               .connectTo(relayConfig);
-        } catch (e) {
+        } on Exception catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Relay connection failed: $e')),
+              SnackBar(
+                content: Text('Relay connection failed: $e'),
+              ),
             );
           }
           return;
@@ -136,12 +137,12 @@ class _AuthFormScaffoldState extends ConsumerState<AuthFormScaffold> {
               expiresInSecs: response.expiresInSecs.toInt(),
             );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         final label = _isLogin ? 'Login' : 'Registration';
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('$label failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$label failed: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -158,7 +159,7 @@ class _AuthFormScaffoldState extends ConsumerState<AuthFormScaffold> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: Form(
@@ -193,8 +194,8 @@ class _AuthFormScaffoldState extends ConsumerState<AuthFormScaffold> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         child: TextFormField(
                           controller: _relayHostController,
@@ -215,8 +216,8 @@ class _AuthFormScaffoldState extends ConsumerState<AuthFormScaffold> {
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 8.0,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         child: TextFormField(
                           controller: _relayPortController,

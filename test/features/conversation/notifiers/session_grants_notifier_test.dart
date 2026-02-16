@@ -1,12 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/conversation/notifiers/session_grants_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/test_container.dart';
@@ -54,7 +53,7 @@ void main() {
         (_) => FakeResponseFuture.value(
           ListSessionGrantsResponse(
             grants: [
-              makeGrant('Bash', granted: true),
+              makeGrant('Bash'),
               makeGrant('Read', granted: false),
             ],
           ),
@@ -63,8 +62,7 @@ void main() {
 
       // Trigger build first, then set session ID
       await container.read(sessionGrantsProvider.future);
-      final notifier = container.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-1');
+      container.read(sessionGrantsProvider.notifier).setSessionId('sess-1');
 
       // Wait for the rebuild after setSessionId
       final result = await container.read(sessionGrantsProvider.future);
@@ -82,8 +80,7 @@ void main() {
       );
 
       await container.read(sessionGrantsProvider.future);
-      final notifier = container.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-42');
+      container.read(sessionGrantsProvider.notifier).setSessionId('sess-42');
 
       await container.read(sessionGrantsProvider.future);
 
@@ -120,7 +117,7 @@ void main() {
 
       when(() => mockClient.listSessionGrants(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
-          ListSessionGrantsResponse(grants: [makeGrant('Bash', granted: true)]),
+          ListSessionGrantsResponse(grants: [makeGrant('Bash')]),
         ),
       );
 
@@ -128,11 +125,15 @@ void main() {
         () => mockClient.setSessionGrant(any()),
       ).thenAnswer((_) => FakeResponseFuture.value(SetSessionGrantResponse()));
 
-      final notifier = container.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-1');
+      final notifier = container.read(
+        sessionGrantsProvider.notifier,
+      )..setSessionId('sess-1');
       await container.read(sessionGrantsProvider.future);
 
-      await notifier.setGrant(toolName: 'Bash', granted: true);
+      await notifier.setGrant(
+        toolName: 'Bash',
+        granted: true,
+      );
 
       final captured =
           verify(() => mockClient.setSessionGrant(captureAny())).captured.single
@@ -159,38 +160,48 @@ void main() {
         (_) => FakeResponseFuture.value(ClearSessionGrantsResponse()),
       );
 
-      final notifier = container.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-1');
+      final notifier = container.read(
+        sessionGrantsProvider.notifier,
+      )..setSessionId('sess-1');
       await container.read(sessionGrantsProvider.future);
 
       await notifier.clearGrants();
 
       final captured =
           verify(
-                () => mockClient.clearSessionGrants(captureAny()),
+                () => mockClient.clearSessionGrants(
+                  captureAny(),
+                ),
               ).captured.single
               as ClearSessionGrantsRequest;
       expect(captured.sessionId, 'sess-1');
       expect(captured.toolName, '');
 
-      // listSessionGrants called once for setSessionId rebuild, once for
-      // refresh after clearGrants
-      verify(() => mockClient.listSessionGrants(any())).called(2);
+      // listSessionGrants called once for setSessionId
+      // rebuild, once for refresh after clearGrants
+      verify(
+        () => mockClient.listSessionGrants(any()),
+      ).called(2);
     });
 
     test('passes toolName when specified', () async {
       await container.read(sessionGrantsProvider.future);
 
       when(() => mockClient.listSessionGrants(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListSessionGrantsResponse()),
+        (_) => FakeResponseFuture.value(
+          ListSessionGrantsResponse(),
+        ),
       );
 
       when(() => mockClient.clearSessionGrants(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ClearSessionGrantsResponse()),
+        (_) => FakeResponseFuture.value(
+          ClearSessionGrantsResponse(),
+        ),
       );
 
-      final notifier = container.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-1');
+      final notifier = container.read(
+        sessionGrantsProvider.notifier,
+      )..setSessionId('sess-1');
       await container.read(sessionGrantsProvider.future);
 
       await notifier.clearGrants(toolName: 'Bash');
@@ -210,7 +221,7 @@ void main() {
 
       when(
         () => failClient.listSessionGrants(any()),
-      ).thenThrow(GrpcError.unavailable('connection refused'));
+      ).thenThrow(const GrpcError.unavailable('connection refused'));
 
       final errContainer = createTestContainer(
         overrides: [agentServiceProvider.overrideWithValue(failClient)],
@@ -226,9 +237,10 @@ void main() {
         states.add(next);
       });
 
-      // Set a session ID so the notifier rebuilds and calls listSessionGrants.
-      final notifier = errContainer.read(sessionGrantsProvider.notifier);
-      notifier.setSessionId('sess-fail');
+      // Set a session ID so the notifier rebuilds.
+      errContainer
+          .read(sessionGrantsProvider.notifier)
+          .setSessionId('sess-fail');
 
       // Let microtasks settle. Riverpod 3.x retries on error, so we wait
       // for the first error state to appear.

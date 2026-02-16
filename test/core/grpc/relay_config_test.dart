@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('RelayConfig', () {
@@ -42,8 +41,8 @@ void main() {
     });
 
     test('equality works for identical configs', () {
-      const a = RelayConfig(host: 'h', port: 443, useTls: true);
-      const b = RelayConfig(host: 'h', port: 443, useTls: true);
+      const a = RelayConfig(host: 'h', port: 443);
+      const b = RelayConfig(host: 'h', port: 443);
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
     });

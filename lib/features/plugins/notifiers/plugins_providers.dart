@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/plugins/notifiers/plugins_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/commands.pb.dart';
-import 'plugins_notifier.dart';
 
 /// Provides the list of [PluginInfo] objects fetched from the daemon.
 ///

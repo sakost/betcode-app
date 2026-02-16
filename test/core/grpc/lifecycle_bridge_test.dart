@@ -1,9 +1,8 @@
-import 'package:fake_async/fake_async.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/core/grpc/client_manager.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/lifecycle_bridge.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   late GrpcClientManager manager;
@@ -38,10 +37,11 @@ void main() {
 
       fakeAsync((async) {
         bridge.onPaused();
-        async.elapse(const Duration(minutes: 5));
-        // Timer fired, disconnect() was called (unawaited).
-        // Need to flush microtasks so the async disconnect completes.
-        async.flushMicrotasks();
+        async
+          ..elapse(const Duration(minutes: 5))
+          // Timer fired, disconnect() was called (unawaited).
+          // Flush microtasks so the async disconnect completes.
+          ..flushMicrotasks();
         // Channel should be torn down
         expect(manager.channelOrNull, isNull);
         expect(manager.status, GrpcConnectionStatus.disconnected);
@@ -56,9 +56,10 @@ void main() {
         async.elapse(const Duration(minutes: 3));
         bridge.onResumed();
         // Advance well past 5 minutes from original pause
-        async.elapse(const Duration(minutes: 3));
-        async.flushMicrotasks();
-        // Channel should still be available -- timer was cancelled
+        async
+          ..elapse(const Duration(minutes: 3))
+          ..flushMicrotasks();
+        // Channel should still be available
         expect(manager.channelOrNull, isNotNull);
       });
     });
@@ -70,12 +71,13 @@ void main() {
 
       fakeAsync((async) {
         bridge.onPaused();
-        async.elapse(const Duration(minutes: 5));
-        async.flushMicrotasks();
+        async
+          ..elapse(const Duration(minutes: 5))
+          ..flushMicrotasks();
         expect(manager.status, GrpcConnectionStatus.disconnected);
 
         bridge.onResumed();
-        // connect() is called as unawaited Future, flush microtasks
+        // connect() is called as unawaited Future
         async.flushMicrotasks();
 
         // Manager should have attempted to reconnect with stored params
@@ -97,8 +99,9 @@ void main() {
 
       fakeAsync((async) {
         bridge.onPaused();
-        async.elapse(const Duration(minutes: 5));
-        async.flushMicrotasks();
+        async
+          ..elapse(const Duration(minutes: 5))
+          ..flushMicrotasks();
         expect(manager.status, GrpcConnectionStatus.disconnected);
 
         bridge.onResumed();
@@ -130,9 +133,10 @@ void main() {
         bridge.onPaused();
         async.elapse(const Duration(minutes: 2));
         bridge.dispose();
-        async.elapse(const Duration(minutes: 4));
-        async.flushMicrotasks();
-        // Channel should NOT have been torn down because bridge was disposed
+        async
+          ..elapse(const Duration(minutes: 4))
+          ..flushMicrotasks();
+        // Channel should NOT have been torn down
         expect(manager.channelOrNull, isNotNull);
       });
     });
@@ -144,18 +148,20 @@ void main() {
         // First cycle: pause then resume quickly
         bridge.onPaused();
         async.elapse(const Duration(minutes: 1));
-        bridge.onResumed();
 
         // Second cycle: pause then resume quickly
-        bridge.onPaused();
+        bridge
+          ..onResumed()
+          ..onPaused();
         async.elapse(const Duration(minutes: 1));
         bridge.onResumed();
 
         // Advance well past 5 minutes total
-        async.elapse(const Duration(minutes: 10));
-        async.flushMicrotasks();
+        async
+          ..elapse(const Duration(minutes: 10))
+          ..flushMicrotasks();
 
-        // Channel should still be alive -- each resume cancelled the timer
+        // Channel should still be alive
         expect(manager.channelOrNull, isNotNull);
       });
     });

@@ -1,6 +1,5 @@
+import 'package:betcode_app/core/grpc/relay_config.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-import '../grpc/relay_config.dart';
 
 /// Wrapper around [FlutterSecureStorage] for JWT token and relay config
 /// management.
@@ -9,6 +8,8 @@ import '../grpc/relay_config.dart';
 /// needs, keeping the raw storage keys private so callers never deal with
 /// string literals.
 class SecureStorageService {
+  /// Creates a [SecureStorageService], optionally injecting a custom [storage]
+  /// instance for testing.
   SecureStorageService({FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage();
 
@@ -23,20 +24,26 @@ class SecureStorageService {
 
   // -- Access token --------------------------------------------------------
 
+  /// Reads the stored JWT access token, or null if none exists.
   Future<String?> readToken() => _storage.read(key: _keyAccessToken);
 
+  /// Persists the JWT access [token] to secure storage.
   Future<void> writeToken(String token) =>
       _storage.write(key: _keyAccessToken, value: token);
 
+  /// Deletes the stored JWT access token.
   Future<void> deleteToken() => _storage.delete(key: _keyAccessToken);
 
   // -- Refresh token -------------------------------------------------------
 
+  /// Reads the stored refresh token, or null if none exists.
   Future<String?> readRefreshToken() => _storage.read(key: _keyRefreshToken);
 
+  /// Persists the refresh [token] to secure storage.
   Future<void> writeRefreshToken(String token) =>
       _storage.write(key: _keyRefreshToken, value: token);
 
+  /// Deletes the stored refresh token.
   Future<void> deleteRefreshToken() => _storage.delete(key: _keyRefreshToken);
 
   // -- Relay config --------------------------------------------------------
@@ -70,16 +77,20 @@ class SecureStorageService {
 
   // -- Selected machine ID -------------------------------------------------
 
+  /// Reads the persisted selected machine ID, or null if none is set.
   Future<String?> readSelectedMachineId() =>
       _storage.read(key: _keySelectedMachineId);
 
+  /// Persists the selected [machineId] so it survives app restarts.
   Future<void> writeSelectedMachineId(String machineId) =>
       _storage.write(key: _keySelectedMachineId, value: machineId);
 
+  /// Removes the persisted selected machine ID.
   Future<void> deleteSelectedMachineId() =>
       _storage.delete(key: _keySelectedMachineId);
 
   // -- Bulk operations -----------------------------------------------------
 
+  /// Deletes all entries from secure storage (used during logout).
   Future<void> clearAll() => _storage.deleteAll();
 }

@@ -1,16 +1,15 @@
 import 'dart:convert';
 
+import 'package:betcode_app/core/auth/auth_notifier.dart';
+import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:betcode_app/core/storage/secure_storage.dart';
+import 'package:betcode_app/core/storage/storage_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/auth/auth_notifier.dart';
-import 'package:betcode_app/core/auth/auth_state.dart';
-import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 
 import '../../helpers/fake_response_future.dart';
 
@@ -214,7 +213,6 @@ void main() {
           accessToken: 'new-access',
           refreshToken: 'new-refresh',
           userId: 'user-42',
-          expiresInSecs: 3600,
         );
 
         verify(() => mockStorage.writeToken('new-access')).called(1);
@@ -289,7 +287,7 @@ void main() {
       });
 
       test('returns false when token has plenty of time remaining', () async {
-        await authenticateNotifier(expiresInSecs: 3600); // 1 hour
+        await authenticateNotifier(); // 1 hour
         expect(readNotifier().isTokenExpiringSoon, isFalse);
       });
 
@@ -304,7 +302,7 @@ void main() {
       });
 
       test('returns true at exactly 1 minute remaining', () async {
-        // 119 seconds is less than 2 minutes (inMinutes truncates, so 119s = 1 minute)
+        // 119s < 2min (inMinutes truncates: 119s = 1min)
         await authenticateNotifier(expiresInSecs: 119);
         expect(readNotifier().isTokenExpiringSoon, isTrue);
       });
@@ -378,7 +376,7 @@ void main() {
 
         when(
           () => mockAuthClient.refreshToken(any()),
-        ).thenThrow(GrpcError.unauthenticated('expired'));
+        ).thenThrow(const GrpcError.unauthenticated('expired'));
 
         final result = await readNotifier().refreshTokens(mockAuthClient);
 
@@ -396,10 +394,12 @@ void main() {
 
         when(
           () => mockAuthClient.refreshToken(any()),
-        ).thenThrow(GrpcError.custom(
-          StatusCode.permissionDenied,
-          'token revoked',
-        ));
+        ).thenThrow(
+          const GrpcError.custom(
+            StatusCode.permissionDenied,
+            'token revoked',
+          ),
+        );
 
         final result = await readNotifier().refreshTokens(mockAuthClient);
 
@@ -416,7 +416,7 @@ void main() {
 
         when(
           () => mockAuthClient.refreshToken(any()),
-        ).thenThrow(GrpcError.unavailable('network disruption'));
+        ).thenThrow(const GrpcError.unavailable('network disruption'));
 
         final result = await readNotifier().refreshTokens(mockAuthClient);
 
@@ -433,7 +433,7 @@ void main() {
 
         when(
           () => mockAuthClient.refreshToken(any()),
-        ).thenThrow(GrpcError.deadlineExceeded('timeout'));
+        ).thenThrow(const GrpcError.deadlineExceeded('timeout'));
 
         final result = await readNotifier().refreshTokens(mockAuthClient);
 
@@ -533,8 +533,9 @@ void main() {
 
       test('returns false and logs out on gRPC error', () async {
         await setupRevoke(
-          stubResponse: () =>
-              FakeResponseFuture.error(GrpcError.unavailable('server down')),
+          stubResponse: () => FakeResponseFuture.error(
+            const GrpcError.unavailable('server down'),
+          ),
         );
 
         final result = await readNotifier().revokeToken(mockAuthClient);

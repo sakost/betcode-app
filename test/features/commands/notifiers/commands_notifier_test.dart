@@ -1,14 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/commands/notifiers/commands_notifier.dart';
 import 'package:betcode_app/features/commands/notifiers/commands_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/fake_response_stream.dart';
@@ -340,9 +339,10 @@ void main() {
       );
       final eventsFuture = stream.toList();
 
-      controller.add(ServiceCommandOutput(stdoutLine: 'Deploying...'));
-      controller.add(ServiceCommandOutput(stdoutLine: 'Done.'));
-      controller.add(ServiceCommandOutput(exitCode: 0));
+      controller
+        ..add(ServiceCommandOutput(stdoutLine: 'Deploying...'))
+        ..add(ServiceCommandOutput(stdoutLine: 'Done.'))
+        ..add(ServiceCommandOutput(exitCode: 0));
       unawaited(controller.close());
 
       final events = await eventsFuture;
@@ -354,9 +354,7 @@ void main() {
 
     test('passes correct command and args to gRPC', () async {
       final (:notifier, :controller) = await initForExec();
-      addTearDown(() {
-        controller.close();
-      });
+      addTearDown(() => unawaited(controller.close()));
       notifier.executeServiceCommand(
         command: 'test-cmd',
         args: ['--flag', 'value'],
@@ -373,9 +371,7 @@ void main() {
 
     test('defaults to empty args', () async {
       final (:notifier, :controller) = await initForExec();
-      addTearDown(() {
-        controller.close();
-      });
+      addTearDown(() => unawaited(controller.close()));
       notifier.executeServiceCommand(command: 'simple');
 
       final captured =
@@ -392,8 +388,9 @@ void main() {
       final stream = notifier.executeServiceCommand(command: 'fail');
       final eventsFuture = stream.toList();
 
-      controller.add(ServiceCommandOutput(stderrLine: 'Error occurred'));
-      controller.add(ServiceCommandOutput(exitCode: 1));
+      controller
+        ..add(ServiceCommandOutput(stderrLine: 'Error occurred'))
+        ..add(ServiceCommandOutput(exitCode: 1));
       unawaited(controller.close());
 
       final events = await eventsFuture;
@@ -420,7 +417,7 @@ void main() {
       final (:notifier, :controller) = await initForExec();
       final stream = notifier.executeServiceCommand(command: 'err');
 
-      controller.addError(GrpcError.unavailable('stream broken'));
+      controller.addError(const GrpcError.unavailable('stream broken'));
       unawaited(controller.close());
 
       await expectLater(stream, emitsError(isA<GrpcError>()));

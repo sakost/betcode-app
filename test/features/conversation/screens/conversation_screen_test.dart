@@ -1,18 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_notifier.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_providers.dart';
 import 'package:betcode_app/features/conversation/screens/conversation_screen.dart';
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/message_bubble.dart';
-import 'package:betcode_app/features/conversation/widgets/status_indicator.dart';
 import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart';
+import 'package:betcode_app/features/conversation/widgets/status_indicator.dart';
 import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
@@ -23,17 +18,21 @@ import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dar
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
+// ignore_for_file: prefer_mixin -- Mock is a class not a mixin
 class MockConversationNotifier extends AsyncNotifier<ConversationState>
     with Mock
     implements ConversationNotifier {
-  final ConversationState _state;
-
   MockConversationNotifier(this._state);
+  final ConversationState _state;
 
   @override
   FutureOr<ConversationState> build() => _state;
@@ -58,10 +57,10 @@ class _FakeAsyncWorktreesNotifier extends WorktreesNotifier {
   @override
   Future<List<WorktreeDetail>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () =>
           Completer<List<WorktreeDetail>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -78,8 +77,8 @@ class _FakeSessionsNotifier extends SessionsNotifier {
 const _sessionId = 'test-session-1';
 
 Widget _buildApp({
-  String? sessionId,
   required ConversationState state,
+  String? sessionId,
   MockConversationNotifier? notifier,
   List<WorktreeDetail>? worktrees,
 }) {
@@ -102,9 +101,9 @@ Widget _buildApp({
 /// Builds the app with worktrees in a specific async state (loading, error,
 /// or data). Used to test the initial conversation screen's worktree-aware UI.
 Widget _buildAppWithWorktreeState({
-  String? sessionId,
   required ConversationState state,
   required AsyncValue<List<WorktreeDetail>> worktreeState,
+  String? sessionId,
 }) {
   return ProviderScope(
     overrides: [
@@ -383,7 +382,6 @@ void main() {
             ChatMessage.agent(
               content: 'Thinking...',
               timestamp: DateTime(2024),
-              isComplete: false,
             ),
           ],
         );
@@ -442,7 +440,7 @@ void main() {
       ) async {
         final state = _activeState(
           messages: [
-            ChatMessage.permissionRequest(
+            const ChatMessage.permissionRequest(
               requestId: 'perm-1',
               toolName: 'Bash',
               description: 'Run shell command',
@@ -558,7 +556,7 @@ void main() {
       });
 
       testWidgets('input bar enabled when agent is idle', (tester) async {
-        final state = _activeState(agentStatus: AgentStatus.AGENT_STATUS_IDLE);
+        final state = _activeState();
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -625,7 +623,7 @@ void main() {
       });
 
       testWidgets('cancel button hidden when agent is idle', (tester) async {
-        final state = _activeState(agentStatus: AgentStatus.AGENT_STATUS_IDLE);
+        final state = _activeState();
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 
@@ -652,7 +650,7 @@ void main() {
         final notifier = MockConversationNotifier(
           _activeState(agentStatus: AgentStatus.AGENT_STATUS_THINKING),
         );
-        when(() => notifier.cancelTurn()).thenReturn(null);
+        when(notifier.cancelTurn).thenReturn(null);
 
         await tester.pumpWidget(
           _buildApp(
@@ -665,7 +663,7 @@ void main() {
         await tester.tap(find.byIcon(Icons.stop));
         await tester.pump();
 
-        verify(() => notifier.cancelTurn()).called(1);
+        verify(notifier.cancelTurn).called(1);
       });
     });
 
@@ -831,7 +829,7 @@ void main() {
       testWidgets('PlanModeBanner hidden when planModeActive is false', (
         tester,
       ) async {
-        final state = _activeState(planModeActive: false);
+        final state = _activeState();
         await tester.pumpWidget(_buildApp(state: state));
         await tester.pumpAndSettle();
 

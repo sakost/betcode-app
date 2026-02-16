@@ -1,14 +1,5 @@
 import 'dart:async';
 
-import 'package:fake_async/fake_async.dart';
-import 'package:fixnum/fixnum.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
-import 'package:flutter/widgets.dart' show AppLifecycleState;
-
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/lifecycle/app_lifecycle_notifier.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
@@ -16,6 +7,13 @@ import 'package:betcode_app/features/conversation/notifiers/conversation_notifie
 import 'package:betcode_app/features/conversation/notifiers/conversation_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/common.pbenum.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import 'conversation_notifier_helpers.dart';
 
@@ -36,8 +34,9 @@ void main() {
     capturedRequests = [];
 
     when(() => mockClient.converse(any())).thenAnswer((inv) {
-      final reqStream = inv.positionalArguments[0] as Stream<pb.AgentRequest>;
-      reqStream.listen(capturedRequests.add);
+      (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen(
+        capturedRequests.add,
+      );
       return FakeResponseStream<pb.AgentEvent>(eventController);
     });
 
@@ -48,7 +47,7 @@ void main() {
 
   tearDown(() {
     container.dispose();
-    if (!eventController.isClosed) eventController.close();
+    if (!eventController.isClosed) unawaited(eventController.close());
   });
 
   ConversationNotifier notifier([String? id]) {
@@ -112,7 +111,7 @@ void main() {
     test('receives SessionInfo and transitions to active', () async {
       final n = notifier();
       await goActive(n, sessionId: 'sess-assigned');
-      final s = stateVal() as ConversationActive;
+      final s = stateVal()! as ConversationActive;
       expect(s.sessionId, 'sess-assigned');
     });
 
@@ -120,7 +119,7 @@ void main() {
       final fc = ProviderContainer(
         overrides: [
           agentServiceProvider.overrideWithValue(
-            FailingConverseClient(GrpcError.unavailable('no conn')),
+            FailingConverseClient(const GrpcError.unavailable('no conn')),
           ),
         ],
       );
@@ -132,7 +131,7 @@ void main() {
 
       final s = fc.read(conversationProvider(null)).value;
       expect(s, isA<ConversationError>());
-      expect((s as ConversationError).message, contains('UNAVAILABLE'));
+      expect((s! as ConversationError).message, contains('UNAVAILABLE'));
     });
   });
 
@@ -144,10 +143,13 @@ void main() {
       n.sendMessage('Hello agent');
       await Future<void>.delayed(Duration.zero);
 
-      final active = stateVal() as ConversationActive;
+      final active = stateVal()! as ConversationActive;
       expect(active.messages, hasLength(1));
       expect(active.messages.first, isA<UserChatMessage>());
-      expect((active.messages.first as UserChatMessage).content, 'Hello agent');
+      expect(
+        (active.messages.first as UserChatMessage).content,
+        'Hello agent',
+      );
       expect(capturedRequests.last.hasMessage(), isTrue);
       expect(capturedRequests.last.message.content, 'Hello agent');
     });
@@ -182,7 +184,7 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      final active = stateVal() as ConversationActive;
+      final active = stateVal()! as ConversationActive;
       final pm = active.messages.whereType<PermissionRequestMessage>().first;
       expect(pm.decision, PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE);
 
@@ -220,7 +222,7 @@ void main() {
       n.respondToQuestion('q-1', {'choice': 'A'});
       await Future<void>.delayed(Duration.zero);
 
-      final qm = (stateVal() as ConversationActive).messages
+      final qm = (stateVal()! as ConversationActive).messages
           .whereType<UserQuestionMessage>()
           .first;
       expect(qm.answers, {'choice': 'A'});
@@ -267,14 +269,14 @@ void main() {
         final n = notifier();
         await goActive(n);
 
-        eventController.addError(GrpcError.unavailable('lost'));
+        eventController.addError(const GrpcError.unavailable('lost'));
         await Future<void>.delayed(Duration.zero);
 
         // Should still be active (attempting reconnection), not error.
         final s = stateVal();
         expect(s, isA<ConversationActive>());
         expect(
-          (s as ConversationActive).errorMessage,
+          (s! as ConversationActive).errorMessage,
           contains('Reconnecting'),
         );
       },
@@ -284,12 +286,12 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.addError(GrpcError.unauthenticated('expired'));
+      eventController.addError(const GrpcError.unauthenticated('expired'));
       await Future<void>.delayed(Duration.zero);
 
       final s = stateVal();
       expect(s, isA<ConversationError>());
-      expect((s as ConversationError).message, contains('expired'));
+      expect((s! as ConversationError).message, contains('expired'));
     });
 
     test('stream done sets idle status on active state', () async {
@@ -309,7 +311,7 @@ void main() {
       await eventController.close();
       await Future<void>.delayed(Duration.zero);
 
-      final a = stateVal() as ConversationActive;
+      final a = stateVal()! as ConversationActive;
       expect(a.agentStatus, AgentStatus.AGENT_STATUS_IDLE);
     });
   });
@@ -325,9 +327,10 @@ void main() {
 
       final lCont = ProviderContainer(
         overrides: [agentServiceProvider.overrideWithValue(lm)],
+      )..read(conversationProvider(null));
+      final n = lCont.read(
+        conversationProvider(null).notifier,
       );
-      lCont.read(conversationProvider(null));
-      final n = lCont.read(conversationProvider(null).notifier);
       await n.startConversation(workingDirectory: '/tmp');
 
       lCont.dispose();
@@ -375,7 +378,7 @@ void main() {
         );
       await Future<void>.delayed(Duration.zero);
 
-      final a = stateVal() as ConversationActive;
+      final a = stateVal()! as ConversationActive;
       expect(a.sessionId, 'sess-full');
       expect(a.agentStatus, AgentStatus.AGENT_STATUS_IDLE);
       expect(a.messages, hasLength(2));
@@ -396,7 +399,7 @@ void main() {
       int sequence = 1,
     }) {
       final n = notifier();
-      n.startConversation(workingDirectory: '/tmp');
+      unawaited(n.startConversation(workingDirectory: '/tmp'));
       async.flushMicrotasks();
 
       eventController.add(
@@ -411,7 +414,7 @@ void main() {
 
     /// Injects a transient error and flushes microtasks.
     void injectError(FakeAsync async, [GrpcError? error]) {
-      eventController.addError(error ?? GrpcError.unavailable('lost'));
+      eventController.addError(error ?? const GrpcError.unavailable('lost'));
       async.flushMicrotasks();
     }
 
@@ -429,7 +432,7 @@ void main() {
 
         verify(() => mockClient.resumeSession(any())).called(1);
 
-        resumeController.close();
+        unawaited(resumeController.close());
       });
     });
 
@@ -452,7 +455,7 @@ void main() {
         expect(capturedRequest!.sessionId, 'sess-42');
         expect(capturedRequest!.fromSequence, Int64(7));
 
-        resumeController.close();
+        unawaited(resumeController.close());
       });
     });
 
@@ -465,10 +468,12 @@ void main() {
         );
 
         final n = notifier();
-        n.startConversation(workingDirectory: '/tmp');
+        unawaited(
+          n.startConversation(workingDirectory: '/tmp'),
+        );
         async.flushMicrotasks();
 
-        // Error before SessionInfo -- no session to reconnect to.
+        // Error before SessionInfo
         injectError(async);
 
         async.elapse(const Duration(seconds: 60));
@@ -489,7 +494,7 @@ void main() {
         );
 
         startActive(async);
-        injectError(async, GrpcError.unauthenticated('expired'));
+        injectError(async, const GrpcError.unauthenticated('expired'));
 
         async.elapse(const Duration(seconds: 60));
 
@@ -504,17 +509,17 @@ void main() {
       fakeAsync((async) {
         when(
           () => mockClient.resumeSession(any()),
-        ).thenThrow(GrpcError.unavailable('still down'));
+        ).thenThrow(const GrpcError.unavailable('still down'));
 
         startActive(async);
         injectError(async);
 
-        // Advance well past all backoff durations (500ms + 1s + 3s + 10s + 30s = 44.5s).
+        // Advance well past all backoff durations.
         async.elapse(const Duration(minutes: 2));
 
         final s = stateVal();
         expect(s, isA<ConversationError>());
-        expect((s as ConversationError).message, contains('5'));
+        expect((s! as ConversationError).message, contains('5'));
       });
     });
 
@@ -538,12 +543,15 @@ void main() {
         );
         async.flushMicrotasks();
 
-        final a = stateVal() as ConversationActive;
+        final a = stateVal()! as ConversationActive;
         expect(a.messages, hasLength(1));
-        expect((a.messages.first as AgentChatMessage).content, 'Hello again');
+        expect(
+          (a.messages.first as AgentChatMessage).content,
+          'Hello again',
+        );
         expect(a.errorMessage, isNull);
 
-        resumeController.close();
+        unawaited(resumeController.close());
       });
     });
 
@@ -565,7 +573,7 @@ void main() {
         async.elapse(const Duration(milliseconds: 600));
         expect(resumeCallCount, 1);
 
-        // Send an event on the resumed stream so reconnect is considered successful.
+        // Send an event so reconnect is considered successful.
         activeResumeController!.add(
           pb.AgentEvent(
             sequence: Int64(2),
@@ -577,19 +585,20 @@ void main() {
         async.flushMicrotasks();
 
         // Second disconnect on the resumed stream.
-        activeResumeController!.addError(GrpcError.unavailable('lost again'));
-        async.flushMicrotasks();
-
-        // The second reconnection should use the first backoff delay (500ms),
-        // proving the counter was reset.
-        async.elapse(const Duration(milliseconds: 600));
+        activeResumeController!.addError(
+          const GrpcError.unavailable('lost again'),
+        );
+        // Second reconnection should use first backoff (500ms).
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(milliseconds: 600));
         expect(resumeCallCount, 2);
 
-        // State should still be active (not error), confirming counter reset.
+        // State should still be active.
         final s = stateVal();
         expect(s, isA<ConversationActive>());
 
-        activeResumeController?.close();
+        unawaited(activeResumeController?.close());
       });
     });
 
@@ -603,7 +612,7 @@ void main() {
           when(() => mockClient.resumeSession(any())).thenAnswer((_) {
             resumeCallCount++;
             return ErrorResponseStream<pb.AgentEvent>(
-              GrpcError.unavailable('dns fail'),
+              const GrpcError.unavailable('dns fail'),
             );
           });
 
@@ -611,18 +620,21 @@ void main() {
           injectError(async);
 
           // First attempt: 500ms backoff.
-          async.elapse(const Duration(milliseconds: 600));
-          async.flushMicrotasks();
+          async
+            ..elapse(const Duration(milliseconds: 600))
+            ..flushMicrotasks();
           expect(resumeCallCount, 1);
 
-          // Second attempt: 1s backoff (counter was NOT reset).
-          async.elapse(const Duration(seconds: 1));
-          async.flushMicrotasks();
+          // Second attempt: 1s backoff (counter NOT reset).
+          async
+            ..elapse(const Duration(seconds: 1))
+            ..flushMicrotasks();
           expect(resumeCallCount, 2);
 
           // Third attempt: 3s backoff.
-          async.elapse(const Duration(seconds: 3));
-          async.flushMicrotasks();
+          async
+            ..elapse(const Duration(seconds: 3))
+            ..flushMicrotasks();
           expect(resumeCallCount, 3);
         });
       },
@@ -637,7 +649,7 @@ void main() {
           when(() => mockClient.resumeSession(any())).thenAnswer((_) {
             resumeCallCount++;
             return ErrorResponseStream<pb.AgentEvent>(
-              GrpcError.unavailable('dns fail'),
+              const GrpcError.unavailable('dns fail'),
             );
           });
 
@@ -652,7 +664,7 @@ void main() {
 
           final s = stateVal();
           expect(s, isA<ConversationError>());
-          expect((s as ConversationError).message, contains('5'));
+          expect((s! as ConversationError).message, contains('5'));
         });
       },
     );
@@ -677,13 +689,18 @@ void main() {
 
         // Stream is set up but no events sent yet — error it immediately.
         // The counter should NOT have been reset.
-        activeController!.addError(GrpcError.unavailable('still failing'));
-        async.flushMicrotasks();
-
-        // Second attempt should use 1s backoff (not 500ms), proving
-        // the counter was NOT reset.
-        async.elapse(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 1, reason: 'Should not retry yet at 500ms');
+        activeController!.addError(
+          const GrpcError.unavailable('still failing'),
+        );
+        // Second attempt should use 1s backoff (not 500ms).
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(milliseconds: 600));
+        expect(
+          resumeCallCount,
+          1,
+          reason: 'Should not retry yet at 500ms',
+        );
 
         async.elapse(const Duration(milliseconds: 500));
         expect(resumeCallCount, 2, reason: 'Should retry at ~1s');
@@ -712,35 +729,49 @@ void main() {
         when(() => mockClient.resumeSession(any())).thenAnswer((_) {
           resumeCallCount++;
           return ErrorResponseStream<pb.AgentEvent>(
-            GrpcError.unavailable('dns fail'),
+            const GrpcError.unavailable('dns fail'),
           );
         });
 
         // Go active.
         c.read(conversationProvider(null));
-        final n = c.read(conversationProvider(null).notifier);
-        n.startConversation(workingDirectory: '/tmp');
+        final n = c.read(
+          conversationProvider(null).notifier,
+        );
+        unawaited(
+          n.startConversation(workingDirectory: '/tmp'),
+        );
         async.flushMicrotasks();
 
         eventController.add(
           pb.AgentEvent(
             sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-lifecycle'),
+            sessionInfo: pb.SessionInfo(
+              sessionId: 'sess-lifecycle',
+            ),
           ),
         );
         async.flushMicrotasks();
 
         // Background the app BEFORE any error occurs.
-        lifecycleNotifier(c).transition(AppLifecycleState.paused);
+        lifecycleNotifier(c).transition(
+          AppLifecycleState.paused,
+        );
         async.flushMicrotasks();
 
-        // Now inject stream error while backgrounded.
-        eventController.addError(GrpcError.unavailable('lost'));
-        async.flushMicrotasks();
-
-        // Advance past all backoff durations — no reconnect should fire.
-        async.elapse(const Duration(minutes: 2));
-        expect(resumeCallCount, 0, reason: 'No reconnect while paused');
+        // Inject stream error while backgrounded.
+        eventController.addError(
+          const GrpcError.unavailable('lost'),
+        );
+        // Advance past all backoff durations.
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(minutes: 2));
+        expect(
+          resumeCallCount,
+          0,
+          reason: 'No reconnect while paused',
+        );
 
         c.dispose();
       });
@@ -761,39 +792,48 @@ void main() {
 
         // Go active.
         c.read(conversationProvider(null));
-        final n = c.read(conversationProvider(null).notifier);
-        n.startConversation(workingDirectory: '/tmp');
+        final n = c.read(
+          conversationProvider(null).notifier,
+        );
+        unawaited(
+          n.startConversation(workingDirectory: '/tmp'),
+        );
         async.flushMicrotasks();
 
         eventController.add(
           pb.AgentEvent(
             sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-lifecycle'),
+            sessionInfo: pb.SessionInfo(
+              sessionId: 'sess-lifecycle',
+            ),
           ),
         );
         async.flushMicrotasks();
 
         // Inject error to trigger reconnection.
-        eventController.addError(GrpcError.unavailable('lost'));
+        eventController.addError(
+          const GrpcError.unavailable('lost'),
+        );
         async.flushMicrotasks();
 
         // Background the app (this should pause reconnection).
         lifecycleNotifier(c).transition(AppLifecycleState.paused);
-        async.flushMicrotasks();
-
         // Advance time — no reconnect while paused.
-        async.elapse(const Duration(seconds: 5));
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 5));
         expect(resumeCallCount, 0);
 
         // Foreground the app.
         lifecycleNotifier(c).transition(AppLifecycleState.resumed);
-        async.flushMicrotasks();
 
         // Counter should be reset; first attempt fires at 500ms.
-        async.elapse(const Duration(milliseconds: 600));
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(milliseconds: 600));
         expect(resumeCallCount, 1, reason: 'Reconnect after resume');
 
-        resumeController?.close();
+        unawaited(resumeController?.close());
         c.dispose();
       });
     });
@@ -805,40 +845,56 @@ void main() {
 
         // Go active.
         c.read(conversationProvider(null));
-        final n = c.read(conversationProvider(null).notifier);
-        n.startConversation(workingDirectory: '/tmp');
+        final n = c.read(
+          conversationProvider(null).notifier,
+        );
+        unawaited(
+          n.startConversation(workingDirectory: '/tmp'),
+        );
         async.flushMicrotasks();
 
         eventController.add(
           pb.AgentEvent(
             sequence: Int64(1),
-            sessionInfo: pb.SessionInfo(sessionId: 'sess-cleanup'),
+            sessionInfo: pb.SessionInfo(
+              sessionId: 'sess-cleanup',
+            ),
           ),
         );
         async.flushMicrotasks();
 
         // Background the app (sets _paused = true).
-        lifecycleNotifier(c).transition(AppLifecycleState.paused);
+        lifecycleNotifier(c).transition(
+          AppLifecycleState.paused,
+        );
         async.flushMicrotasks();
 
-        // Stream done while backgrounded (triggers cleanup).
-        eventController.close();
+        // Stream done while backgrounded.
+        unawaited(eventController.close());
         async.flushMicrotasks();
 
         // Foreground the app.
-        lifecycleNotifier(c).transition(AppLifecycleState.resumed);
+        lifecycleNotifier(c).transition(
+          AppLifecycleState.resumed,
+        );
         async.flushMicrotasks();
 
-        // Start a new conversation — should work (paused was reset by cleanup).
+        // Start a new conversation (paused was reset).
         final newEventController = StreamController<pb.AgentEvent>();
-        when(() => mockClient.converse(any())).thenAnswer((inv) {
-          (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen(
-            (_) {},
-          );
-          return FakeResponseStream<pb.AgentEvent>(newEventController);
-        });
+        when(() => mockClient.converse(any())).thenAnswer(
+          (inv) {
+            (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen(
+              (_) {},
+            );
+            return FakeResponseStream<pb.AgentEvent>(
+              newEventController,
+            );
+          },
+        );
 
-        n.startConversation(workingDirectory: '/tmp');
+        unawaited(
+          n.startConversation(workingDirectory: '/tmp'),
+        );
         async.flushMicrotasks();
 
         newEventController.add(
@@ -851,9 +907,9 @@ void main() {
 
         final s = c.read(conversationProvider(null)).value;
         expect(s, isA<ConversationActive>());
-        expect((s as ConversationActive).sessionId, 'sess-new');
+        expect((s! as ConversationActive).sessionId, 'sess-new');
 
-        newEventController.close();
+        unawaited(newEventController.close());
         c.dispose();
       });
     });
@@ -899,7 +955,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(stateVal(), isA<ConversationActive>());
-      expect((stateVal() as ConversationActive).sessionId, 'sess-new');
+      expect((stateVal()! as ConversationActive).sessionId, 'sess-new');
 
       await newEventController.close();
     });

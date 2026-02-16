@@ -1,8 +1,14 @@
+import 'package:flutter/foundation.dart' show immutable;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'
+    show FlutterSecureStorage;
+
 /// Configuration for connecting to a betcode-daemon relay server.
 ///
 /// Stored in [FlutterSecureStorage] and loaded at app startup.
 /// All fields are required; use [isValid] to check before connecting.
+@immutable
 class RelayConfig {
+  /// Creates a [RelayConfig] with the given [host], [port], and TLS flag.
   const RelayConfig({
     required this.host,
     required this.port,
@@ -30,8 +36,13 @@ class RelayConfig {
     );
   }
 
+  /// The relay server hostname or IP address.
   final String host;
+
+  /// The TCP port number for the relay connection.
   final int port;
+
+  /// Whether to use TLS for the gRPC channel. Defaults to true.
   final bool useTls;
 
   /// Whether this configuration is valid for establishing a connection.

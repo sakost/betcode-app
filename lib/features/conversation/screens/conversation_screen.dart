@@ -1,22 +1,23 @@
+import 'dart:async';
+
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/features/conversation/notifiers/conversation_providers.dart';
+import 'package:betcode_app/features/conversation/widgets/agent_bar.dart';
+import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
+import 'package:betcode_app/features/conversation/widgets/message_bubble.dart';
+import 'package:betcode_app/features/conversation/widgets/permission_sheet.dart';
+import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart';
+import 'package:betcode_app/features/conversation/widgets/status_indicator.dart';
+import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
+import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
+import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
+import 'package:betcode_app/features/conversation/widgets/user_question_dialog.dart';
+import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
-import '../../sessions/notifiers/sessions_providers.dart';
-import '../../worktrees/notifiers/worktrees_providers.dart';
-import '../models/conversation_state.dart';
-import '../notifiers/conversation_providers.dart';
-import '../widgets/agent_bar.dart';
-import '../widgets/input_bar.dart';
-import '../widgets/message_bubble.dart';
-import '../widgets/permission_sheet.dart';
-import '../widgets/plan_mode_banner.dart';
-import '../widgets/status_indicator.dart';
-import '../widgets/todo_list_panel.dart';
-import '../widgets/tool_call_card.dart';
-import '../widgets/usage_display.dart';
-import '../widgets/user_question_dialog.dart';
 
 class ConversationScreen extends ConsumerStatefulWidget {
   const ConversationScreen({super.key, this.sessionId, this.workingDirectory});
@@ -48,16 +49,17 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   void dispose() {
     // Close the conversation stream so the daemon session is released.
-    // This prevents stale streams from blocking subsequent resume attempts.
-    // Use bare catch: StateError (an Error, not Exception) is thrown when
-    // ref is accessed after the widget has been unmounted.
+    // This prevents stale streams from blocking subsequent resume
+    // attempts. Use Object catch: StateError (an Error, not Exception)
+    // is thrown when ref is accessed after the widget is unmounted.
     try {
       ref.read(conversationProvider(widget.sessionId).notifier).close();
-    } catch (_) {
+    } on Object catch (_) {
       // Provider might already be disposed or ref is no longer valid.
     }
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
@@ -71,16 +73,20 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final asyncState = ref.read(conversationProvider(widget.sessionId));
     if (asyncState.value is! ConversationInitial) return;
     final workingDirectory = _resolveWorkingDirectory() ?? '';
-    ref
-        .read(conversationProvider(widget.sessionId).notifier)
-        .startConversation(workingDirectory: workingDirectory);
+    unawaited(
+      ref
+          .read(conversationProvider(widget.sessionId).notifier)
+          .startConversation(workingDirectory: workingDirectory),
+    );
   }
 
   Widget? _buildBackButton() {
     final String location;
     try {
       location = GoRouterState.of(context).matchedLocation;
-    } on GoError {
+    }
+    // ignore: avoid_catching_errors, GoError is thrown by GoRouter for missing state
+    on GoError {
       return null;
     }
     if (!location.startsWith('/sessions/')) return null;
@@ -106,10 +112,12 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       if (animate) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
+        unawaited(
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          ),
         );
       } else {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -124,18 +132,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(conversationProvider(widget.sessionId));
-    // Pre-load worktrees so they're available when the user taps Start.
-    ref.watch(worktreesProvider);
-
+    // Pre-load worktrees so they're available when user taps Start.
     // Auto-scroll when new messages arrive and user hasn't scrolled up.
-    ref.listen(conversationProvider(widget.sessionId), (prev, next) {
-      if (_isUserScrolledUp) return;
-      final prevCount = _messageCount(prev?.value);
-      final nextCount = _messageCount(next.value);
-      if (nextCount > prevCount) {
-        _scrollToBottom();
-      }
-    });
+    ref
+      ..watch(worktreesProvider)
+      ..listen(
+        conversationProvider(widget.sessionId),
+        (prev, next) {
+          if (_isUserScrolledUp) return;
+          final prevCount = _messageCount(prev?.value);
+          final nextCount = _messageCount(next.value);
+          if (nextCount > prevCount) {
+            _scrollToBottom();
+          }
+        },
+      );
 
     return asyncState.when(
       loading: () => Scaffold(
@@ -183,10 +194,14 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       );
       return;
     }
-    debugPrint('[ConversationScreen] Starting with dir: $workingDirectory');
-    ref
-        .read(conversationProvider(widget.sessionId).notifier)
-        .startConversation(workingDirectory: workingDirectory);
+    debugPrint(
+      '[ConversationScreen] Starting with dir: $workingDirectory',
+    );
+    unawaited(
+      ref
+          .read(conversationProvider(widget.sessionId).notifier)
+          .startConversation(workingDirectory: workingDirectory),
+    );
   }
 
   Widget _buildInitialState() {
@@ -371,7 +386,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               actions: [
                 TextButton(
                   onPressed: () {
-                    // Dismiss by ignoring — the reconnection logic will clear it
+                    // Dismiss: reconnection logic clears it
                   },
                   child: const Text('Dismiss'),
                 ),
@@ -384,7 +399,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
             planContent: active.planContent,
           ),
 
-          // Todo list panel
+          // Task list panel
           TodoListPanel(todos: active.todos),
 
           // Agent bar

@@ -4,12 +4,13 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 /// Renders a single chat message bubble.
 ///
 /// User messages appear right-aligned with primary color background.
-/// Agent messages appear left-aligned with surface color and markdown rendering.
+/// Agent messages appear left-aligned with surface color and markdown
+/// rendering.
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
-    super.key,
     required this.content,
     required this.isUser,
+    super.key,
     this.isStreaming = false,
   });
 

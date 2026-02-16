@@ -28,7 +28,7 @@ ClientMethod<String, String> testMethod([String path = '/test/M']) =>
     ClientMethod<String, String>(
       path,
       (s) => s.codeUnits,
-      (b) => String.fromCharCodes(b),
+      String.fromCharCodes,
     );
 
 /// Resolves all metadata providers on a [CallOptions], simulating what the

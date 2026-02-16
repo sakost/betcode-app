@@ -8,17 +8,25 @@ import 'package:flutter/material.dart';
 /// Supports optional [onTap], [onLongPress], and an [isSelected] state that
 /// shows a primary-colored border.
 class TappableCard extends StatelessWidget {
+  /// Creates a [TappableCard] wrapping [child] with optional tap handlers.
   const TappableCard({
-    super.key,
     required this.child,
+    super.key,
     this.onTap,
     this.onLongPress,
     this.isSelected = false,
   });
 
+  /// The content displayed inside the card.
   final Widget child;
+
+  /// Called when the card is tapped.
   final VoidCallback? onTap;
+
+  /// Called when the card is long-pressed.
   final VoidCallback? onLongPress;
+
+  /// When true, a primary-colored border is shown around the card.
   final bool isSelected;
 
   @override

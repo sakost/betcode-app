@@ -1,15 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/sessions/notifiers/sessions_notifier.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/features/sessions/screens/sessions_screen.dart';
 import 'package:betcode_app/features/sessions/widgets/session_card.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/session_test_helpers.dart';
 
@@ -33,10 +32,10 @@ class _FakeSessionsNotifier extends SessionsNotifier {
   @override
   Future<List<SessionSummary>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () =>
           Completer<List<SessionSummary>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -69,7 +68,7 @@ void main() {
       t,
     ) async {
       final sessions = [
-        makeTestSession(id: 's-1', model: 'opus'),
+        makeTestSession(id: 's-1'),
         makeTestSession(id: 's-2', model: 'sonnet'),
         makeTestSession(id: 's-3', model: 'haiku'),
       ];
@@ -236,7 +235,7 @@ void main() {
 
     testWidgets('handles zero cost gracefully', (t) async {
       await t.pumpWidget(
-        _app(SessionCard(session: makeTestSession(totalCostUsd: 0.0))),
+        _app(SessionCard(session: makeTestSession(totalCostUsd: 0))),
       );
       await t.pumpAndSettle();
 

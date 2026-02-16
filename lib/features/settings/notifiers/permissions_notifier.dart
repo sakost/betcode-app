@@ -1,9 +1,9 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/config.pb.dart';
 
 /// Manages the permission rules fetched from the daemon via gRPC.
 ///
@@ -15,7 +15,8 @@ import '../../../generated/betcode/v1/config.pb.dart';
 class PermissionsNotifier extends AsyncNotifier<PermissionRules> {
   static const _rpcTimeout = Duration(seconds: 10);
 
-  /// The session ID to scope the permissions query. Set by the provider factory.
+  /// The session ID to scope the permissions query. Set by the
+  /// provider factory.
   late String sessionId;
 
   @override
@@ -24,12 +25,16 @@ class PermissionsNotifier extends AsyncNotifier<PermissionRules> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) {
+      throw StateError('No machine selected');
+    }
     return _fetchPermissions();
   }
 
   Future<PermissionRules> _fetchPermissions() async {
     final client = ref.read(configServiceProvider);
-    return await client
+    return client
         .getPermissions(GetPermissionsRequest(sessionId: sessionId))
         .timeout(_rpcTimeout);
   }
@@ -37,6 +42,6 @@ class PermissionsNotifier extends AsyncNotifier<PermissionRules> {
   /// Re-fetches the permissions and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchPermissions());
+    state = await AsyncValue.guard(_fetchPermissions);
   }
 }

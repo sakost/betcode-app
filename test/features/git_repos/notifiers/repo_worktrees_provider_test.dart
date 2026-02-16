@@ -1,12 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/test_container.dart';
@@ -114,14 +113,17 @@ void main() {
     test('stays in loading state when disconnected', () async {
       container = createTestContainer(
         status: GrpcConnectionStatus.disconnected,
-        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
-      );
-
-      // Read the provider - it should throw StateError when disconnected.
-      container.read(repoWorktreesProvider('repo-1'));
+        overrides: [
+          worktreeServiceProvider.overrideWithValue(
+            mockClient,
+          ),
+        ],
+      )..read(repoWorktreesProvider('repo-1'));
       await Future<void>.delayed(Duration.zero);
 
-      final state = container.read(repoWorktreesProvider('repo-1'));
+      final state = container.read(
+        repoWorktreesProvider('repo-1'),
+      );
       expect(state.hasError, isTrue);
       expect(state.error, isA<StateError>());
     });
@@ -129,13 +131,17 @@ void main() {
     test('does not call gRPC when disconnected', () async {
       container = createTestContainer(
         status: GrpcConnectionStatus.disconnected,
-        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
-      );
-
-      container.read(repoWorktreesProvider('repo-1'));
+        overrides: [
+          worktreeServiceProvider.overrideWithValue(
+            mockClient,
+          ),
+        ],
+      )..read(repoWorktreesProvider('repo-1'));
       await Future<void>.delayed(Duration.zero);
 
-      verifyNever(() => mockClient.listWorktrees(any()));
+      verifyNever(
+        () => mockClient.listWorktrees(any()),
+      );
     });
   });
 
@@ -143,15 +149,19 @@ void main() {
     test('gRPC error is captured in state', () async {
       when(() => mockClient.listWorktrees(any())).thenAnswer(
         (_) => FakeResponseFuture.error(
-          GrpcError.unavailable('connection refused'),
+          const GrpcError.unavailable(
+            'connection refused',
+          ),
         ),
       );
 
       container = createTestContainer(
-        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
-      );
-
-      container.read(repoWorktreesProvider('repo-1'));
+        overrides: [
+          worktreeServiceProvider.overrideWithValue(
+            mockClient,
+          ),
+        ],
+      )..read(repoWorktreesProvider('repo-1'));
       await Future<void>.delayed(Duration.zero);
 
       final state = container.read(repoWorktreesProvider('repo-1'));

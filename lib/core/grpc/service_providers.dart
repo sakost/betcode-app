@@ -1,16 +1,15 @@
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/gitlab.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/health.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/version.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../generated/betcode/v1/agent.pbgrpc.dart';
-import '../../generated/betcode/v1/auth.pbgrpc.dart';
-import '../../generated/betcode/v1/commands.pbgrpc.dart';
-import '../../generated/betcode/v1/config.pbgrpc.dart';
-import '../../generated/betcode/v1/gitlab.pbgrpc.dart';
-import '../../generated/betcode/v1/health.pbgrpc.dart';
-import '../../generated/betcode/v1/machine.pbgrpc.dart';
-import '../../generated/betcode/v1/version.pbgrpc.dart';
-import '../../generated/betcode/v1/git_repo.pbgrpc.dart';
-import '../../generated/betcode/v1/worktree.pbgrpc.dart';
-import 'grpc_providers.dart';
 
 /// Provides the [AgentServiceClient] for conversation streaming, session
 /// management, and input lock operations.

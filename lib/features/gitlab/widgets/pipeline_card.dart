@@ -1,17 +1,16 @@
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/widgets/icon_label_row.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/gitlab.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/widgets/icon_label_row.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [PipelineInfo] in the pipelines list.
 ///
 /// Shows status badge with color, ref branch name, SHA (truncated, monospace),
 /// source, and timestamps. Accepts an optional [onTap] callback.
 class PipelineCard extends StatelessWidget {
-  const PipelineCard({super.key, required this.pipeline, this.onTap});
+  const PipelineCard({required this.pipeline, super.key, this.onTap});
 
   final PipelineInfo pipeline;
   final VoidCallback? onTap;

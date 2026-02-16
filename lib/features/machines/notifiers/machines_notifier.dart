@@ -1,9 +1,8 @@
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/auth/auth.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/machine.pb.dart';
-import 'machines_providers.dart';
 
 /// Manages the list of machines fetched from the daemon via gRPC.
 ///

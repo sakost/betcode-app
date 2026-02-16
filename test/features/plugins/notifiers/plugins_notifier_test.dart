@@ -1,11 +1,10 @@
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/plugins/notifiers/plugins_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/plugins/notifiers/plugins_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/commands.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/notifier_test_helpers.dart';
@@ -320,7 +319,7 @@ void main() {
         );
         await container.read(pluginsProvider.future);
 
-        final enabledPlugin = makePlugin('my-plugin', enabled: true);
+        final enabledPlugin = makePlugin('my-plugin');
         when(() => mockClient.enablePlugin(any())).thenAnswer(
           (_) => FakeResponseFuture.value(
             EnablePluginResponse(plugin: enabledPlugin),
@@ -371,9 +370,10 @@ void main() {
 
   group('PluginsNotifier - disablePlugin', () {
     test(
-      'calls gRPC disablePlugin, refreshes list, and returns updated PluginInfo',
+      'calls gRPC disablePlugin, refreshes list, '
+      'and returns updated PluginInfo',
       () async {
-        final enabledPlugin = makePlugin('my-plugin', enabled: true);
+        final enabledPlugin = makePlugin('my-plugin');
         when(() => mockClient.listPlugins(any())).thenAnswer(
           (_) => FakeResponseFuture.value(
             ListPluginsResponse(plugins: [enabledPlugin]),

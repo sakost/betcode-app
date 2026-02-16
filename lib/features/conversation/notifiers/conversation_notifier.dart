@@ -1,19 +1,18 @@
 import 'dart:async';
 import 'dart:math' show min;
 
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/core/lifecycle/lifecycle.dart';
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/features/conversation/notifiers/conversation_event_handler.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
+import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
-
-import '../../../core/grpc/service_providers.dart';
-import '../../../core/lifecycle/lifecycle.dart';
-import '../../../generated/betcode/v1/agent.pb.dart' as pb;
-import '../../../generated/betcode/v1/agent.pbgrpc.dart';
-import '../../../generated/betcode/v1/common.pb.dart';
-import '../models/conversation_state.dart';
-import 'conversation_event_handler.dart';
 
 /// Manages the bidirectional gRPC streaming conversation with the Claude agent.
 ///
@@ -45,8 +44,12 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   @override
   FutureOr<ConversationState> build() {
-    ref.listen<AppLifecycleState>(appLifecycleProvider, _onLifecycleChanged);
-    ref.onDispose(_cleanup);
+    ref
+      ..listen<AppLifecycleState>(
+        appLifecycleProvider,
+        _onLifecycleChanged,
+      )
+      ..onDispose(_cleanup);
     return const ConversationState.initial();
   }
 
@@ -124,7 +127,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           lastSequence: 0,
         ),
       );
-    } catch (e) {
+    } on Exception catch (e) {
       state = AsyncData(ConversationState.error(e.toString()));
     }
   }
@@ -142,7 +145,8 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     }
 
     debugPrint(
-      '[Conversation] sendMessage: "${content.substring(0, content.length.clamp(0, 80))}"',
+      '[Conversation] sendMessage: '
+      '"${content.substring(0, content.length.clamp(0, 80))}"',
     );
 
     final userMsg = ChatMessage.user(
@@ -243,14 +247,16 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   void _handleStreamError(Object error) {
     debugPrint('[Conversation] Stream error: $error');
-    _eventSubscription?.cancel();
+    unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
 
     // Don't retry fatal errors.
     if (_isFatalError(error)) {
       _isReconnecting = false;
-      state = AsyncData(ConversationState.error('Stream error: $error'));
-      _requestController?.close();
+      state = AsyncData(
+        ConversationState.error('Stream error: $error'),
+      );
+      unawaited(_requestController?.close());
       _requestController = null;
       return;
     }
@@ -267,8 +273,10 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       _attemptReconnection(current);
     } else {
       _isReconnecting = false;
-      state = AsyncData(ConversationState.error('Stream error: $error'));
-      _requestController?.close();
+      state = AsyncData(
+        ConversationState.error('Stream error: $error'),
+      );
+      unawaited(_requestController?.close());
       _requestController = null;
     }
   }
@@ -290,7 +298,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
     if (_reconnectAttempt >= _maxReconnectAttempts) {
       _isReconnecting = false;
-      state = AsyncData(
+      state = const AsyncData(
         ConversationState.error(
           'Connection lost after $_maxReconnectAttempts reconnection attempts',
         ),
@@ -336,7 +344,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         // Don't reset _reconnectAttempt here — the stream setup is
         // non-blocking. The counter is reset in _onReconnectEvent when
         // the first successful event arrives.
-      } catch (e) {
+      } on Exception {
         // Retry on failure.
         final current = state.value;
         if (current is ConversationActive) {
@@ -406,9 +414,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   }
 
   void _cleanup() {
-    _eventSubscription?.cancel();
+    unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
-    _requestController?.close();
+    unawaited(_requestController?.close());
     _requestController = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;

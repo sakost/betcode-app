@@ -1,7 +1,6 @@
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/agent.pb.dart';
 
 /// Manages input lock requests for a conversation session.
 ///

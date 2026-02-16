@@ -1,7 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod/misc.dart' show Override;
-
 import 'package:betcode_app/core/auth/auth_notifier.dart';
 import 'package:betcode_app/core/auth/auth_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
@@ -11,8 +7,10 @@ import 'package:betcode_app/core/router.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
-
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:riverpod/misc.dart' show Override;
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -51,8 +49,8 @@ class TestConnectedRelayNotifier extends RelayConfigNotifier {
 
 /// Internal helper that builds a routed app with the given overrides.
 Widget _buildRoutedApp({
-  String? initialLocation,
   required List<Override> overrides,
+  String? initialLocation,
 }) {
   return ProviderScope(
     overrides: overrides,
@@ -78,9 +76,9 @@ Widget _buildRoutedApp({
 /// the user as logged in. Pass extra [overrides] to layer on
 /// feature-specific provider stubs.
 Widget buildAuthApp({
+  required MockSecureStorageService mockStorage,
   String? initialLocation,
   List<Override> overrides = const [],
-  required MockSecureStorageService mockStorage,
 }) {
   return _buildRoutedApp(
     initialLocation: initialLocation,
@@ -99,9 +97,9 @@ Widget buildAuthApp({
 /// default [AuthNotifier] returns [AuthUnauthenticated] and the router
 /// redirects to `/login`. Pass extra [overrides] as needed.
 Widget buildUnauthApp({
+  required MockSecureStorageService mockStorage,
   String? initialLocation,
   List<Override> overrides = const [],
-  required MockSecureStorageService mockStorage,
 }) {
   return _buildRoutedApp(
     initialLocation: initialLocation,

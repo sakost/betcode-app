@@ -1,13 +1,12 @@
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
-import '../../../shared/theme/app_colors.dart';
 
 /// Displays the current agent status as a colored dot with label.
 ///
 /// Maps [AgentStatus] proto enum values to visual indicators.
 class StatusIndicator extends StatelessWidget {
-  const StatusIndicator({super.key, required this.status});
+  const StatusIndicator({required this.status, super.key});
 
   final AgentStatus status;
 

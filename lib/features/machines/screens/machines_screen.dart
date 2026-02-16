@@ -1,10 +1,9 @@
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/widgets/machine_card.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
+import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/machine.pb.dart';
-import '../../../shared/widgets/async_list_scaffold.dart';
-import '../notifiers/machines_providers.dart';
-import '../widgets/machine_card.dart';
 
 class MachinesScreen extends ConsumerWidget {
   const MachinesScreen({super.key});

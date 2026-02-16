@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/widgets/agent_mention_overlay.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Widget _app(Widget child) => MaterialApp(
   home: Scaffold(body: SizedBox(height: 600, width: 400, child: child)),

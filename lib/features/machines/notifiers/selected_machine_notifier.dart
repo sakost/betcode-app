@@ -1,6 +1,5 @@
+import 'package:betcode_app/core/storage/storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/storage/storage.dart';
 
 /// Tracks the currently selected machine ID.
 ///

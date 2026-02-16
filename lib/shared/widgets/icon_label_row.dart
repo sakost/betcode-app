@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 /// `onSurfaceVariant`. Used for metadata rows in card widgets (e.g. author,
 /// source, branch info).
 class IconLabelRow extends StatelessWidget {
+  /// Creates an [IconLabelRow] with the given [icon] and [label].
   const IconLabelRow({
-    super.key,
     required this.icon,
     required this.label,
+    super.key,
     this.expanded = false,
   });
 

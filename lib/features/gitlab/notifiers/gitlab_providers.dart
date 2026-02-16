@@ -1,9 +1,8 @@
+import 'package:betcode_app/features/gitlab/notifiers/issues_notifier.dart';
+import 'package:betcode_app/features/gitlab/notifiers/merge_requests_notifier.dart';
+import 'package:betcode_app/features/gitlab/notifiers/pipelines_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/gitlab.pb.dart';
-import 'issues_notifier.dart';
-import 'merge_requests_notifier.dart';
-import 'pipelines_notifier.dart';
 
 /// Provides the list of [PipelineInfo] objects fetched from the daemon.
 ///

@@ -1,13 +1,12 @@
+import 'package:betcode_app/features/conversation/models/input_command.dart';
 import 'package:flutter/material.dart';
-
-import '../models/input_command.dart';
 
 /// Overlay that shows filtered slash commands above the input bar.
 class CommandPalette extends StatelessWidget {
   const CommandPalette({
-    super.key,
     required this.query,
     required this.onCommandSelected,
+    super.key,
   });
 
   final String query;

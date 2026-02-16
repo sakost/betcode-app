@@ -1,13 +1,12 @@
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
+import 'package:betcode_app/features/git_repos/widgets/git_repo_card.dart';
+import 'package:betcode_app/features/git_repos/widgets/register_repo_dialog.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
+import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
+import 'package:betcode_app/shared/widgets/confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../generated/betcode/v1/git_repo.pb.dart';
-import '../../../shared/widgets/async_list_scaffold.dart';
-import '../../../shared/widgets/confirm_dialog.dart';
-import '../notifiers/git_repos_providers.dart';
-import '../widgets/git_repo_card.dart';
-import '../widgets/register_repo_dialog.dart';
 
 class GitReposScreen extends ConsumerWidget {
   const GitReposScreen({super.key});
@@ -59,9 +58,11 @@ class GitReposScreen extends ConsumerWidget {
 
             setupScript: result.setupScript,
           );
-    } catch (e) {
+    } on Exception catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Failed to register repository: $e')),
+        SnackBar(
+          content: Text('Failed to register repository: $e'),
+        ),
       );
     }
   }
@@ -82,9 +83,11 @@ class GitReposScreen extends ConsumerWidget {
     if (confirmed != true) return;
     try {
       await ref.read(gitReposProvider.notifier).unregisterRepo(id);
-    } catch (e) {
+    } on Exception catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Failed to unregister repository: $e')),
+        SnackBar(
+          content: Text('Failed to unregister repository: $e'),
+        ),
       );
     }
   }

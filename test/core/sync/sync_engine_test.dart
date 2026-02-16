@@ -1,15 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:drift/drift.dart' hide isNull, isNotNull;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/core/sync/connectivity.dart';
 import 'package:betcode_app/core/sync/sync_engine.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import 'sync_engine_helpers.dart';
 
@@ -103,7 +102,8 @@ void main() {
     test('returns a valid UUIDv7 format', () {
       final key = engine.generateIdempotencyKey();
       final re = RegExp(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}'
+        r'-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
       );
       expect(key, matches(re));
     });
@@ -496,8 +496,9 @@ void main() {
     });
 
     test('resume() triggers drain when online', () async {
-      engine.start();
-      engine.pause();
+      engine
+        ..start()
+        ..pause();
 
       // While paused, connectivity is online.
       fakeConnectivity.emit(NetworkStatus.online);
@@ -515,9 +516,10 @@ void main() {
     });
 
     test('drain timer does not fire while paused', () async {
-      engine.start();
       // Pause first.
-      engine.pause();
+      engine
+        ..start()
+        ..pause();
 
       // Then trigger connectivity online event.
       fakeConnectivity.emit(NetworkStatus.online);
@@ -534,8 +536,9 @@ void main() {
       registerFallbackValue(FakeSyncQueueCompanion());
       wireUpInsertChain(mockDb: mockDb, mockTable: mockTable);
 
-      engine.start();
-      engine.pause();
+      engine
+        ..start()
+        ..pause();
 
       // Enqueue while paused and online.
       await engine.enqueue(
@@ -592,8 +595,8 @@ void main() {
       // The select mock returns items; the engine should process them.
       // We test that select is called with orderBy (already wired).
       final items = [
-        makeItem(id: 1, priority: 1, sequence: 0),
-        makeItem(id: 2, priority: 4, sequence: 1),
+        makeItem(priority: 1),
+        makeItem(id: 2, sequence: 1),
       ];
 
       // The first select call (from _emitStatus) returns empty,
@@ -652,7 +655,7 @@ void main() {
     }
 
     test('drain updates status from pending to sent', () async {
-      final writes = await runDrainWith([makeItem(id: 1)]);
+      final writes = await runDrainWith([makeItem()]);
 
       expect(writes.length, greaterThanOrEqualTo(2));
       expect(writes[0].status.value, 'sending');
@@ -661,7 +664,7 @@ void main() {
 
     test('drain handles errors and increments retryCount', () async {
       final writes = await runDrainWith([
-        makeItem(id: 1, retryCount: 0),
+        makeItem(),
       ], failOnUpdateCall: 2);
 
       expect(writes.length, greaterThanOrEqualTo(2));
@@ -672,7 +675,7 @@ void main() {
 
     test('drain sets status to failed after max retries', () async {
       final writes = await runDrainWith([
-        makeItem(id: 1, retryCount: 4),
+        makeItem(retryCount: 4),
       ], failOnUpdateCall: 2);
 
       expect(writes.length, greaterThanOrEqualTo(2));
@@ -708,7 +711,7 @@ void main() {
     test('pendingCount queries the database', () async {
       when(
         () => mockSelect.get(),
-      ).thenAnswer((_) async => [makeItem(id: 1), makeItem(id: 2)]);
+      ).thenAnswer((_) async => [makeItem(), makeItem(id: 2)]);
 
       final count = await engine.pendingCount();
       expect(count, 2);

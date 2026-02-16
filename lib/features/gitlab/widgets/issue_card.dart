@@ -1,17 +1,17 @@
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/widgets/icon_label_row.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/gitlab.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/widgets/icon_label_row.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [IssueInfo] in the issues list.
 ///
-/// Shows title (bold), IID (#123 format), state badge, author, labels (chips),
-/// and confidential indicator (lock icon). Accepts an optional [onTap] callback.
+/// Shows title (bold), IID (#123 format), state badge, author,
+/// labels (chips), and confidential indicator (lock icon).
+/// Accepts an optional [onTap] callback.
 class IssueCard extends StatelessWidget {
-  const IssueCard({super.key, required this.issue, this.onTap});
+  const IssueCard({required this.issue, super.key, this.onTap});
 
   final IssueInfo issue;
   final VoidCallback? onTap;

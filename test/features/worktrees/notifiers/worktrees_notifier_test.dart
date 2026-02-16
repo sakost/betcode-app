@@ -1,13 +1,10 @@
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
-import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/notifier_test_helpers.dart';
@@ -18,12 +15,6 @@ import '../../../helpers/test_container.dart';
 // ---------------------------------------------------------------------------
 
 class MockWorktreeServiceClient extends Mock implements WorktreeServiceClient {}
-
-/// A fake notifier that returns a pre-set machine ID without secure storage.
-class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
-  @override
-  String? build() => 'machine-1';
-}
 
 /// A fake client whose [listWorktrees] always throws [GrpcError].
 class _FailingWorktreeClient extends Fake implements WorktreeServiceClient {
@@ -60,9 +51,6 @@ void main() {
     container = createTestContainer(
       overrides: [
         worktreeServiceProvider.overrideWithValue(mockClient),
-        selectedMachineIdProvider.overrideWith(
-          _FakeSelectedMachineNotifier.new,
-        ),
       ],
     );
   });
@@ -161,7 +149,6 @@ void main() {
     provider: worktreesProvider,
     errorOverrides: (error) => [
       worktreeServiceProvider.overrideWithValue(_FailingWorktreeClient(error)),
-      selectedMachineIdProvider.overrideWith(_FakeSelectedMachineNotifier.new),
     ],
   );
 

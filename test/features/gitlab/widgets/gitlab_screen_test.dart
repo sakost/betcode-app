@@ -1,10 +1,5 @@
 import 'dart:async';
 
-import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/gitlab/notifiers/gitlab_providers.dart';
 import 'package:betcode_app/features/gitlab/notifiers/issues_notifier.dart';
 import 'package:betcode_app/features/gitlab/notifiers/merge_requests_notifier.dart';
@@ -15,6 +10,10 @@ import 'package:betcode_app/features/gitlab/widgets/merge_request_card.dart';
 import 'package:betcode_app/features/gitlab/widgets/pipeline_card.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,9 +39,9 @@ class _FakePipelinesNotifier extends PipelinesNotifier {
   @override
   Future<List<PipelineInfo>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<PipelineInfo>>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -55,9 +54,9 @@ class _FakeMergeRequestsNotifier extends MergeRequestsNotifier {
   @override
   Future<List<MergeRequestInfo>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<MergeRequestInfo>>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -70,9 +69,9 @@ class _FakeIssuesNotifier extends IssuesNotifier {
   @override
   Future<List<IssueInfo>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<IssueInfo>>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -81,8 +80,9 @@ class _FakeIssuesNotifier extends IssuesNotifier {
 // Default overrides helper
 // ---------------------------------------------------------------------------
 
-/// Creates a [ProviderScope] with the given notifier overrides wrapping
-/// [child]. Defaults to loading state for all three providers.
+/// Creates a [ProviderScope] with the given notifier
+/// overrides. Defaults to loading state for all three
+/// providers.
 Widget _scopedScreen({
   AsyncValue<List<PipelineInfo>> pipelinesState = const AsyncLoading(),
   AsyncValue<List<MergeRequestInfo>> mergeRequestsState = const AsyncLoading(),

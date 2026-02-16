@@ -1,13 +1,12 @@
+import 'package:betcode_app/features/settings/notifiers/health_notifier.dart';
+import 'package:betcode_app/features/settings/notifiers/mcp_servers_notifier.dart';
+import 'package:betcode_app/features/settings/notifiers/permissions_notifier.dart';
+import 'package:betcode_app/features/settings/notifiers/settings_notifier.dart';
+import 'package:betcode_app/features/settings/notifiers/version_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/health.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/version.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/config.pb.dart';
-import '../../../generated/betcode/v1/health.pb.dart';
-import '../../../generated/betcode/v1/version.pb.dart';
-import 'health_notifier.dart';
-import 'mcp_servers_notifier.dart';
-import 'permissions_notifier.dart';
-import 'settings_notifier.dart';
-import 'version_notifier.dart';
 
 /// Provides the [Settings] fetched from the daemon.
 final settingsProvider = AsyncNotifierProvider<SettingsNotifier, Settings>(
@@ -20,13 +19,14 @@ final mcpServersProvider =
       McpServersNotifier.new,
     );
 
-/// Provides the [PermissionRules] fetched from the daemon, scoped by session ID.
+/// Provides the [PermissionRules] fetched from the daemon,
+/// scoped by session ID.
+// ignore: specify_nonobvious_property_types, the family provider type is not publicly exported
 final permissionsProvider =
     AsyncNotifierProvider.family<PermissionsNotifier, PermissionRules, String>((
       sessionId,
     ) {
-      final notifier = PermissionsNotifier();
-      notifier.sessionId = sessionId;
+      final notifier = PermissionsNotifier()..sessionId = sessionId;
       return notifier;
     });
 

@@ -1,12 +1,11 @@
+import 'package:betcode_app/features/gitlab/notifiers/gitlab_providers.dart';
+import 'package:betcode_app/features/gitlab/widgets/issue_card.dart';
+import 'package:betcode_app/features/gitlab/widgets/merge_request_card.dart';
+import 'package:betcode_app/features/gitlab/widgets/pipeline_card.dart';
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
+import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/gitlab.pb.dart';
-import '../../../shared/widgets/async_list_scaffold.dart';
-import '../notifiers/gitlab_providers.dart';
-import '../widgets/issue_card.dart';
-import '../widgets/merge_request_card.dart';
-import '../widgets/pipeline_card.dart';
 
 class GitLabScreen extends ConsumerWidget {
   const GitLabScreen({super.key});

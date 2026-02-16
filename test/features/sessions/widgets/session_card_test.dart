@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/sessions/widgets/session_card.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/session_test_helpers.dart';
 
@@ -28,7 +27,7 @@ void main() {
       await t.pumpWidget(
         _app(
           SessionCard(
-            session: makeTestSession(name: '', lastMessagePreview: 'Fix bug'),
+            session: makeTestSession(lastMessagePreview: 'Fix bug'),
           ),
         ),
       );
@@ -44,7 +43,6 @@ void main() {
         _app(
           SessionCard(
             session: makeTestSession(
-              name: '',
               lastMessagePreview: '',
               model: 'sonnet',
             ),
@@ -61,7 +59,6 @@ void main() {
         _app(
           SessionCard(
             session: makeTestSession(
-              name: '',
               lastMessagePreview: '',
               model: '',
             ),

@@ -1,8 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/client_manager.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/relay_config.dart';
@@ -10,6 +5,10 @@ import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/features/auth/screens/login_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockSecureStorageService extends Mock implements SecureStorageService {}
 
@@ -55,7 +54,7 @@ Widget _buildLoginApp({
       relayConfigNotifierProvider.overrideWith(() => testNotifier),
       relayDefaultsProvider.overrideWithValue(relayDefaults),
     ],
-    child: MaterialApp(home: const LoginScreen()),
+    child: const MaterialApp(home: LoginScreen()),
   );
 }
 
@@ -160,7 +159,6 @@ void main() {
       const existingConfig = RelayConfig(
         host: 'relay.test',
         port: 443,
-        useTls: true,
       );
       final testNotifier = TestRelayConfigNotifier(
         initialConfig: existingConfig,

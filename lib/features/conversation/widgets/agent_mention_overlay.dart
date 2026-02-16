@@ -1,14 +1,13 @@
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:flutter/material.dart';
-
-import '../models/conversation_state.dart';
 
 /// Overlay that shows filtered agent mentions above the input bar.
 class AgentMentionOverlay extends StatelessWidget {
   const AgentMentionOverlay({
-    super.key,
     required this.agents,
     required this.query,
     required this.onAgentSelected,
+    super.key,
   });
 
   final Map<String, AgentInfo> agents;

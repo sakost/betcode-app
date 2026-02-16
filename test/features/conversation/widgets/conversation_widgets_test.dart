@@ -1,6 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/widgets/agent_bar.dart';
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
@@ -12,11 +9,16 @@ import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
 import 'package:betcode_app/features/conversation/widgets/user_question_dialog.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
-/// Wraps [onPressed] in a minimal MaterialApp -> Scaffold -> Builder -> ElevatedButton('Open')
-/// tree, so dialog-opening tests only need to provide the dialog call.
+/// Wraps [onPressed] in a minimal MaterialApp ->
+/// Scaffold -> Builder -> ElevatedButton('Open')
+/// tree, so dialog-opening tests only need to provide
+/// the dialog call.
 Widget _dialogApp(void Function(BuildContext) onPressed) {
   return MaterialApp(
     home: Scaffold(
@@ -190,7 +192,7 @@ void main() {
     testWidgets('allowed decision shows Allowed badge', (t) async {
       await t.pumpWidget(
         _app(
-          ToolCallCard(
+          const ToolCallCard(
             toolName: 'Bash',
             description: 'Run cmd',
             isPermission: true,
@@ -204,7 +206,7 @@ void main() {
     testWidgets('allow session shows Allowed badge', (t) async {
       await t.pumpWidget(
         _app(
-          ToolCallCard(
+          const ToolCallCard(
             toolName: 'Bash',
             description: 'Run cmd',
             isPermission: true,
@@ -218,7 +220,7 @@ void main() {
     testWidgets('deny decision shows Denied badge', (t) async {
       await t.pumpWidget(
         _app(
-          ToolCallCard(
+          const ToolCallCard(
             toolName: 'Bash',
             description: 'Run cmd',
             isPermission: true,
@@ -230,7 +232,7 @@ void main() {
     });
 
     testWidgets('onPermissionTap called when tapping awaiting card', (t) async {
-      bool tapped = false;
+      var tapped = false;
       await t.pumpWidget(
         _app(
           ToolCallCard(
@@ -298,7 +300,9 @@ void main() {
     }
     testWidgets('unknown status shows "Unknown"', (t) async {
       await t.pumpWidget(
-        _app(StatusIndicator(status: AgentStatus.AGENT_STATUS_UNSPECIFIED)),
+        _app(
+          const StatusIndicator(status: AgentStatus.AGENT_STATUS_UNSPECIFIED),
+        ),
       );
       expect(find.text('Unknown'), findsOneWidget);
     });
@@ -338,7 +342,7 @@ void main() {
           const UsageDisplay(inputTokens: 0, outputTokens: 0, costUsd: 0.1234),
         ),
       );
-      expect(find.text('\$0.1234'), findsOneWidget);
+      expect(find.text(r'$0.1234'), findsOneWidget);
     });
     testWidgets('model shown/hidden', (t) async {
       await t.pumpWidget(
@@ -413,7 +417,7 @@ void main() {
       expect(t.widget<IconButton>(sendFinder).onPressed, isNull);
     });
     testWidgets('shows stop button when disabled with onCancel', (t) async {
-      bool cancelled = false;
+      var cancelled = false;
       await t.pumpWidget(
         _app(
           InputBar(
@@ -432,7 +436,7 @@ void main() {
     });
     testWidgets('shows send button when enabled even with onCancel', (t) async {
       await t.pumpWidget(
-        _app(InputBar(onSubmit: (_) {}, enabled: true, onCancel: () {})),
+        _app(InputBar(onSubmit: (_) {}, onCancel: () {})),
       );
       expect(find.byIcon(Icons.send), findsOneWidget);
       expect(find.byIcon(Icons.stop), findsNothing);
@@ -644,7 +648,6 @@ void main() {
         name: 'tester',
         status: AgentStatus.AGENT_STATUS_IDLE,
         isComplete: true,
-        messageCount: 0,
       ),
     };
 

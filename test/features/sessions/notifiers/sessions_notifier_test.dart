@@ -1,14 +1,13 @@
-import 'package:drift/drift.dart' show Batch;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:drift/drift.dart' show Batch;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/notifier_test_helpers.dart';
@@ -248,8 +247,7 @@ void main() {
       ).thenAnswer((_) => FakeResponseFuture.value(RenameSessionResponse()));
 
       // After rename, refresh returns session with new name
-      final renamedSession = makeSession('s-1');
-      renamedSession.name = 'Renamed';
+      final renamedSession = makeSession('s-1')..name = 'Renamed';
       when(() => mockClient.listSessions(any())).thenAnswer(
         (_) => FakeResponseFuture.value(
           ListSessionsResponse(sessions: [renamedSession]),

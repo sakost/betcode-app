@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/conversation/notifiers/session_grants_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/agent.pb.dart';
-import 'session_grants_notifier.dart';
 
 /// Provides the list of [SessionGrantEntry] for the active session.
 ///

@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:drift/drift.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/sync/connectivity.dart';
 import 'package:betcode_app/core/sync/sync_dispatcher.dart';
+import 'package:connectivity_plus/connectivity_plus.dart' show Connectivity;
+import 'package:drift/drift.dart';
+import 'package:mocktail/mocktail.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -20,7 +20,7 @@ class MockSyncQueueTable extends Mock implements $SyncQueueTable {}
 class MockDeleteStatement extends Mock
     implements DeleteStatement<$SyncQueueTable, SyncQueueData> {}
 
-// ignore: subtype_of_sealed_class
+// ignore: subtype_of_sealed_class, mocking drift sealed class for tests
 class MockSelectStatement extends Mock
     implements SimpleSelectStatement<$SyncQueueTable, SyncQueueData> {}
 
@@ -40,7 +40,8 @@ class FakeSyncQueueCompanion extends Fake implements SyncQueueCompanion {}
 /// Fallback value for [SyncQueueData] so mocktail can match `any()`.
 class FakeSyncQueueData extends Fake implements SyncQueueData {}
 
-/// Fallback value for [Insertable<SyncQueueData>] so mocktail can match `any()`.
+/// Fallback value for `Insertable<SyncQueueData>` so
+/// mocktail can match `any()`.
 class FakeInsertable extends Fake implements Insertable<SyncQueueData> {}
 
 /// A controllable connectivity monitor for tests.
@@ -75,7 +76,7 @@ class FakeConnectivityMonitor extends ConnectivityMonitor {
 
   @override
   void dispose() {
-    _controller.close();
+    unawaited(_controller.close());
   }
 }
 
@@ -113,7 +114,7 @@ MockSelectStatement wireUpSelectChain({
   when(() => mockDb.select(mockTable)).thenReturn(mockSelect);
   when(() => mockSelect.where(any())).thenAnswer((_) {});
   when(() => mockSelect.orderBy(any())).thenAnswer((_) {});
-  when(() => mockSelect.get()).thenAnswer((_) async => results);
+  when(mockSelect.get).thenAnswer((_) async => results);
   return mockSelect;
 }
 

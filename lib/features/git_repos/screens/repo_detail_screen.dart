@@ -1,16 +1,15 @@
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
+import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
+import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
+import 'package:betcode_app/shared/widgets/empty_state.dart';
+import 'package:betcode_app/shared/widgets/error_display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/error_display.dart';
-import '../../worktrees/widgets/create_worktree_dialog.dart';
-import '../../worktrees/widgets/worktree_card.dart';
-import '../notifiers/git_repos_providers.dart';
-import '../notifiers/repo_worktrees_provider.dart';
-
 class RepoDetailScreen extends ConsumerWidget {
-  const RepoDetailScreen({super.key, required this.repoId});
+  const RepoDetailScreen({required this.repoId, super.key});
 
   final String repoId;
 
@@ -83,7 +82,7 @@ class RepoDetailScreen extends ConsumerWidget {
             branch: result.branch,
             setupScript: result.setupScript,
           );
-    } catch (e) {
+    } on Exception catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Failed to create worktree: $e')),
       );

@@ -1,12 +1,11 @@
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
+import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
+import 'package:betcode_app/shared/widgets/confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/worktree.pb.dart';
-import '../../../shared/widgets/async_list_scaffold.dart';
-import '../../../shared/widgets/confirm_dialog.dart';
-import '../notifiers/worktrees_providers.dart';
-import '../widgets/create_worktree_dialog.dart';
-import '../widgets/worktree_card.dart';
 
 class WorktreesScreen extends ConsumerWidget {
   const WorktreesScreen({super.key});
@@ -52,7 +51,7 @@ class WorktreesScreen extends ConsumerWidget {
             branch: result.branch,
             setupScript: result.setupScript,
           );
-    } catch (e) {
+    } on Exception catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Failed to create worktree: $e')),
       );
@@ -74,7 +73,7 @@ class WorktreesScreen extends ConsumerWidget {
     if (confirmed != true) return;
     try {
       await ref.read(worktreesProvider.notifier).removeWorktree(id);
-    } catch (e) {
+    } on Exception catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Failed to remove worktree: $e')),
       );

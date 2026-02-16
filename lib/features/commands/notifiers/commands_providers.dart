@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/commands/notifiers/commands_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/commands.pb.dart';
-import 'commands_notifier.dart';
 
 /// Provides the list of [CommandEntry] objects fetched from the daemon.
 ///

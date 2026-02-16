@@ -1,11 +1,10 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/grpc/client_manager.dart';
+import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
-
-import 'package:betcode_app/core/grpc/client_manager.dart';
-import 'package:betcode_app/core/grpc/connection_state.dart';
 
 void main() {
   late GrpcClientManager manager;
@@ -163,7 +162,7 @@ void main() {
 
       // After dispose, adding listeners should get done event.
       final completer = Completer<void>();
-      manager.statusStream.listen((_) {}, onDone: () => completer.complete());
+      manager.statusStream.listen((_) {}, onDone: completer.complete);
       await completer.future.timeout(const Duration(seconds: 1));
 
       // Re-create to avoid double-dispose in tearDown.
@@ -176,7 +175,7 @@ void main() {
       final completer = Completer<void>();
       manager.connectionInfoStream.listen(
         (_) {},
-        onDone: () => completer.complete(),
+        onDone: completer.complete,
       );
       await completer.future.timeout(const Duration(seconds: 1));
 
@@ -248,7 +247,7 @@ void main() {
           healthCheckCalled = true;
         },
       );
-      addTearDown(() => mgr.dispose());
+      addTearDown(mgr.dispose);
 
       await mgr.connect('localhost', 50051);
 
@@ -263,7 +262,7 @@ void main() {
           // Successful health check.
         },
       );
-      addTearDown(() => mgr.dispose());
+      addTearDown(mgr.dispose);
       mgr.statusStream.listen(statuses.add);
 
       await mgr.connect('localhost', 50051);
@@ -278,10 +277,10 @@ void main() {
       () async {
         final mgr = GrpcClientManager(
           healthCheckFn: (channel) async {
-            throw GrpcError.unavailable('daemon not ready');
+            throw const GrpcError.unavailable('daemon not ready');
           },
         );
-        addTearDown(() => mgr.dispose());
+        addTearDown(mgr.dispose);
 
         await mgr.connect('localhost', 50051);
 
@@ -292,7 +291,7 @@ void main() {
 
     test('connect succeeds without healthCheckFn (backward compat)', () async {
       final mgr = GrpcClientManager();
-      addTearDown(() => mgr.dispose());
+      addTearDown(mgr.dispose);
 
       await mgr.connect('localhost', 50051);
 
@@ -306,7 +305,7 @@ void main() {
           receivedChannel = channel;
         },
       );
-      addTearDown(() => mgr.dispose());
+      addTearDown(mgr.dispose);
 
       await mgr.connect('localhost', 50051);
 
@@ -347,7 +346,7 @@ void main() {
     test('equality', () {
       const a = ConnectionInfo(status: GrpcConnectionStatus.connected);
       const b = ConnectionInfo(status: GrpcConnectionStatus.connected);
-      const c = ConnectionInfo(status: GrpcConnectionStatus.disconnected);
+      const c = ConnectionInfo();
       expect(a, equals(b));
       expect(a, isNot(equals(c)));
     });
@@ -385,25 +384,22 @@ void main() {
 
     test('pause() cancels active reconnection timer', () {
       fakeAsync((async) {
-        final mgr = GrpcClientManager();
-
-        // Start a reconnect — this schedules a timer (100ms for attempt 0).
-        mgr.reconnect(host: 'localhost', port: 50051);
+        final mgr = GrpcClientManager()
+          // Start a reconnect — schedules a timer.
+          ..reconnect(host: 'localhost', port: 50051);
         expect(mgr.status, GrpcConnectionStatus.reconnecting);
 
         // Pause before the timer fires.
         mgr.pause();
         expect(mgr.isPaused, isTrue);
 
-        // Advance well past all backoff durations — timer should NOT fire.
+        // Advance well past all backoff durations.
         async.elapse(const Duration(seconds: 60));
 
-        // Status should still be reconnecting (the timer callback never ran,
-        // so no connect() was attempted — status was not changed to
-        // connecting/connected).
+        // Status should still be reconnecting.
         expect(mgr.status, GrpcConnectionStatus.reconnecting);
 
-        mgr.dispose();
+        unawaited(mgr.dispose());
       });
     });
 
@@ -421,36 +417,32 @@ void main() {
 
     test('resume() restarts reconnection when in reconnecting state', () {
       fakeAsync((async) {
-        final mgr = GrpcClientManager();
+        final mgr = GrpcClientManager()
+          // Start reconnect, then pause.
+          ..reconnect(host: 'localhost', port: 50051)
+          ..pause();
 
-        // Start reconnect, then pause.
-        mgr.reconnect(host: 'localhost', port: 50051);
-        mgr.pause();
-
-        // Advance past initial timer — nothing should happen.
+        // Advance past initial timer.
         async.elapse(const Duration(seconds: 1));
         expect(mgr.status, GrpcConnectionStatus.reconnecting);
 
-        // Resume — should restart reconnection with attempt 0.
+        // Resume — should restart reconnection.
         mgr.resume();
         expect(mgr.isPaused, isFalse);
 
-        // After resume, reconnect restarts from attempt 0 (100ms delay).
-        // The status should be reconnecting with attempt 1 (attempt 0 + 1).
         expect(mgr.status, GrpcConnectionStatus.reconnecting);
         expect(mgr.currentInfo.reconnectAttempt, 1);
 
-        mgr.dispose();
+        unawaited(mgr.dispose());
       });
     });
 
     test('reconnect loop does not fire while paused', () {
       fakeAsync((async) {
-        final mgr = GrpcClientManager();
-
-        // Pause first, then trigger reconnect.
-        mgr.pause();
-        mgr.reconnect(host: 'localhost', port: 50051);
+        final mgr = GrpcClientManager()
+          // Pause first, then trigger reconnect.
+          ..pause()
+          ..reconnect(host: 'localhost', port: 50051);
 
         // The _reconnectLoop should bail out immediately because _paused is
         // true. Status should still be whatever reconnect() set before
@@ -466,30 +458,36 @@ void main() {
         async.elapse(const Duration(seconds: 60));
         expect(mgr.status, GrpcConnectionStatus.disconnected);
 
-        mgr.dispose();
+        unawaited(mgr.dispose());
       });
     });
 
     test('pause/resume cycle resets reconnect attempts', () {
       fakeAsync((async) {
-        final mgr = GrpcClientManager();
-
-        // Start reconnecting — attempt 1 emitted synchronously.
-        mgr.reconnect(host: 'localhost', port: 50051);
+        final mgr = GrpcClientManager()
+          // Start reconnecting.
+          ..reconnect(host: 'localhost', port: 50051);
         expect(mgr.currentInfo.reconnectAttempt, 1);
 
         // Pause to cancel the reconnect timer.
         mgr.pause();
-        expect(mgr.currentInfo.status, GrpcConnectionStatus.reconnecting);
+        expect(
+          mgr.currentInfo.status,
+          GrpcConnectionStatus.reconnecting,
+        );
 
-        // Resume — should restart reconnection from attempt 0.
-        // _reconnectLoop(attempt: 0) emits reconnectAttempt = 0 + 1 = 1,
-        // confirming the attempt counter was reset back to zero.
+        // Resume — should restart reconnection.
         mgr.resume();
-        expect(mgr.currentInfo.reconnectAttempt, 1); // reset: attempt 0+1=1
-        expect(mgr.currentInfo.status, GrpcConnectionStatus.reconnecting);
+        expect(
+          mgr.currentInfo.reconnectAttempt,
+          1,
+        ); // reset: attempt 0+1=1
+        expect(
+          mgr.currentInfo.status,
+          GrpcConnectionStatus.reconnecting,
+        );
 
-        mgr.dispose();
+        unawaited(mgr.dispose());
       });
     });
 

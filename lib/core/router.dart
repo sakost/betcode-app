@@ -1,15 +1,14 @@
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/features/auth/auth.dart';
+import 'package:betcode_app/features/conversation/conversation.dart';
+import 'package:betcode_app/features/git_repos/git_repos.dart';
+import 'package:betcode_app/features/machines/machines.dart';
+import 'package:betcode_app/features/sessions/sessions.dart';
+import 'package:betcode_app/features/settings/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../features/auth/auth.dart';
-import '../features/conversation/conversation.dart';
-import '../features/machines/machines.dart';
-import '../features/sessions/sessions.dart';
-import '../features/settings/settings.dart';
-import '../features/git_repos/git_repos.dart';
-import 'auth/auth.dart';
-import 'grpc/grpc_providers.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -26,6 +25,7 @@ class _PreviousTabIndexNotifier extends Notifier<int> {
   @override
   int build() => 1; // default: sessions (initial route)
 
+  // ignore: use_setters_to_change_properties, Notifier state update used as callback
   void update(int value) => state = value;
 }
 
@@ -39,6 +39,7 @@ class _TargetTabIndexNotifier extends Notifier<int> {
   @override
   int build() => 1; // default: sessions (initial route)
 
+  // ignore: use_setters_to_change_properties, Notifier state update used as callback
   void update(int value) => state = value;
 }
 
@@ -64,8 +65,6 @@ CustomTransitionPage<void> _buildTabPage({
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 300),
-    reverseTransitionDuration: const Duration(milliseconds: 300),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       if (animation.status == AnimationStatus.reverse) {
         // Exiting: read the current destination to determine exit direction.
@@ -91,14 +90,23 @@ CustomTransitionPage<void> _buildTabPage({
   );
 }
 
+/// Provides the app's [GoRouter] instance with auth-aware redirects and
+/// bottom-navigation shell routing.
 final routerProvider = Provider<GoRouter>((ref) {
   // Notifier that triggers GoRouter redirect re-evaluation when
   // auth or relay config changes — without recreating the GoRouter.
   final refreshNotifier = _RouterRefreshNotifier();
 
-  ref.listen(authNotifierProvider, (_, _) => refreshNotifier.notify());
-  ref.listen(relayConfigNotifierProvider, (_, _) => refreshNotifier.notify());
-  ref.onDispose(refreshNotifier.dispose);
+  ref
+    ..listen(
+      authNotifierProvider,
+      (_, _) => refreshNotifier.notify(),
+    )
+    ..listen(
+      relayConfigNotifierProvider,
+      (_, _) => refreshNotifier.notify(),
+    )
+    ..onDispose(refreshNotifier.dispose);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -199,17 +207,21 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// A [ChangeNotifier] that GoRouter listens to via [refreshListenable].
+/// A [ChangeNotifier] that GoRouter listens to via `refreshListenable`.
 ///
 /// When auth or relay state changes, [notify] is called, which triggers
-/// GoRouter to re-evaluate its [redirect] without recreating the router.
+/// GoRouter to re-evaluate its `redirect` without recreating the router.
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
 
+/// The root shell widget that provides bottom navigation and hosts the
+/// current tab's content via [child].
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.child});
+  /// Creates an [AppShell] that wraps [child] with a [NavigationBar].
+  const AppShell({required this.child, super.key});
 
+  /// The current route's widget, provided by [ShellRoute].
   final Widget child;
 
   @override

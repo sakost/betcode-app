@@ -22,7 +22,8 @@ class AppLifecycleNotifier extends Notifier<AppLifecycleState> {
       );
     } on Object catch (e) {
       debugPrint(
-        '[AppLifecycleNotifier] No WidgetsBinding; lifecycle events disabled: $e',
+        '[AppLifecycleNotifier] No WidgetsBinding; '
+        'lifecycle events disabled: $e',
       );
     }
     ref.onDispose(() {
@@ -44,7 +45,8 @@ class AppLifecycleNotifier extends Notifier<AppLifecycleState> {
 
   /// Transition to a new lifecycle state.
   ///
-  /// Exposed for testing; in production this is called by [AppLifecycleListener].
+  /// Exposed for testing; in production this is called by
+  /// [AppLifecycleListener].
   @visibleForTesting
   void transition(AppLifecycleState newState) {
     if (newState == AppLifecycleState.paused ||
@@ -57,6 +59,7 @@ class AppLifecycleNotifier extends Notifier<AppLifecycleState> {
   }
 }
 
+/// Provides the [AppLifecycleNotifier] that tracks foreground/background state.
 final appLifecycleProvider =
     NotifierProvider<AppLifecycleNotifier, AppLifecycleState>(
       AppLifecycleNotifier.new,

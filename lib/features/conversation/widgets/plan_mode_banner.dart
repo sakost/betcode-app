@@ -8,8 +8,8 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 /// markdown in a scrollable, height-constrained container.
 class PlanModeBanner extends StatelessWidget {
   const PlanModeBanner({
-    super.key,
     required this.planModeActive,
+    super.key,
     this.planContent,
   });
 

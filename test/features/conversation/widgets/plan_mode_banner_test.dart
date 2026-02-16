@@ -1,8 +1,7 @@
+import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:betcode_app/features/conversation/widgets/plan_mode_banner.dart';
 
 Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
 
@@ -60,7 +59,7 @@ void main() {
         _app(PlanModeBanner(planModeActive: true, planContent: longContent)),
       );
 
-      // The plan content area should be within a constrained scrollable container
+      // Plan content should be in a constrained scrollable
       expect(find.byType(MarkdownBody), findsOneWidget);
     });
 

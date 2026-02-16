@@ -1,11 +1,5 @@
 import 'dart:async';
 
-import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
-
 import 'package:betcode_app/features/machines/notifiers/machines_notifier.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
@@ -13,6 +7,11 @@ import 'package:betcode_app/features/machines/screens/machines_screen.dart';
 import 'package:betcode_app/features/machines/widgets/machine_card.dart';
 import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,9 +52,9 @@ class _FakeMachinesNotifier extends MachinesNotifier {
   @override
   Future<List<MachineInfo>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<MachineInfo>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -307,7 +306,7 @@ void main() {
 
     testWidgets('does not show check icon when isSelected is false', (t) async {
       await t.pumpWidget(
-        _app(MachineCard(machine: _makeMachine(), isSelected: false)),
+        _app(MachineCard(machine: _makeMachine())),
       );
       await t.pumpAndSettle();
 

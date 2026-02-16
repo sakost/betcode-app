@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/sessions/notifiers/sessions_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/agent.pb.dart';
-import 'sessions_notifier.dart';
 
 /// Provides the list of [SessionSummary] objects fetched from the daemon.
 ///

@@ -1,6 +1,5 @@
+import 'package:betcode_app/features/auth/widgets/auth_form_scaffold.dart';
 import 'package:flutter/material.dart';
-
-import '../widgets/auth_form_scaffold.dart';
 
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});

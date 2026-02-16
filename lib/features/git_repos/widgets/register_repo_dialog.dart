@@ -1,7 +1,6 @@
+import 'package:betcode_app/generated/betcode/v1/git_repo.pbenum.dart';
+import 'package:betcode_app/shared/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/git_repo.pbenum.dart';
-import '../../../shared/widgets/dialog_actions.dart';
 
 /// The result returned from [RegisterRepoDialog] when the user presses
 /// Register and validation passes.
@@ -37,7 +36,7 @@ class _RegisterRepoDialogState extends State<RegisterRepoDialog> {
   final _setupScriptController = TextEditingController();
   WorktreeMode _worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL;
 
-  static const _worktreeModes = [
+  static const List<WorktreeMode> _worktreeModes = [
     WorktreeMode.WORKTREE_MODE_GLOBAL,
     WorktreeMode.WORKTREE_MODE_LOCAL,
     WorktreeMode.WORKTREE_MODE_CUSTOM,

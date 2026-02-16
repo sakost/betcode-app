@@ -1,10 +1,9 @@
+import 'package:betcode_app/app.dart';
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'app.dart';
-import 'core/auth/auth.dart';
-import 'core/grpc/grpc_providers.dart';
-import 'features/machines/notifiers/machines_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

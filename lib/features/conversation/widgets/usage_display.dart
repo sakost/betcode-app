@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 /// Displays token usage and cost for the current conversation turn.
 class UsageDisplay extends StatelessWidget {
   const UsageDisplay({
-    super.key,
     required this.inputTokens,
     required this.outputTokens,
     required this.costUsd,
+    super.key,
     this.model,
     this.durationMs,
   });

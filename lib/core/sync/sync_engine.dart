@@ -1,19 +1,20 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/core/lifecycle/lifecycle.dart';
+import 'package:betcode_app/core/storage/storage.dart';
+import 'package:betcode_app/core/sync/connectivity.dart';
+import 'package:betcode_app/core/sync/sync_dispatcher.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
-import '../grpc/service_providers.dart';
-import '../lifecycle/lifecycle.dart';
-import '../storage/storage.dart';
-import 'connectivity.dart';
-import 'sync_dispatcher.dart';
-
+/// Snapshot of the current sync queue health, emitted on every drain cycle.
 class SyncStatus {
+  /// Creates a [SyncStatus] with the given counts and state.
   const SyncStatus({
     this.pendingCount = 0,
     this.failedCount = 0,
@@ -22,14 +23,27 @@ class SyncStatus {
     this.lastError,
   });
 
+  /// Number of items waiting to be dispatched.
   final int pendingCount;
+
+  /// Number of items that have permanently failed after max retries.
   final int failedCount;
+
+  /// Whether a drain cycle is currently in progress.
   final bool isSyncing;
+
+  /// When the most recent drain cycle completed.
   final DateTime? lastSyncTime;
+
+  /// Human-readable error from the most recent drain failure.
   final String? lastError;
 }
 
+/// Offline-first sync engine that queues gRPC requests in a local drift
+/// database and drains them when the device is online.
 class SyncEngine {
+  /// Creates a [SyncEngine] backed by the given [database], [connectivity]
+  /// monitor, and gRPC [dispatcher].
   SyncEngine({
     required AppDatabase database,
     required ConnectivityMonitor connectivity,
@@ -52,16 +66,19 @@ class SyncEngine {
   bool _paused = false;
   int _sequence = 0;
 
+  /// Broadcast stream of [SyncStatus] updates emitted after each drain cycle.
   Stream<SyncStatus> get statusStream => _statusController.stream;
 
   static const _stabilityDelay = Duration(seconds: 3);
   static const _maxRetries = 5;
-  static const _ttlSeconds = 7 * 24 * 60 * 60; // 7 days
+  static const int _ttlSeconds = 7 * 24 * 60 * 60; // 7 days
 
+  /// Generates a new UUIDv7 idempotency key for a queued request.
   String generateIdempotencyKey() => _uuid.v7();
 
   int _nextSequence() => _sequence++;
 
+  /// Starts listening for connectivity changes and drains on reconnect.
   void start() {
     _connectivitySub = _connectivity.statusStream.listen((status) {
       if (status == NetworkStatus.online && !_paused) {
@@ -72,11 +89,12 @@ class SyncEngine {
     });
   }
 
+  /// Stops the engine and releases all resources.
   void dispose() {
     _disposed = true;
-    _connectivitySub?.cancel();
+    unawaited(_connectivitySub?.cancel());
     _drainTimer?.cancel();
-    _statusController.close();
+    unawaited(_statusController.close());
   }
 
   /// Whether the engine is currently paused (app backgrounded).
@@ -98,11 +116,13 @@ class SyncEngine {
     _paused = false;
     debugPrint('[SyncEngine] Resumed');
     // Check connectivity and drain if online.
-    _connectivity.currentStatus.then((status) {
-      if (status == NetworkStatus.online && !_isSyncing && !_paused) {
-        _drainQueue();
-      }
-    });
+    unawaited(
+      _connectivity.currentStatus.then((status) {
+        if (status == NetworkStatus.online && !_isSyncing && !_paused) {
+          unawaited(_drainQueue());
+        }
+      }),
+    );
   }
 
   /// Add an item to the offline sync queue.
@@ -188,7 +208,7 @@ class SyncEngine {
           await (_database.update(_database.syncQueue)
                 ..where((t) => t.id.equals(item.id)))
               .write(const SyncQueueCompanion(status: Value('sent')));
-        } catch (e) {
+        } on Exception catch (e) {
           final newRetryCount = item.retryCount + 1;
           final newStatus = newRetryCount >= _maxRetries ? 'failed' : 'blocked';
 
@@ -203,10 +223,10 @@ class SyncEngine {
           );
         }
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (!_disposed) {
         _statusController.add(
-          SyncStatus(isSyncing: false, lastError: e.toString()),
+          SyncStatus(lastError: e.toString()),
         );
       }
     } finally {
@@ -222,6 +242,8 @@ class SyncEngine {
     )..where((t) => t.expiresAt.isSmallerThanValue(now))).go();
   }
 
+  /// Calculates an exponential backoff duration with jitter for the given
+  /// [retryCount] (base 1s, max 5min).
   Duration calculateBackoff(int retryCount) {
     const baseMs = 1000;
     const maxMs = 300000; // 5 minutes
@@ -255,7 +277,7 @@ class SyncEngine {
           ),
         );
       }
-    } catch (_) {
+    } on Exception catch (_) {
       // If we cannot query the database for counts (e.g. mock not wired),
       // fall back to a status without counts.
       if (!_disposed) {
@@ -267,6 +289,7 @@ class SyncEngine {
   }
 }
 
+/// Provides a [SyncDispatcher] wired to the current gRPC service clients.
 final syncDispatcherProvider = Provider<SyncDispatcher>((ref) {
   final agentClient = ref.watch(agentServiceProvider);
   final worktreeClient = ref.watch(worktreeServiceProvider);
@@ -276,6 +299,8 @@ final syncDispatcherProvider = Provider<SyncDispatcher>((ref) {
   );
 });
 
+/// Provides the singleton [SyncEngine], started on creation and paused/resumed
+/// with the app lifecycle.
 final syncEngineProvider = Provider<SyncEngine>((ref) {
   final db = ref.watch(appDatabaseProvider);
   final connectivity = ref.watch(connectivityMonitorProvider);
@@ -285,17 +310,20 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
     connectivity: connectivity,
     dispatcher: dispatcher,
   )..start();
-  ref.listen(appLifecycleProvider, (prev, next) {
-    if (next == AppLifecycleState.paused || next == AppLifecycleState.hidden) {
-      engine.pause();
-    } else if (next == AppLifecycleState.resumed) {
-      engine.resume();
-    }
-  });
-  ref.onDispose(engine.dispose);
+  ref
+    ..listen(appLifecycleProvider, (prev, next) {
+      if (next == AppLifecycleState.paused ||
+          next == AppLifecycleState.hidden) {
+        engine.pause();
+      } else if (next == AppLifecycleState.resumed) {
+        engine.resume();
+      }
+    })
+    ..onDispose(engine.dispose);
   return engine;
 });
 
+/// Exposes the [SyncEngine]'s status stream as a Riverpod [StreamProvider].
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
   final engine = ref.watch(syncEngineProvider);
   return engine.statusStream;

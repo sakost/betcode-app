@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter_test/flutter_test.dart' show Fake;
 import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart' show Fake;
 
 /// Wraps a [StreamController] as a [ResponseStream] for server-streaming
 /// RPC tests.

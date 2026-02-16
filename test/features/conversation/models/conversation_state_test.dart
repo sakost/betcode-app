@@ -1,7 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pbenum.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ConversationState', () {
@@ -16,7 +15,7 @@ void main() {
     });
 
     test('active creates ConversationActive with correct fields', () {
-      final state = ConversationState.active(
+      const state = ConversationState.active(
         sessionId: 'sess-1',
         messages: [],
         agentStatus: AgentStatus.AGENT_STATUS_IDLE,
@@ -24,7 +23,7 @@ void main() {
       );
 
       expect(state, isA<ConversationActive>());
-      final active = state as ConversationActive;
+      const active = state as ConversationActive;
       expect(active.sessionId, 'sess-1');
       expect(active.messages, isEmpty);
       expect(active.agentStatus, AgentStatus.AGENT_STATUS_IDLE);
@@ -43,7 +42,7 @@ void main() {
     });
 
     test('active copyWith updates fields correctly', () {
-      final original =
+      const original =
           ConversationState.active(
                 sessionId: 'sess-1',
                 messages: [],
@@ -98,13 +97,13 @@ void main() {
     });
 
     test('toolCall creates ToolCallMessage with defaults', () {
-      final msg = ChatMessage.toolCall(
+      const msg = ChatMessage.toolCall(
         toolId: 'tool-1',
         toolName: 'Read',
         description: 'Read file',
       );
       expect(msg, isA<ToolCallMessage>());
-      final tool = msg as ToolCallMessage;
+      const tool = msg as ToolCallMessage;
       expect(tool.toolId, 'tool-1');
       expect(tool.toolName, 'Read');
       expect(tool.isComplete, false);
@@ -113,13 +112,13 @@ void main() {
     });
 
     test('permissionRequest creates PermissionRequestMessage', () {
-      final msg = ChatMessage.permissionRequest(
+      const msg = ChatMessage.permissionRequest(
         requestId: 'perm-1',
         toolName: 'Bash',
         description: 'Run command',
       );
       expect(msg, isA<PermissionRequestMessage>());
-      final perm = msg as PermissionRequestMessage;
+      const perm = msg as PermissionRequestMessage;
       expect(perm.requestId, 'perm-1');
       expect(perm.decision, isNull);
     });
@@ -134,7 +133,7 @@ void main() {
     });
 
     test('toolCall stores parentToolUseId', () {
-      final msg = ChatMessage.toolCall(
+      const msg = ChatMessage.toolCall(
         toolId: 'tool-1',
         toolName: 'Read',
         description: 'Read file',
@@ -144,7 +143,7 @@ void main() {
     });
 
     test('permissionRequest stores parentToolUseId', () {
-      final msg = ChatMessage.permissionRequest(
+      const msg = ChatMessage.permissionRequest(
         requestId: 'perm-1',
         toolName: 'Bash',
         description: 'Run cmd',
@@ -154,7 +153,7 @@ void main() {
     });
 
     test('userQuestion stores parentToolUseId', () {
-      final msg = ChatMessage.userQuestion(
+      const msg = ChatMessage.userQuestion(
         questionId: 'q-1',
         question: 'Pick one',
         options: [],
@@ -165,14 +164,14 @@ void main() {
     });
 
     test('userQuestion creates UserQuestionMessage', () {
-      final msg = ChatMessage.userQuestion(
+      const msg = ChatMessage.userQuestion(
         questionId: 'q-1',
         question: 'Which option?',
         options: [],
         multiSelect: false,
       );
       expect(msg, isA<UserQuestionMessage>());
-      final q = msg as UserQuestionMessage;
+      const q = msg as UserQuestionMessage;
       expect(q.questionId, 'q-1');
       expect(q.multiSelect, false);
       expect(q.answers, isNull);

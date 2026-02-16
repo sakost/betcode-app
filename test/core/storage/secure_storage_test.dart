@@ -1,9 +1,8 @@
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/relay_config.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
 
 class MockFlutterSecureStorage extends Mock implements FlutterSecureStorage {}
 
@@ -147,7 +146,6 @@ void main() {
       const config = RelayConfig(
         host: 'relay.example.com',
         port: 8443,
-        useTls: true,
       );
       await service.writeRelayConfig(config);
 

@@ -1,9 +1,9 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/commands.pb.dart';
 
 /// Manages the command registry fetched from the daemon via gRPC.
 ///
@@ -21,6 +21,8 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
     return _fetchCommands();
   }
 
@@ -35,7 +37,7 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
   /// Re-fetches the command registry from the daemon and replaces state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchCommands());
+    state = await AsyncValue.guard(_fetchCommands);
   }
 
   /// Lists agents matching a query.

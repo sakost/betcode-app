@@ -1,12 +1,11 @@
+import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
+import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
+import 'package:betcode_app/features/sessions/widgets/session_card.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
+import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../generated/betcode/v1/agent.pb.dart';
-import '../../../shared/widgets/async_list_scaffold.dart';
-import '../notifiers/sessions_providers.dart';
-import '../widgets/rename_session_dialog.dart';
-import '../widgets/session_card.dart';
 
 class SessionsScreen extends ConsumerWidget {
   const SessionsScreen({super.key});

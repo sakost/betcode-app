@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/git_repo.pb.dart';
-import 'git_repos_notifier.dart';
 
 /// Provides the list of [GitRepoDetail] objects fetched from the daemon.
 ///

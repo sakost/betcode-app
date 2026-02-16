@@ -1,11 +1,10 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/core/grpc/worktree_helpers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../core/grpc/worktree_helpers.dart';
-import '../../../generated/betcode/v1/worktree.pb.dart';
-import '../../machines/notifiers/machines_providers.dart';
 
 /// Manages the list of worktrees fetched from the daemon via gRPC.
 ///
@@ -44,7 +43,7 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   /// Re-fetches worktrees from the daemon and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchWorktrees());
+    state = await AsyncValue.guard(_fetchWorktrees);
   }
 
   /// Creates a new worktree via gRPC and refreshes the list.
@@ -68,9 +67,7 @@ class WorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   /// Fetches a single worktree by ID.
   Future<WorktreeDetail> getWorktree(String id) async {
     final client = ref.read(worktreeServiceProvider);
-    return await client
-        .getWorktree(GetWorktreeRequest(id: id))
-        .timeout(_rpcTimeout);
+    return client.getWorktree(GetWorktreeRequest(id: id)).timeout(_rpcTimeout);
   }
 
   /// Removes a worktree by ID via gRPC and refreshes the list.

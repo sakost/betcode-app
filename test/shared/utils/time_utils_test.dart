@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/shared/utils/time_utils.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('relativeTime', () {
@@ -68,7 +67,7 @@ void main() {
     });
 
     test('returns date format for old dates', () {
-      final dateTime = DateTime(2023, 12, 1);
+      final dateTime = DateTime(2023, 12);
       expect(relativeTime(dateTime), '12/1/2023');
     });
   });

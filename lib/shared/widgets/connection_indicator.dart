@@ -2,7 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Connection status states for the gRPC link to the daemon.
-enum ConnectionStatus { connected, connecting, reconnecting, disconnected }
+enum ConnectionStatus {
+  /// Fully connected and operational.
+  connected,
+
+  /// Initial connection in progress.
+  connecting,
+
+  /// Re-establishing a lost connection.
+  reconnecting,
+
+  /// No active connection.
+  disconnected,
+}
 
 /// A small indicator widget that displays the current connection status
 /// as a colored dot with accompanying text.
@@ -10,8 +22,10 @@ enum ConnectionStatus { connected, connecting, reconnecting, disconnected }
 /// Uses [Consumer] so it can be dropped into any widget tree and later
 /// wired to a Riverpod provider that supplies [ConnectionStatus].
 class ConnectionIndicator extends ConsumerWidget {
-  const ConnectionIndicator({super.key, required this.status});
+  /// Creates a [ConnectionIndicator] for the given [status].
+  const ConnectionIndicator({required this.status, super.key});
 
+  /// The connection status to visualize.
   final ConnectionStatus status;
 
   Color _dotColor() {

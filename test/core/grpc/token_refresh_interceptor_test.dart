@@ -1,16 +1,15 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/auth/auth_notifier.dart';
+import 'package:betcode_app/core/grpc/interceptors.dart';
+import 'package:betcode_app/core/storage/secure_storage.dart';
+import 'package:betcode_app/core/storage/storage_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/auth/auth_notifier.dart';
-import 'package:betcode_app/core/grpc/interceptors.dart';
-import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 
 import '../../helpers/fake_response_future.dart';
 import '../interceptor_test_helpers.dart';
@@ -80,16 +79,18 @@ void main() {
 
       var invokerCalled = false;
       late CallOptions capturedOptions;
-      unawaited(interceptor.interceptUnary<String, String>(
-        testMethod(),
-        'req',
-        CallOptions(),
-        (m, r, o) {
-          invokerCalled = true;
-          capturedOptions = o;
-          return FakeResponseFuture.value('ok');
-        },
-      ));
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod(),
+          'req',
+          CallOptions(),
+          (m, r, o) {
+            invokerCalled = true;
+            capturedOptions = o;
+            return FakeResponseFuture.value('ok');
+          },
+        ),
+      );
       await resolveMetadata(capturedOptions);
       return invokerCalled;
     }
@@ -140,25 +141,30 @@ void main() {
       );
 
       // Fire two RPCs concurrently
-      late CallOptions opts1, opts2;
-      unawaited(interceptor.interceptUnary<String, String>(
-        testMethod(),
-        'req1',
-        CallOptions(),
-        (m, r, o) {
-          opts1 = o;
-          return FakeResponseFuture.value('ok1');
-        },
-      ));
-      unawaited(interceptor.interceptUnary<String, String>(
-        testMethod(),
-        'req2',
-        CallOptions(),
-        (m, r, o) {
-          opts2 = o;
-          return FakeResponseFuture.value('ok2');
-        },
-      ));
+      late CallOptions opts1;
+      late CallOptions opts2;
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod(),
+          'req1',
+          CallOptions(),
+          (m, r, o) {
+            opts1 = o;
+            return FakeResponseFuture.value('ok1');
+          },
+        ),
+      );
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod(),
+          'req2',
+          CallOptions(),
+          (m, r, o) {
+            opts2 = o;
+            return FakeResponseFuture.value('ok2');
+          },
+        ),
+      );
 
       await Future.wait([resolveMetadata(opts1), resolveMetadata(opts2)]);
       expect(refreshCallCount, 1);
@@ -169,7 +175,7 @@ void main() {
       when(() => mockStorage.clearAll()).thenAnswer((_) async {});
       when(
         () => mockAuthClient.refreshToken(any()),
-      ).thenThrow(GrpcError.internal('refresh failed'));
+      ).thenThrow(const GrpcError.internal('refresh failed'));
 
       final invoked = await interceptAndResolve();
       expect(invoked, isTrue);

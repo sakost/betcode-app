@@ -1,10 +1,9 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/auth/auth_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
-
-import '../../generated/betcode/v1/auth.pbgrpc.dart';
-import '../auth/auth_notifier.dart';
 
 /// A function that returns the current JWT token, or null if unauthenticated.
 typedef TokenProvider = Future<String?> Function();
@@ -12,7 +11,8 @@ typedef TokenProvider = Future<String?> Function();
 /// A function that returns the currently selected machine ID, or null.
 typedef MachineIdProvider = Future<String?> Function();
 
-/// Base class for interceptors that inject a single header into every gRPC call.
+/// Base class for interceptors that inject a single header into
+/// every gRPC call.
 abstract class HeaderInterceptor extends ClientInterceptor {
   /// Returns the [CallOptions] with the header added.
   CallOptions _addHeader(CallOptions options);
@@ -44,8 +44,10 @@ abstract class HeaderInterceptor extends ClientInterceptor {
 /// the latest value (e.g. after a refresh). If the provider returns null
 /// the authorization header is omitted and the call proceeds unauthenticated.
 class AuthInterceptor extends HeaderInterceptor {
+  /// Creates an [AuthInterceptor] that reads tokens from [tokenProvider].
   AuthInterceptor({required this.tokenProvider});
 
+  /// Callback that supplies the current JWT, or null if unauthenticated.
   final TokenProvider tokenProvider;
 
   static const _authHeader = 'authorization';
@@ -73,8 +75,11 @@ class AuthInterceptor extends HeaderInterceptor {
 /// reflects the latest selection. If the provider returns null the header is
 /// omitted.
 class MachineIdInterceptor extends HeaderInterceptor {
+  /// Creates a [MachineIdInterceptor] that reads the machine ID from
+  /// [machineIdProvider].
   MachineIdInterceptor({required this.machineIdProvider});
 
+  /// Callback that supplies the currently selected machine ID, or null.
   final MachineIdProvider machineIdProvider;
 
   static const _machineIdHeader = 'x-machine-id';
@@ -116,19 +121,23 @@ class LoggingInterceptor extends ClientInterceptor {
 
     final response = invoker(method, request, options);
 
-    response.then(
-      (_) {
-        stopwatch.stop();
-        debugPrint(
-          '$_tag <- ${method.path} OK (${stopwatch.elapsedMilliseconds}ms)',
-        );
-      },
-      onError: (Object error) {
-        stopwatch.stop();
-        debugPrint(
-          '$_tag <- ${method.path} ERROR (${stopwatch.elapsedMilliseconds}ms): $error',
-        );
-      },
+    unawaited(
+      response.then(
+        (_) {
+          stopwatch.stop();
+          debugPrint(
+            '$_tag <- ${method.path} OK (${stopwatch.elapsedMilliseconds}ms)',
+          );
+        },
+        onError: (Object error) {
+          stopwatch.stop();
+          debugPrint(
+            '$_tag <- ${method.path} ERROR '
+            '(${stopwatch.elapsedMilliseconds}ms): '
+            '$error',
+          );
+        },
+      ),
     );
 
     return response;
@@ -151,12 +160,17 @@ class LoggingInterceptor extends ClientInterceptor {
 /// Uses a [Completer] to coalesce concurrent refresh attempts so only one
 /// refresh RPC is in flight at a time.
 class TokenRefreshInterceptor extends ClientInterceptor {
+  /// Creates a [TokenRefreshInterceptor] with the given [authNotifier] and
+  /// a factory that creates an [AuthServiceClient] for the refresh RPC.
   TokenRefreshInterceptor({
     required this.authNotifier,
     required this.authClientFactory,
   });
 
+  /// The notifier used to check expiry and perform the token refresh.
   final AuthNotifier authNotifier;
+
+  /// Factory that creates a fresh [AuthServiceClient] for the refresh call.
   final AuthServiceClient Function() authClientFactory;
   Completer<void>? _refreshing;
 

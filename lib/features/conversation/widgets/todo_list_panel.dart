@@ -1,6 +1,5 @@
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
 
 /// A collapsible panel that displays the agent's todo list.
 ///
@@ -9,7 +8,7 @@ import '../../../generated/betcode/v1/common.pb.dart';
 /// the subject as title. Description is shown as subtitle when expanded.
 /// A count badge (e.g. "3/5 done") appears in the header.
 class TodoListPanel extends StatelessWidget {
-  const TodoListPanel({super.key, required this.todos});
+  const TodoListPanel({required this.todos, super.key});
 
   final List<TodoItem> todos;
 

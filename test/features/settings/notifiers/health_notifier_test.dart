@@ -1,14 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/health_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/health.pbgrpc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 import '../../../helpers/fake_response_future.dart';
 import '../../../helpers/fake_response_stream.dart';
@@ -286,8 +285,13 @@ void main() {
       final stream = notifier.watchHealth(service: 'agent');
       final eventsFuture = stream.toList();
 
-      controller.add(HealthCheckResponse(status: ServingStatus.SERVING));
-      controller.add(HealthCheckResponse(status: ServingStatus.NOT_SERVING));
+      controller
+        ..add(HealthCheckResponse(status: ServingStatus.SERVING))
+        ..add(
+          HealthCheckResponse(
+            status: ServingStatus.NOT_SERVING,
+          ),
+        );
       unawaited(controller.close());
 
       final events = await eventsFuture;
@@ -298,9 +302,7 @@ void main() {
 
     test('passes correct service name to gRPC', () async {
       final (:notifier, :controller) = await initForWatch();
-      addTearDown(() {
-        controller.close();
-      });
+      addTearDown(() => unawaited(controller.close()));
       notifier.watchHealth(service: 'database');
 
       final captured =
@@ -311,9 +313,7 @@ void main() {
 
     test('defaults to empty service name', () async {
       final (:notifier, :controller) = await initForWatch();
-      addTearDown(() {
-        controller.close();
-      });
+      addTearDown(() => unawaited(controller.close()));
       notifier.watchHealth();
 
       final captured =
@@ -326,7 +326,7 @@ void main() {
       final (:notifier, :controller) = await initForWatch();
       final stream = notifier.watchHealth();
 
-      controller.addError(GrpcError.unavailable('stream broken'));
+      controller.addError(const GrpcError.unavailable('stream broken'));
       unawaited(controller.close());
 
       await expectLater(stream, emitsError(isA<GrpcError>()));

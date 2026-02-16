@@ -1,6 +1,5 @@
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
 
 /// A bottom sheet that presents a tool permission request to the user.
 ///
@@ -8,9 +7,9 @@ import '../../../generated/betcode/v1/common.pb.dart';
 /// if dismissed.
 class PermissionSheet extends StatelessWidget {
   const PermissionSheet({
-    super.key,
     required this.toolName,
     required this.description,
+    super.key,
     this.input,
   });
 

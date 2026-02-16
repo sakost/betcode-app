@@ -1,8 +1,7 @@
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
+import 'package:betcode_app/shared/utils/time_utils.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/git_repo.pb.dart';
-import '../../../shared/utils/time_utils.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [GitRepoDetail] in the repositories list.
 ///
@@ -11,9 +10,9 @@ import '../../../shared/widgets/tappable_card.dart';
 /// delete button.
 class GitRepoCard extends StatelessWidget {
   const GitRepoCard({
-    super.key,
     required this.repo,
     required this.onDelete,
+    super.key,
     this.onTap,
   });
 

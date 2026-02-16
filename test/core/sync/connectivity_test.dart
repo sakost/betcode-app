@@ -1,6 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/core/sync/connectivity.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('NetworkStatus', () {

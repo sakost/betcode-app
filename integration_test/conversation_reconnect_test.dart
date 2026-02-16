@@ -1,19 +1,18 @@
 import 'dart:async';
 
-import 'package:fixnum/fixnum.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:riverpod/misc.dart' show Override;
-import 'package:grpc/grpc.dart';
-import 'package:integration_test/integration_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:fixnum/fixnum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:riverpod/misc.dart' show Override;
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -98,7 +97,9 @@ void main() {
   });
 
   tearDown(() {
-    if (!eventController.isClosed) eventController.close();
+    if (!eventController.isClosed) {
+      unawaited(eventController.close());
+    }
   });
 
   group('Reconnection with app lifecycle', () {
@@ -141,14 +142,14 @@ void main() {
         expect(activeState, isA<ConversationActive>());
 
         // Inject a transient error to trigger reconnection.
-        eventController.addError(GrpcError.unavailable('lost'));
+        eventController.addError(const GrpcError.unavailable('lost'));
         await tester.pump();
 
         // Verify reconnection state.
         final reconnecting = container.read(conversationProvider(null)).value;
         expect(reconnecting, isA<ConversationActive>());
         expect(
-          (reconnecting as ConversationActive).errorMessage,
+          (reconnecting! as ConversationActive).errorMessage,
           contains('Reconnecting'),
         );
 
@@ -179,26 +180,36 @@ void main() {
         );
         await tester.pump();
 
-        final restored = container.read(conversationProvider(null)).value;
+        final restored = container
+            .read(
+              conversationProvider(null),
+            )
+            .value;
         expect(restored, isA<ConversationActive>());
-        expect((restored as ConversationActive).errorMessage, isNull);
-        expect(restored.messages, hasLength(1));
+        final restoredActive = restored! as ConversationActive;
+        expect(restoredActive.errorMessage, isNull);
+        expect(restoredActive.messages, hasLength(1));
 
         await resumeController?.close();
       },
     );
 
     testWidgets(
-      'reconnection exhausts max attempts without infinite loop on immediate errors',
+      'reconnection exhausts max attempts without '
+      'infinite loop on immediate errors',
       (tester) async {
         var resumeCallCount = 0;
 
         when(() => mockClient.resumeSession(any())).thenAnswer((_) {
           resumeCallCount++;
-          // Stream that immediately errors (simulates DNS failure).
-          final controller = StreamController<pb.AgentEvent>();
-          controller.addError(GrpcError.unavailable('dns fail'));
-          return _FakeResponseStream<pb.AgentEvent>(controller);
+          // Stream that immediately errors.
+          final controller = StreamController<pb.AgentEvent>()
+            ..addError(
+              const GrpcError.unavailable('dns fail'),
+            );
+          return _FakeResponseStream<pb.AgentEvent>(
+            controller,
+          );
         });
 
         await tester.pumpWidget(
@@ -223,7 +234,7 @@ void main() {
         await tester.pump();
 
         // Trigger first error.
-        eventController.addError(GrpcError.unavailable('initial'));
+        eventController.addError(const GrpcError.unavailable('initial'));
         await tester.pump();
 
         // Advance past all backoff durations (500ms + 1s + 3s + 10s + 30s).

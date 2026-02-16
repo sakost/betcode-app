@@ -1,7 +1,7 @@
+import 'package:betcode_app/features/conversation/models/input_command.dart';
+import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
-import 'package:betcode_app/features/conversation/models/input_command.dart';
 
 Widget _app(Widget child) => MaterialApp(
   home: Scaffold(body: SizedBox(height: 600, width: 400, child: child)),

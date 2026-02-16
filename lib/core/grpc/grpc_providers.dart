@@ -1,18 +1,17 @@
+import 'package:betcode_app/core/auth/auth.dart';
+import 'package:betcode_app/core/grpc/client_manager.dart';
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/interceptors.dart';
+import 'package:betcode_app/core/grpc/lifecycle_bridge.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/grpc/relay_notifier.dart';
+import 'package:betcode_app/core/lifecycle/lifecycle.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
+import 'package:betcode_app/generated/betcode/v1/health.pbgrpc.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grpc/grpc.dart';
-
-import '../../generated/betcode/v1/auth.pbgrpc.dart';
-import '../../generated/betcode/v1/health.pbgrpc.dart';
-import '../../features/machines/notifiers/machines_providers.dart';
-import '../auth/auth.dart';
-import '../lifecycle/lifecycle.dart';
-import 'client_manager.dart';
-import 'connection_state.dart';
-import 'interceptors.dart';
-import 'lifecycle_bridge.dart';
-import 'relay_config.dart';
-import 'relay_notifier.dart';
 
 /// Provides the singleton [GrpcClientManager] instance.
 ///
@@ -47,18 +46,19 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
 
   final bridge = GrpcLifecycleBridge(manager);
 
-  ref.listen(appLifecycleProvider, (prev, next) {
-    if (next == AppLifecycleState.paused || next == AppLifecycleState.hidden) {
-      bridge.onPaused();
-    } else if (next == AppLifecycleState.resumed) {
-      bridge.onResumed();
-    }
-  });
-
-  ref.onDispose(() async {
-    bridge.dispose();
-    await manager.dispose();
-  });
+  ref
+    ..listen(appLifecycleProvider, (prev, next) {
+      if (next == AppLifecycleState.paused ||
+          next == AppLifecycleState.hidden) {
+        bridge.onPaused();
+      } else if (next == AppLifecycleState.resumed) {
+        bridge.onResumed();
+      }
+    })
+    ..onDispose(() async {
+      bridge.dispose();
+      await manager.dispose();
+    });
 
   return manager;
 });
@@ -66,8 +66,8 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
 /// Streams connection status changes for widgets and other providers to watch.
 ///
 /// The stream is seeded with the manager's current status so the provider
-/// resolves immediately to [AsyncData] instead of staying in [AsyncLoading]
-/// until the first event is emitted (which only happens on [connect]).
+/// resolves immediately to `AsyncData` instead of staying in `AsyncLoading`
+/// until the first event is emitted (which only happens on `connect`).
 final connectionStatusProvider = StreamProvider<GrpcConnectionStatus>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
   return _seededStatusStream(manager);

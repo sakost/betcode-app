@@ -1,8 +1,7 @@
+import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
+import 'package:betcode_app/shared/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../shared/widgets/dialog_actions.dart';
-import '../../git_repos/notifiers/git_repos_providers.dart';
 
 /// The result returned from [CreateWorktreeDialog] when the user presses
 /// Create and validation passes.

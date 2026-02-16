@@ -1,8 +1,7 @@
-import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:betcode_app/core/storage/database.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:betcode_app/core/storage/database.dart';
 
 void main() {
   late AppDatabase db;
@@ -57,7 +56,7 @@ void main() {
     test('auto-increment id', () async {
       await db
           .into(db.syncQueue)
-          .insert(entry(machineId: 'm-1', idempotencyKey: 'k-1', sequence: 1));
+          .insert(entry(machineId: 'm-1', idempotencyKey: 'k-1'));
       await db
           .into(db.syncQueue)
           .insert(entry(machineId: 'm-2', idempotencyKey: 'k-2', sequence: 2));
@@ -96,7 +95,7 @@ void main() {
       await db
           .into(db.syncQueue)
           .insert(
-            entry(machineId: 'm-1', idempotencyKey: 'k-low', sequence: 1),
+            entry(machineId: 'm-1', idempotencyKey: 'k-low'),
           );
       await (db.update(db.syncQueue)
             ..where((t) => t.idempotencyKey.equals('k-low')))

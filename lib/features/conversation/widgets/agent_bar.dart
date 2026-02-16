@@ -1,8 +1,7 @@
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/common.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../models/conversation_state.dart';
 
 /// Horizontally scrolling bar of filter chips for tracked sub-agents.
 ///
@@ -13,10 +12,10 @@ import '../models/conversation_state.dart';
 /// Collapses to [SizedBox.shrink] when [agents] is empty.
 class AgentBar extends StatelessWidget {
   const AgentBar({
-    super.key,
     required this.agents,
-    this.selectedAgentId,
     required this.onAgentSelected,
+    super.key,
+    this.selectedAgentId,
   });
 
   final Map<String, AgentInfo> agents;

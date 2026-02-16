@@ -1,9 +1,9 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/agent.pb.dart';
 
 /// Manages session-scoped permission grants fetched via gRPC.
 ///
@@ -30,6 +30,8 @@ class SessionGrantsNotifier extends AsyncNotifier<List<SessionGrantEntry>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
     if (_sessionId.isEmpty) return [];
     return _fetchGrants();
   }
@@ -45,7 +47,7 @@ class SessionGrantsNotifier extends AsyncNotifier<List<SessionGrantEntry>> {
   /// Re-fetches grants from the daemon and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchGrants());
+    state = await AsyncValue.guard(_fetchGrants);
   }
 
   /// Sets or updates a session grant.

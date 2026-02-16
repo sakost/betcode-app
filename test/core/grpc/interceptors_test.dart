@@ -1,9 +1,8 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/grpc/interceptors.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
-
-import 'package:betcode_app/core/grpc/interceptors.dart';
 
 import '../../helpers/fake_response_future.dart';
 import '../interceptor_test_helpers.dart';
@@ -12,8 +11,9 @@ import '../interceptor_test_helpers.dart';
 // Intercept helpers - capture CallOptions from unary/streaming calls
 // ---------------------------------------------------------------------------
 
-/// Calls [interceptor.interceptUnary] with boilerplate args, captures and
-/// returns the [CallOptions] passed to the invoker.
+/// Calls `interceptor.interceptUnary` with boilerplate args,
+/// captures and returns the [CallOptions] passed to the
+/// invoker.
 CallOptions captureUnaryOptions(
   ClientInterceptor interceptor, {
   String request = 'req',
@@ -21,20 +21,23 @@ CallOptions captureUnaryOptions(
   ClientMethod<String, String>? method,
 }) {
   late CallOptions captured;
-  interceptor.interceptUnary<String, String>(
-    method ?? testMethod(),
-    request,
-    options ?? CallOptions(),
-    (m, r, o) {
-      captured = o;
-      return FakeResponseFuture.value('ok');
-    },
+  unawaited(
+    interceptor.interceptUnary<String, String>(
+      method ?? testMethod(),
+      request,
+      options ?? CallOptions(),
+      (m, r, o) {
+        captured = o;
+        return FakeResponseFuture.value('ok');
+      },
+    ),
   );
   return captured;
 }
 
-/// Calls [interceptor.interceptStreaming] with boilerplate args, captures and
-/// returns the [CallOptions] passed to the invoker.
+/// Calls `interceptor.interceptStreaming` with boilerplate
+/// args, captures and returns the [CallOptions] passed to
+/// the invoker.
 CallOptions captureStreamingOptions(
   ClientInterceptor interceptor, {
   CallOptions? options,
@@ -86,15 +89,17 @@ void main() {
       final interceptor = AuthInterceptor(tokenProvider: () async => 'tok');
       late String capturedPath;
       late String capturedReq;
-      interceptor.interceptUnary<String, String>(
-        testMethod('/svc/Do'),
-        'hello',
-        CallOptions(),
-        (m, r, o) {
-          capturedPath = m.path;
-          capturedReq = r;
-          return FakeResponseFuture.value('ok');
-        },
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod('/svc/Do'),
+          'hello',
+          CallOptions(),
+          (m, r, o) {
+            capturedPath = m.path;
+            capturedReq = r;
+            return FakeResponseFuture.value('ok');
+          },
+        ),
       );
       expect(capturedPath, '/svc/Do');
       expect(capturedReq, 'hello');
@@ -116,25 +121,30 @@ void main() {
       final interceptor = AuthInterceptor(
         tokenProvider: () async => 'tok-${++n}',
       );
-      late CallOptions o1, o2;
-      unawaited(interceptor.interceptUnary<String, String>(
-        testMethod(),
-        'r',
-        CallOptions(),
-        (m, r, o) {
-          o1 = o;
-          return FakeResponseFuture.value('');
-        },
-      ));
-      unawaited(interceptor.interceptUnary<String, String>(
-        testMethod(),
-        'r',
-        CallOptions(),
-        (m, r, o) {
-          o2 = o;
-          return FakeResponseFuture.value('');
-        },
-      ));
+      late CallOptions o1;
+      late CallOptions o2;
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod(),
+          'r',
+          CallOptions(),
+          (m, r, o) {
+            o1 = o;
+            return FakeResponseFuture.value('');
+          },
+        ),
+      );
+      unawaited(
+        interceptor.interceptUnary<String, String>(
+          testMethod(),
+          'r',
+          CallOptions(),
+          (m, r, o) {
+            o2 = o;
+            return FakeResponseFuture.value('');
+          },
+        ),
+      );
       expect((await resolveMetadata(o1))['authorization'], 'Bearer tok-1');
       expect((await resolveMetadata(o2))['authorization'], 'Bearer tok-2');
     });
@@ -211,7 +221,8 @@ void main() {
         testMethod(),
         'req',
         CallOptions(),
-        (m, r, o) => FakeResponseFuture.error(GrpcError.unavailable('down')),
+        (m, r, o) =>
+            FakeResponseFuture.error(const GrpcError.unavailable('down')),
       );
       await expectLater(resp, throwsA(isA<GrpcError>()));
     });

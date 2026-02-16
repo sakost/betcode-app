@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-/// A dialog for answering an agent question with single or multi select options.
+/// A dialog for answering an agent question with single or
+/// multi select options.
 ///
 /// Returns a `Map<String, String>` of selected answers, or null if dismissed.
 class UserQuestionDialog extends StatefulWidget {
   const UserQuestionDialog({
-    super.key,
     required this.question,
     required this.options,
     required this.multiSelect,
+    super.key,
   });
 
   final String question;
@@ -77,7 +78,7 @@ class _UserQuestionDialogState extends State<UserQuestionDialog> {
                         : null,
                     onChanged: (checked) {
                       setState(() {
-                        if (checked == true) {
+                        if (checked ?? false) {
                           _selected.add(option.value);
                         } else {
                           _selected.remove(option.value);
@@ -89,7 +90,7 @@ class _UserQuestionDialogState extends State<UserQuestionDialog> {
               )
             : RadioGroup<String>(
                 groupValue: _selected.length == 1 ? _selected.first : null,
-                onChanged: (String? value) {
+                onChanged: (value) {
                   if (value == null) return;
                   setState(() {
                     _selected

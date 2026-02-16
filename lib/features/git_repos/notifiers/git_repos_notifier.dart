@@ -1,9 +1,9 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/git_repo.pb.dart';
 
 /// Manages the list of registered git repositories fetched via gRPC.
 ///
@@ -23,6 +23,8 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
     return _fetchRepos();
   }
 
@@ -37,7 +39,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
   /// Re-fetches repos from the daemon and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchRepos());
+    state = await AsyncValue.guard(_fetchRepos);
   }
 
   /// Registers a new git repository via gRPC and refreshes the list.
@@ -81,7 +83,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
   /// Fetches a single repository by ID.
   Future<GitRepoDetail> getRepo(String id) async {
     final client = ref.read(gitRepoServiceProvider);
-    return await client.getRepo(GetRepoRequest(id: id)).timeout(_rpcTimeout);
+    return client.getRepo(GetRepoRequest(id: id)).timeout(_rpcTimeout);
   }
 
   /// Updates a repository's configuration and refreshes the list.

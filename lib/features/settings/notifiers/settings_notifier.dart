@@ -1,9 +1,9 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../generated/betcode/v1/config.pb.dart';
 
 /// Manages the app-wide settings fetched from the daemon via gRPC.
 ///
@@ -21,18 +21,22 @@ class SettingsNotifier extends AsyncNotifier<Settings> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) {
+      throw StateError('No machine selected');
+    }
     return _fetchSettings();
   }
 
   Future<Settings> _fetchSettings() async {
     final client = ref.read(configServiceProvider);
-    return await client.getSettings(GetSettingsRequest()).timeout(_rpcTimeout);
+    return client.getSettings(GetSettingsRequest()).timeout(_rpcTimeout);
   }
 
   /// Re-fetches the settings from the daemon and replaces the current state.
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchSettings());
+    state = await AsyncValue.guard(_fetchSettings);
   }
 
   /// Sends updated settings to the daemon and updates local state with the

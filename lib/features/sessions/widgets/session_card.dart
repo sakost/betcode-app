@@ -1,10 +1,9 @@
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/utils/time_utils.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/agent.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/utils/time_utils.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [SessionSummary] in the sessions list.
 ///
@@ -17,8 +16,8 @@ import '../../../shared/widgets/tappable_card.dart';
 /// [onDelete] is called when the user picks Delete from the context menu.
 class SessionCard extends StatelessWidget {
   const SessionCard({
-    super.key,
     required this.session,
+    super.key,
     this.onTap,
     this.onRename,
     this.onDelete,
@@ -137,8 +136,9 @@ class SessionCard extends StatelessWidget {
   }
 
   Future<void> _showContextMenu(BuildContext context) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final button = context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final button = context.findRenderObject()! as RenderBox;
     final position = RelativeRect.fromRect(
       button.localToGlobal(Offset.zero, ancestor: overlay) & button.size,
       Offset.zero & overlay.size,

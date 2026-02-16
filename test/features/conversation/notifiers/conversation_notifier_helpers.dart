@@ -1,10 +1,9 @@
 import 'dart:async';
 
-import 'package:grpc/grpc.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
+import 'package:grpc/grpc.dart';
+import 'package:mocktail/mocktail.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks & fakes
@@ -60,8 +59,7 @@ class ErrorResponseStream<T> extends Fake implements ResponseStream<T> {
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    final controller = StreamController<T>();
-    controller.addError(error);
+    final controller = StreamController<T>()..addError(error);
     return controller.stream.listen(
       onData,
       onError: onError,

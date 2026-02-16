@@ -1,19 +1,18 @@
 import 'dart:async';
 
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
+import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
+import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
+import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protobuf/well_known_types/google/protobuf/timestamp.pb.dart';
-
-import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
-import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
-import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
-import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
-import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
-import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
-import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
-import 'package:betcode_app/shared/theme/app_theme.dart';
 
 import '../../../helpers/git_repo_test_helpers.dart';
 
@@ -58,10 +57,10 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
   @override
   Future<List<WorktreeDetail>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () =>
           Completer<List<WorktreeDetail>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -106,7 +105,7 @@ void main() {
       t,
     ) async {
       final worktrees = [
-        _makeWorktree(id: 'wt-1', name: 'feat-login'),
+        _makeWorktree(),
         _makeWorktree(id: 'wt-2', name: 'feat-auth'),
         _makeWorktree(id: 'wt-3', name: 'fix-bug'),
       ];
@@ -184,7 +183,7 @@ void main() {
     });
 
     testWidgets('shows green check when existsOnDisk is true', (t) async {
-      await pumpCard(t, _makeWorktree(existsOnDisk: true));
+      await pumpCard(t, _makeWorktree());
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
     });
 
@@ -248,7 +247,8 @@ void main() {
       expect(find.text('Create'), findsOneWidget);
     });
 
-    /// Pumps a dialog-opening scaffold that captures the [CreateWorktreeResult].
+    /// Pumps a dialog-opening scaffold that captures
+    /// the [CreateWorktreeResult].
     Future<CreateWorktreeResult? Function()> pumpDialogOpener(
       WidgetTester t, [
       List<GitRepoDetail>? repos,
@@ -294,7 +294,7 @@ void main() {
 
     testWidgets('returns form values when Create is pressed', (t) async {
       final getResult = await pumpDialogOpener(t, [
-        makeTestRepo(id: 'repo-1', name: 'my-project'),
+        makeTestRepo(),
         makeTestRepo(id: 'repo-2', name: 'other-project'),
       ]);
 

@@ -1,15 +1,14 @@
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/config.pb.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [McpServerInfo] in the MCP servers list.
 ///
 /// Shows server name, type, endpoint, status badge, tools count, and
 /// error message if the server is in error state.
 class McpServerCard extends StatelessWidget {
-  const McpServerCard({super.key, required this.server});
+  const McpServerCard({required this.server, super.key});
 
   final McpServerInfo server;
 
@@ -71,13 +70,15 @@ class McpServerCard extends StatelessWidget {
 
           // Tools count
           Text(
-            '${server.tools.length} ${server.tools.length == 1 ? 'tool' : 'tools'}',
+            '${server.tools.length} '
+            '${server.tools.length == 1 ? 'tool' : 'tools'}',
             style: theme.textTheme.labelSmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
 
-          // Error message (only shown when status is ERROR and message is non-empty)
+          // Error message (only when status is ERROR and
+          // message is non-empty)
           if (server.status == McpServerStatus.MCP_SERVER_STATUS_ERROR &&
               server.errorMessage.isNotEmpty) ...[
             const SizedBox(height: 8),

@@ -1,15 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/features/git_repos/screens/repo_detail_screen.dart';
 import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/git_repo_test_helpers.dart';
 
@@ -48,9 +47,9 @@ class _FakeRepoWorktreesNotifier extends RepoWorktreesNotifier {
   @override
   Future<List<WorktreeDetail>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<WorktreeDetail>>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -168,7 +167,7 @@ void main() {
 
     testWidgets('displays worktree cards when data arrives', (t) async {
       final worktrees = [
-        _makeWorktree(id: 'wt-1', name: 'feature-a', branch: 'feat/a'),
+        _makeWorktree(name: 'feature-a', branch: 'feat/a'),
         _makeWorktree(id: 'wt-2', name: 'feature-b', branch: 'feat/b'),
       ];
 
@@ -223,7 +222,7 @@ void main() {
     testWidgets('worktree card shows disk status icon', (t) async {
       await t.pumpWidget(
         _repoDetailApp(
-          worktrees: AsyncData([_makeWorktree(existsOnDisk: true)]),
+          worktrees: AsyncData([_makeWorktree()]),
         ),
       );
       await t.pumpAndSettle();

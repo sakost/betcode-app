@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 /// Used across multiple screens (repos, machines, sessions, worktrees, etc.)
 /// to provide a consistent "nothing here yet" experience.
 class EmptyState extends StatelessWidget {
+  /// Creates an [EmptyState] with the given [icon], [title], and optional
+  /// [subtitle].
   const EmptyState({
-    super.key,
     required this.icon,
     required this.title,
+    super.key,
     this.subtitle,
   });
 
@@ -19,7 +21,8 @@ class EmptyState extends StatelessWidget {
   /// The primary text (e.g. "No repositories").
   final String title;
 
-  /// The optional secondary explanatory text (e.g. "Register a git repository...").
+  /// The optional secondary explanatory text
+  /// (e.g. "Register a git repository...").
   final String? subtitle;
 
   @override

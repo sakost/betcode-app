@@ -1,9 +1,8 @@
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/utils/time_utils.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/worktree.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/utils/time_utils.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [WorktreeDetail] in the worktrees list.
 ///
@@ -18,8 +17,8 @@ import '../../../shared/widgets/tappable_card.dart';
 /// is shown in the bottom row.
 class WorktreeCard extends StatelessWidget {
   const WorktreeCard({
-    super.key,
     required this.worktree,
+    super.key,
     this.onDelete,
     this.onStartConversation,
   });

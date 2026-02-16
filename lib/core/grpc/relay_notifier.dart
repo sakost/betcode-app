@@ -1,9 +1,8 @@
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/storage/storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../storage/storage.dart';
-import 'grpc_providers.dart';
-import 'relay_config.dart';
 
 /// Manages the active relay configuration and its connection lifecycle.
 ///
@@ -26,7 +25,7 @@ class RelayConfigNotifier extends Notifier<RelayConfig?> {
     try {
       await manager.connect(config.host, config.port, useTls: config.useTls);
       state = config;
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint(
         '[RelayConfigNotifier] Failed to connect to relay on init: $e',
       );

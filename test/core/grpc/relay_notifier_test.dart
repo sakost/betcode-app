@@ -1,12 +1,11 @@
+import 'package:betcode_app/core/grpc/client_manager.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/relay_config.dart';
+import 'package:betcode_app/core/storage/secure_storage.dart';
+import 'package:betcode_app/core/storage/storage_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/client_manager.dart';
-import 'package:betcode_app/core/grpc/relay_config.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
-import 'package:betcode_app/core/storage/secure_storage.dart';
-import 'package:betcode_app/core/storage/storage_providers.dart';
 
 class MockSecureStorageService extends Mock implements SecureStorageService {}
 
@@ -53,7 +52,7 @@ void main() {
     });
 
     test('initialize with stored config connects and sets state', () async {
-      const config = RelayConfig(host: 'relay.test', port: 443, useTls: true);
+      const config = RelayConfig(host: 'relay.test', port: 443);
       when(() => mockStorage.readRelayConfig()).thenAnswer((_) async => config);
       when(
         () => mockManager.connect('relay.test', 443, useTls: true),
@@ -81,7 +80,7 @@ void main() {
     test(
       'initialize with stored config but connect failure leaves state null',
       () async {
-        const config = RelayConfig(host: 'relay.test', port: 443, useTls: true);
+        const config = RelayConfig(host: 'relay.test', port: 443);
         when(
           () => mockStorage.readRelayConfig(),
         ).thenAnswer((_) async => config);
@@ -104,7 +103,7 @@ void main() {
           useTls: false,
         );
         when(
-          () => mockManager.connect('relay.new', 8443, useTls: false),
+          () => mockManager.connect('relay.new', 8443),
         ).thenAnswer((_) async {});
         when(
           () => mockStorage.writeRelayConfig(config),
@@ -116,7 +115,7 @@ void main() {
 
         expect(container.read(relayConfigNotifierProvider), equals(config));
         verify(
-          () => mockManager.connect('relay.new', 8443, useTls: false),
+          () => mockManager.connect('relay.new', 8443),
         ).called(1);
       },
     );

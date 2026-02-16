@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/worktree.pb.dart';
-import 'worktrees_notifier.dart';
 
 /// Provides the list of [WorktreeDetail] objects fetched from the daemon.
 ///

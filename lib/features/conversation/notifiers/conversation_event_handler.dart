@@ -1,11 +1,16 @@
 import 'dart:convert';
 
+import 'package:betcode_app/features/conversation/conversation.dart'
+    show ConversationNotifier;
+import 'package:betcode_app/features/conversation/models/conversation_state.dart';
+import 'package:betcode_app/features/conversation/notifiers/conversation_notifier.dart'
+    show ConversationNotifier;
+import 'package:betcode_app/features/conversation/notifiers/notifiers.dart'
+    show ConversationNotifier;
+import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
+import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../generated/betcode/v1/agent.pb.dart' as pb;
-import '../../../generated/betcode/v1/common.pb.dart';
-import '../models/conversation_state.dart';
 
 /// Mixin that processes incoming [pb.AgentEvent]s and updates the
 /// [ConversationState] accordingly.
@@ -16,7 +21,8 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
     debugPrint(
-      '[Conversation] Event received: ${event.whichEvent().name} seq=${event.sequence}',
+      '[Conversation] Event received: '
+      '${event.whichEvent().name} seq=${event.sequence}',
     );
     final seq = event.sequence.toInt();
     final current = state.value;
@@ -95,7 +101,8 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   /// Whether a tool name indicates an agent-spawning tool.
   bool _isAgentTool(String toolName) => toolName == 'Task';
 
-  /// Extracts agent name from tool description or input JSON, falling back to "Agent N".
+  /// Extracts agent name from tool description or input JSON,
+  /// falling back to "Agent N".
   String _extractAgentName(
     String description,
     int agentIndex, {
@@ -144,7 +151,8 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
     return null;
   }
 
-  /// Apply agent tracking to an active state (pure function, no state mutation).
+  /// Apply agent tracking to an active state (pure function, no
+  /// state mutation).
   ConversationActive _withAgentTracking(
     ConversationActive active,
     String? parentId,
@@ -207,7 +215,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
         );
       }
 
-      var result = active.copyWith(messages: messages, lastSequence: seq);
+      final result = active.copyWith(messages: messages, lastSequence: seq);
       return _withAgentTracking(result, parentToolUseId);
     });
   }
@@ -248,7 +256,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
         );
       }
 
-      var result = active.copyWith(
+      final result = active.copyWith(
         messages: messages,
         agents: agents,
         lastSequence: seq,
@@ -312,7 +320,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
           parentToolUseId: parentToolUseId,
         ),
       ];
-      var result = active.copyWith(
+      final result = active.copyWith(
         messages: messages,
         agentStatus: AgentStatus.AGENT_STATUS_WAITING_FOR_USER,
         lastSequence: seq,
@@ -337,7 +345,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
           parentToolUseId: parentToolUseId,
         ),
       ];
-      var result = active.copyWith(
+      final result = active.copyWith(
         messages: messages,
         agentStatus: AgentStatus.AGENT_STATUS_WAITING_FOR_USER,
         lastSequence: seq,
@@ -352,7 +360,7 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
       if (parentId.isNotEmpty && active.agents.containsKey(parentId)) {
         final agents = Map<String, AgentInfo>.from(active.agents);
         agents[parentId] = agents[parentId]!.copyWith(status: change.status);
-        var result = active.copyWith(agents: agents, lastSequence: seq);
+        final result = active.copyWith(agents: agents, lastSequence: seq);
         return _withAgentTracking(result, parentId);
       }
       return active.copyWith(agentStatus: change.status, lastSequence: seq);

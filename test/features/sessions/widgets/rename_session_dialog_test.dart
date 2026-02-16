@@ -1,7 +1,6 @@
+import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
 
 Widget _app({
   required String currentName,

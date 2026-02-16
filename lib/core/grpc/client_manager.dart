@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:math';
 
+import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
-
-import 'connection_state.dart';
 
 /// Manages a single [ClientChannel] lifecycle with automatic reconnection.
 ///
@@ -43,8 +41,8 @@ class GrpcClientManager {
   int? _port;
   bool _useTls = false;
 
-  /// The backoff durations for reconnection attempts, indexed by attempt number.
-  /// Capped at 30 seconds.
+  /// The backoff durations for reconnection attempts, indexed by
+  /// attempt number. Capped at 30 seconds.
   static const _backoffDurations = [
     Duration(milliseconds: 100),
     Duration(seconds: 1),
@@ -123,7 +121,7 @@ class GrpcClientManager {
       final h = _host;
       final p = _port;
       if (h != null && p != null) {
-        _reconnectLoop(h, p, useTls: _useTls, attempt: 0);
+        _reconnectLoop(h, p, useTls: _useTls);
       }
     }
   }
@@ -150,7 +148,7 @@ class GrpcClientManager {
           credentials: useTls
               ? ChannelCredentials.secure(
                   onBadCertificate: kDebugMode
-                      ? (X509Certificate cert, String host) {
+                      ? (cert, host) {
                           debugPrint(
                             '[GrpcClientManager] Accepting self-signed cert '
                             'for $host (debug mode)',
@@ -244,7 +242,8 @@ class GrpcClientManager {
     );
 
     debugPrint(
-      '[GrpcClientManager] Reconnecting in ${delay.inMilliseconds}ms (attempt ${attempt + 1})',
+      '[GrpcClientManager] Reconnecting in '
+      '${delay.inMilliseconds}ms (attempt ${attempt + 1})',
     );
 
     _reconnectTimer = Timer(delay, () async {

@@ -1,10 +1,9 @@
+import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/widgets/icon_label_row.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/gitlab.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/widgets/icon_label_row.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [MergeRequestInfo] in the merge requests list.
 ///
@@ -12,7 +11,7 @@ import '../../../shared/widgets/tappable_card.dart';
 /// author, draft indicator (chip), and labels (chips). Accepts an optional
 /// [onTap] callback.
 class MergeRequestCard extends StatelessWidget {
-  const MergeRequestCard({super.key, required this.mergeRequest, this.onTap});
+  const MergeRequestCard({required this.mergeRequest, super.key, this.onTap});
 
   final MergeRequestInfo mergeRequest;
   final VoidCallback? onTap;
@@ -66,7 +65,8 @@ class MergeRequestCard extends StatelessWidget {
             IconLabelRow(
               icon: Icons.call_merge,
               label:
-                  '${mergeRequest.sourceBranch} \u2192 ${mergeRequest.targetBranch}',
+                  '${mergeRequest.sourceBranch} '
+                  '\u2192 ${mergeRequest.targetBranch}',
               expanded: true,
             ),
           ],
@@ -88,12 +88,12 @@ class MergeRequestCard extends StatelessWidget {
               runSpacing: 4,
               children: [
                 if (mergeRequest.draft)
-                  Chip(
-                    label: const Text('Draft'),
+                  const Chip(
+                    label: Text('Draft'),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                    labelPadding: EdgeInsets.symmetric(horizontal: 6),
                   ),
                 ...mergeRequest.labels.map(
                   (label) => Chip(

@@ -1,11 +1,10 @@
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/conversation/notifiers/input_lock_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
 import 'package:mocktail/mocktail.dart';
-
-import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/conversation/notifiers/input_lock_providers.dart';
-import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 
 import '../../../helpers/fake_response_future.dart';
 
@@ -95,7 +94,7 @@ void main() {
     test('propagates gRPC error', () async {
       when(
         () => mockClient.requestInputLock(any()),
-      ).thenThrow(GrpcError.unavailable('daemon down'));
+      ).thenThrow(const GrpcError.unavailable('daemon down'));
 
       final notifier = container.read(inputLockProvider.notifier);
       expect(

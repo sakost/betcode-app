@@ -1,8 +1,7 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/sync/connectivity.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../sync/connectivity.dart';
-import 'connection_state.dart';
-import 'grpc_providers.dart';
 
 /// Watches network status, gRPC connection status, and relay config.
 /// When online, disconnected, and relay config exists, triggers reconnect.
@@ -17,7 +16,6 @@ final relayAutoReconnectProvider = Provider<void>((ref) {
   if (network == NetworkStatus.online &&
       connection == GrpcConnectionStatus.disconnected &&
       relayConfig != null) {
-    final manager = ref.read(grpcClientManagerProvider);
-    manager.reconnect();
+    ref.read(grpcClientManagerProvider).reconnect();
   }
 });

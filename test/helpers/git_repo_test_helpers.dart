@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_notifier.dart';
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -40,21 +40,24 @@ class FakeGitReposNotifier extends GitReposNotifier {
   @override
   Future<List<GitRepoDetail>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<GitRepoDetail>>().future, // never completes
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
 
-/// Wraps [child] in a [ProviderScope] with [gitReposProvider] overridden.
+/// Wraps [child] in a [ProviderScope] with [gitReposProvider]
+/// overridden.
 ProviderScope withFakeRepos(
-  dynamic child,
+  Widget child,
   AsyncValue<List<GitRepoDetail>> value,
 ) {
   return ProviderScope(
     overrides: [
-      gitReposProvider.overrideWith(() => FakeGitReposNotifier(value)),
+      gitReposProvider.overrideWith(
+        () => FakeGitReposNotifier(value),
+      ),
     ],
     child: child,
   );

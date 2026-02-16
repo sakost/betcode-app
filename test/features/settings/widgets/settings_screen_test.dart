@@ -1,21 +1,21 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/relay_config.dart';
 import 'package:betcode_app/core/grpc/relay_notifier.dart';
-import 'package:betcode_app/features/settings/notifiers/settings_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/mcp_servers_notifier.dart';
+import 'package:betcode_app/features/settings/notifiers/settings_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/features/settings/screens/settings_screen.dart';
 import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:betcode_app/shared/widgets/connection_indicator.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:riverpod/misc.dart' show Override;
 
 import '../../../helpers/settings_test_helpers.dart';
 
@@ -50,9 +50,9 @@ class _FakeSettingsNotifier extends SettingsNotifier {
   @override
   Future<Settings> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<Settings>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -64,9 +64,9 @@ class _FakeMcpServersNotifier extends McpServersNotifier {
   @override
   Future<List<McpServerInfo>> build() {
     return _value.when(
-      data: (d) => Future.value(d),
+      data: Future.value,
       loading: () => Completer<List<McpServerInfo>>().future,
-      error: (e, st) => Future.error(e, st),
+      error: Future.error,
     );
   }
 }
@@ -92,15 +92,19 @@ class _FakeRelayNotifier extends RelayConfigNotifier {
 Widget _settingsApp({
   AsyncValue<Settings>? settings,
   AsyncValue<List<McpServerInfo>>? servers,
-  List extraOverrides = const [],
+  List<Override> extraOverrides = const [],
 }) {
   return ProviderScope(
     overrides: [
       settingsProvider.overrideWith(
-        () => _FakeSettingsNotifier(settings ?? AsyncData(makeTestSettings())),
+        () => _FakeSettingsNotifier(
+          settings ?? AsyncData(makeTestSettings()),
+        ),
       ),
       mcpServersProvider.overrideWith(
-        () => _FakeMcpServersNotifier(servers ?? const AsyncData([])),
+        () => _FakeMcpServersNotifier(
+          servers ?? const AsyncData([]),
+        ),
       ),
       ...extraOverrides,
     ],
@@ -158,7 +162,6 @@ void main() {
           settings: AsyncData(
             makeTestSettings(
               defaultModel: 'claude-opus-4',
-              autoCompact: true,
               autoCompactThreshold: 150,
               maxMessagesPerSession: 1000,
             ),
@@ -197,9 +200,6 @@ void main() {
     testWidgets('displays MCP servers section with cards', (t) async {
       final servers = [
         _makeServer(
-          name: 'context7',
-          serverType: 'stdio',
-          status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
           tools: ['query-docs', 'resolve-library-id'],
         ),
         _makeServer(
@@ -261,7 +261,6 @@ void main() {
         t,
         _makeServer(
           name: 'my-server',
-          serverType: 'stdio',
           endpoint: '/usr/bin/mcp',
         ),
       );
@@ -282,7 +281,7 @@ void main() {
     testWidgets('shows Running status with green color', (t) async {
       await pumpCard(
         t,
-        _makeServer(status: McpServerStatus.MCP_SERVER_STATUS_RUNNING),
+        _makeServer(),
       );
       expect(find.text('Running'), findsOneWidget);
     });
@@ -320,10 +319,7 @@ void main() {
     testWidgets('hides error message when not in error state', (t) async {
       await pumpCard(
         t,
-        _makeServer(
-          status: McpServerStatus.MCP_SERVER_STATUS_RUNNING,
-          errorMessage: '',
-        ),
+        _makeServer(),
       );
       expect(find.text('Running'), findsOneWidget);
       expect(find.text('Failed to connect to server'), findsNothing);

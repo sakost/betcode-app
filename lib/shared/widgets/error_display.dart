@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 /// Designed to pair with Riverpod's `AsyncValue.error` — pass the error
 /// object and stack trace directly.
 class ErrorDisplay extends StatelessWidget {
+  /// Creates an [ErrorDisplay] for the given [error] with an optional
+  /// [onRetry] callback.
   const ErrorDisplay({
-    super.key,
     required this.error,
+    super.key,
     this.stackTrace,
     this.onRetry,
   });

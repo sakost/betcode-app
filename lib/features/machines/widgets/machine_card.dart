@@ -1,10 +1,9 @@
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/utils/time_utils.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
+import 'package:betcode_app/shared/widgets/tappable_card.dart';
 import 'package:flutter/material.dart';
-
-import '../../../generated/betcode/v1/machine.pb.dart';
-import '../../../shared/theme/app_colors.dart';
-import '../../../shared/utils/time_utils.dart';
-import '../../../shared/widgets/status_badge.dart';
-import '../../../shared/widgets/tappable_card.dart';
 
 /// A card displaying a single [MachineInfo] in the machines list.
 ///
@@ -12,8 +11,8 @@ import '../../../shared/widgets/tappable_card.dart';
 /// metadata entries. Accepts an optional [onTap] callback.
 class MachineCard extends StatelessWidget {
   const MachineCard({
-    super.key,
     required this.machine,
+    super.key,
     this.onTap,
     this.isSelected = false,
   });

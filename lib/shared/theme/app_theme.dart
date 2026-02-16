@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+/// Central Material 3 theme configuration for the BetCode app.
 abstract final class AppTheme {
   static const _seedColor = Color(0xFF1565C0);
   static const _monoFont = 'JetBrains Mono';
 
+  /// The light-mode [ThemeData] derived from the app's seed color.
   static ThemeData get lightTheme => _buildTheme(Brightness.light);
+
+  /// The dark-mode [ThemeData] derived from the app's seed color.
   static ThemeData get darkTheme => _buildTheme(Brightness.dark);
 
   static ThemeData _buildTheme(Brightness brightness) {
@@ -86,10 +90,10 @@ abstract final class AppTheme {
   }
 
   static TextTheme _buildTextTheme(ColorScheme colorScheme) {
-    return TextTheme(
+    return const TextTheme(
       // Code display uses monospace
-      bodySmall: const TextStyle(fontFamily: _monoFont, fontSize: 12),
-      labelSmall: const TextStyle(fontFamily: _monoFont, fontSize: 11),
+      bodySmall: TextStyle(fontFamily: _monoFont, fontSize: 12),
+      labelSmall: TextStyle(fontFamily: _monoFont, fontSize: 11),
     );
   }
 }

@@ -1,22 +1,22 @@
+import 'package:betcode_app/core/grpc/connection_state.dart';
+import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/core/grpc/worktree_helpers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/grpc/connection_state.dart';
-import '../../../core/grpc/grpc_providers.dart';
-import '../../../core/grpc/service_providers.dart';
-import '../../../core/grpc/worktree_helpers.dart';
-import '../../../generated/betcode/v1/worktree.pb.dart';
 
 /// Provides the list of [WorktreeDetail] objects for a specific repo.
 ///
-/// Fetches worktrees filtered by [repoId] from the daemon via gRPC.
+/// Fetches worktrees filtered by `repoId` from the daemon via gRPC.
+// ignore: specify_nonobvious_property_types, the family provider type is not publicly exported
 final repoWorktreesProvider =
     AsyncNotifierProvider.family<
       RepoWorktreesNotifier,
       List<WorktreeDetail>,
       String
     >((repoId) {
-      final notifier = RepoWorktreesNotifier();
-      notifier.repoId = repoId;
+      final notifier = RepoWorktreesNotifier()..repoId = repoId;
       return notifier;
     });
 
@@ -31,6 +31,8 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return [];
     return _fetchWorktrees();
   }
 
@@ -62,6 +64,6 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _fetchWorktrees());
+    state = await AsyncValue.guard(_fetchWorktrees);
   }
 }
