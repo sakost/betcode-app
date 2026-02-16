@@ -127,8 +127,46 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           lastSequence: 0,
         ),
       );
+
+      // When resuming an existing session, load conversation history from
+      // the daemon's event store via the ResumeSession RPC. Events are
+      // processed through the same handler and deduplicated by sequence.
+      if (sessionId != null && sessionId!.isNotEmpty) {
+        await _loadHistory(sessionId!);
+      }
     } on Exception catch (e) {
       state = AsyncData(ConversationState.error(e.toString()));
+    }
+  }
+
+  /// Loads conversation history from the daemon via the ResumeSession RPC.
+  ///
+  /// Events are replayed through [handleEvent] which builds up the messages
+  /// list. The dedup logic (sequence check) prevents double-processing if
+  /// the bidi stream has already delivered some events.
+  Future<void> _loadHistory(String sid) async {
+    debugPrint('[Conversation] Loading history for session $sid');
+    try {
+      final historyStream = _client.resumeSession(
+        pb.ResumeSessionRequest(
+          sessionId: sid,
+          fromSequence: Int64.ZERO,
+        ),
+      );
+      final completer = Completer<void>();
+      historyStream.listen(
+        handleEvent,
+        onError: completer.completeError,
+        onDone: completer.complete,
+        cancelOnError: true,
+      );
+      await completer.future;
+      final current = state.value;
+      final seq = current is ConversationActive ? current.lastSequence : 0;
+      debugPrint('[Conversation] History loaded, lastSequence=$seq');
+    } on GrpcError catch (e) {
+      // Non-fatal: continue with empty history if replay fails.
+      debugPrint('[Conversation] History load failed: $e');
     }
   }
 
@@ -327,18 +365,30 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       if (_paused || state.value is! ConversationActive) return;
 
       try {
-        final responseStream = _client.resumeSession(
-          pb.ResumeSessionRequest(
-            sessionId: active.sessionId,
-            fromSequence: Int64(active.lastSequence),
-          ),
-        );
+        // Close the old request controller before creating a new one.
+        unawaited(_requestController?.close());
+
+        // Re-open a bidirectional Converse stream so the user can continue
+        // sending messages after reconnection. The previous implementation
+        // used resumeSession (server-streaming, read-only) which left
+        // _requestController null — silently dropping all user messages.
+        _requestController = StreamController<pb.AgentRequest>();
+        final responseStream =
+            _client.converse(_requestController!.stream);
 
         _eventSubscription = responseStream.listen(
           _onReconnectEvent,
           onError: _handleStreamError,
           onDone: _handleStreamDone,
           cancelOnError: false,
+        );
+
+        // Send a StartConversation with the existing session ID so the
+        // daemon knows this is a resume, not a new session.
+        _requestController!.add(
+          pb.AgentRequest(
+            start: pb.StartConversation(sessionId: active.sessionId),
+          ),
         );
 
         // Don't reset _reconnectAttempt here — the stream setup is
@@ -404,13 +454,20 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   void _handleStreamDone() {
     debugPrint('[Conversation] Stream done');
+    unawaited(_eventSubscription?.cancel());
+    _eventSubscription = null;
+
     final current = state.value;
-    if (current is ConversationActive) {
-      state = AsyncData(
-        current.copyWith(agentStatus: AgentStatus.AGENT_STATUS_IDLE),
-      );
+    if (current is ConversationActive && current.sessionId.isNotEmpty) {
+      // Stream closed while conversation is active — attempt reconnection
+      // so the user can continue sending messages. Without this, the UI
+      // stays in ConversationActive but _requestController is null, causing
+      // sendMessage() to silently drop all messages.
+      debugPrint('[Conversation] Stream closed unexpectedly, reconnecting');
+      _attemptReconnection(current);
+    } else {
+      _cleanup();
     }
-    _cleanup();
   }
 
   void _cleanup() {

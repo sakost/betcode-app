@@ -40,6 +40,13 @@ void main() {
       return FakeResponseStream<pb.AgentEvent>(eventController);
     });
 
+    // Default: resumeSession returns empty stream (no history).
+    when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+      final c = StreamController<pb.AgentEvent>();
+      unawaited(c.close());
+      return FakeResponseStream<pb.AgentEvent>(c);
+    });
+
     container = ProviderContainer(
       overrides: [agentServiceProvider.overrideWithValue(mockClient)],
     );
@@ -260,12 +267,6 @@ void main() {
     test(
       'transient stream error triggers reconnection on active session',
       () async {
-        when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) => FakeResponseStream<pb.AgentEvent>(
-            StreamController<pb.AgentEvent>(),
-          ),
-        );
-
         final n = notifier();
         await goActive(n);
 
@@ -294,7 +295,10 @@ void main() {
       expect((s! as ConversationError).message, contains('expired'));
     });
 
-    test('stream done sets idle status on active state', () async {
+    test('stream done triggers reconnection on active session', () async {
+      // After the fix, stream done on an active session triggers
+      // reconnection rather than leaving the UI broken with no request
+      // controller.
       final n = notifier();
       await goActive(n);
 
@@ -312,7 +316,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final a = stateVal()! as ConversationActive;
-      expect(a.agentStatus, AgentStatus.AGENT_STATUS_IDLE);
+      expect(a.errorMessage, contains('Reconnecting'));
     });
   });
 
@@ -418,54 +422,104 @@ void main() {
       async.flushMicrotasks();
     }
 
+    /// Counts reconnection converse calls (calls after the initial one).
+    /// Returns a function that provides the current reconnection call count,
+    /// and sets up the mock to return fresh event controllers on each call.
+    ///
+    /// [onReconnect] is called with each new event controller.
+    ({
+      int Function() callCount,
+      StreamController<pb.AgentEvent> Function() latestController,
+    }) setupReconnectMock({
+      void Function(StreamController<pb.AgentEvent>)? onReconnect,
+      bool immediateError = false,
+      GrpcError? throwOnConverse,
+    }) {
+      var reconnectCount = 0;
+      StreamController<pb.AgentEvent>? latest;
+      var isFirstCall = true;
+
+      when(() => mockClient.converse(any())).thenAnswer((inv) {
+        final reqStream =
+            inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+
+        if (isFirstCall) {
+          // First call is the initial startConversation.
+          isFirstCall = false;
+          reqStream.listen(capturedRequests.add);
+          return FakeResponseStream<pb.AgentEvent>(eventController);
+        }
+
+        // Subsequent calls are reconnection attempts.
+        reconnectCount++;
+
+        if (throwOnConverse != null) {
+          throw throwOnConverse;
+        }
+
+        if (immediateError) {
+          reqStream.listen(capturedRequests.add);
+          return ErrorResponseStream<pb.AgentEvent>(
+            const GrpcError.unavailable('dns fail'),
+          );
+        }
+
+        latest = StreamController<pb.AgentEvent>();
+        reqStream.listen(capturedRequests.add);
+        onReconnect?.call(latest!);
+        return FakeResponseStream<pb.AgentEvent>(latest!);
+      });
+
+      return (
+        callCount: () => reconnectCount,
+        latestController: () => latest!,
+      );
+    }
+
     test('attempts reconnection on transient stream error', () {
       fakeAsync((async) {
-        final resumeController = StreamController<pb.AgentEvent>();
-        when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
-        );
+        final mock = setupReconnectMock();
 
         startActive(async);
         injectError(async);
 
         async.elapse(const Duration(milliseconds: 600));
 
-        verify(() => mockClient.resumeSession(any())).called(1);
+        expect(mock.callCount(), 1);
 
-        unawaited(resumeController.close());
+        unawaited(mock.latestController().close());
       });
     });
 
-    test('sends ResumeSessionRequest with correct session ID and sequence', () {
+    test('sends StartConversation with correct session ID on reconnect', () {
       fakeAsync((async) {
-        pb.ResumeSessionRequest? capturedRequest;
-        final resumeController = StreamController<pb.AgentEvent>();
-        when(() => mockClient.resumeSession(any())).thenAnswer((inv) {
-          capturedRequest =
-              inv.positionalArguments[0] as pb.ResumeSessionRequest;
-          return FakeResponseStream<pb.AgentEvent>(resumeController);
-        });
+        final mock = setupReconnectMock();
 
         startActive(async, sessionId: 'sess-42', sequence: 7);
+        // Clear captured requests from initial start.
+        capturedRequests.clear();
+
         injectError(async);
 
-        async.elapse(const Duration(milliseconds: 600));
+        async
+          ..elapse(const Duration(milliseconds: 600))
+          ..flushMicrotasks();
 
-        expect(capturedRequest, isNotNull);
-        expect(capturedRequest!.sessionId, 'sess-42');
-        expect(capturedRequest!.fromSequence, Int64(7));
+        expect(mock.callCount(), 1);
+        // The reconnection should send a StartConversation request
+        // with the existing session ID.
+        expect(capturedRequests, isNotEmpty);
+        final req = capturedRequests.first;
+        expect(req.hasStart(), isTrue);
+        expect(req.start.sessionId, 'sess-42');
 
-        unawaited(resumeController.close());
+        unawaited(mock.latestController().close());
       });
     });
 
     test('does not attempt reconnection when no session ID available', () {
       fakeAsync((async) {
-        when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) => FakeResponseStream<pb.AgentEvent>(
-            StreamController<pb.AgentEvent>(),
-          ),
-        );
+        final mock = setupReconnectMock();
 
         final n = notifier();
         unawaited(
@@ -478,7 +532,7 @@ void main() {
 
         async.elapse(const Duration(seconds: 60));
 
-        verifyNever(() => mockClient.resumeSession(any()));
+        expect(mock.callCount(), 0);
 
         final s = stateVal();
         expect(s, isA<ConversationError>());
@@ -487,18 +541,14 @@ void main() {
 
     test('does not attempt reconnection on fatal error (unauthenticated)', () {
       fakeAsync((async) {
-        when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) => FakeResponseStream<pb.AgentEvent>(
-            StreamController<pb.AgentEvent>(),
-          ),
-        );
+        final mock = setupReconnectMock();
 
         startActive(async);
         injectError(async, const GrpcError.unauthenticated('expired'));
 
         async.elapse(const Duration(seconds: 60));
 
-        verifyNever(() => mockClient.resumeSession(any()));
+        expect(mock.callCount(), 0);
 
         final s = stateVal();
         expect(s, isA<ConversationError>());
@@ -507,9 +557,9 @@ void main() {
 
     test('transitions to error state after max reconnection attempts', () {
       fakeAsync((async) {
-        when(
-          () => mockClient.resumeSession(any()),
-        ).thenThrow(const GrpcError.unavailable('still down'));
+        setupReconnectMock(
+          throwOnConverse: const GrpcError.unavailable('still down'),
+        );
 
         startActive(async);
         injectError(async);
@@ -525,17 +575,14 @@ void main() {
 
     test('successful reconnection resumes event processing', () {
       fakeAsync((async) {
-        final resumeController = StreamController<pb.AgentEvent>();
-        when(() => mockClient.resumeSession(any())).thenAnswer(
-          (_) => FakeResponseStream<pb.AgentEvent>(resumeController),
-        );
+        final mock = setupReconnectMock();
 
         startActive(async);
         injectError(async);
 
         async.elapse(const Duration(milliseconds: 600));
 
-        resumeController.add(
+        mock.latestController().add(
           pb.AgentEvent(
             sequence: Int64(2),
             textDelta: pb.TextDelta(text: 'Hello again'),
@@ -551,30 +598,23 @@ void main() {
         );
         expect(a.errorMessage, isNull);
 
-        unawaited(resumeController.close());
+        unawaited(mock.latestController().close());
       });
     });
 
     test('resets reconnect counter on successful reconnection', () {
       fakeAsync((async) {
-        var resumeCallCount = 0;
-        StreamController<pb.AgentEvent>? activeResumeController;
-
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
-          activeResumeController = StreamController<pb.AgentEvent>();
-          return FakeResponseStream<pb.AgentEvent>(activeResumeController!);
-        });
+        final mock = setupReconnectMock();
 
         startActive(async);
 
         // First disconnect.
         injectError(async);
         async.elapse(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 1);
+        expect(mock.callCount(), 1);
 
         // Send an event so reconnect is considered successful.
-        activeResumeController!.add(
+        mock.latestController().add(
           pb.AgentEvent(
             sequence: Int64(2),
             statusChange: pb.StatusChange(
@@ -585,20 +625,20 @@ void main() {
         async.flushMicrotasks();
 
         // Second disconnect on the resumed stream.
-        activeResumeController!.addError(
+        mock.latestController().addError(
           const GrpcError.unavailable('lost again'),
         );
         // Second reconnection should use first backoff (500ms).
         async
           ..flushMicrotasks()
           ..elapse(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 2);
+        expect(mock.callCount(), 2);
 
         // State should still be active.
         final s = stateVal();
         expect(s, isA<ConversationActive>());
 
-        unawaited(activeResumeController?.close());
+        unawaited(mock.latestController().close());
       });
     });
 
@@ -606,15 +646,7 @@ void main() {
       'immediate stream error does not reset counter (backoff progresses)',
       () {
         fakeAsync((async) {
-          var resumeCallCount = 0;
-
-          // Every resumeSession call returns a stream that immediately errors.
-          when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-            resumeCallCount++;
-            return ErrorResponseStream<pb.AgentEvent>(
-              const GrpcError.unavailable('dns fail'),
-            );
-          });
+          final mock = setupReconnectMock(immediateError: true);
 
           startActive(async);
           injectError(async);
@@ -623,19 +655,19 @@ void main() {
           async
             ..elapse(const Duration(milliseconds: 600))
             ..flushMicrotasks();
-          expect(resumeCallCount, 1);
+          expect(mock.callCount(), 1);
 
           // Second attempt: 1s backoff (counter NOT reset).
           async
             ..elapse(const Duration(seconds: 1))
             ..flushMicrotasks();
-          expect(resumeCallCount, 2);
+          expect(mock.callCount(), 2);
 
           // Third attempt: 3s backoff.
           async
             ..elapse(const Duration(seconds: 3))
             ..flushMicrotasks();
-          expect(resumeCallCount, 3);
+          expect(mock.callCount(), 3);
         });
       },
     );
@@ -644,14 +676,7 @@ void main() {
       'exhausts max attempts with immediate stream errors (no infinite loop)',
       () {
         fakeAsync((async) {
-          var resumeCallCount = 0;
-
-          when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-            resumeCallCount++;
-            return ErrorResponseStream<pb.AgentEvent>(
-              const GrpcError.unavailable('dns fail'),
-            );
-          });
+          final mock = setupReconnectMock(immediateError: true);
 
           startActive(async);
           injectError(async);
@@ -660,7 +685,7 @@ void main() {
           async.elapse(const Duration(minutes: 2));
 
           // Should have made exactly 5 attempts then stopped.
-          expect(resumeCallCount, 5);
+          expect(mock.callCount(), 5);
 
           final s = stateVal();
           expect(s, isA<ConversationError>());
@@ -671,25 +696,18 @@ void main() {
 
     test('counter only resets after receiving a successful event', () {
       fakeAsync((async) {
-        var resumeCallCount = 0;
-        StreamController<pb.AgentEvent>? activeController;
-
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
-          activeController = StreamController<pb.AgentEvent>();
-          return FakeResponseStream<pb.AgentEvent>(activeController!);
-        });
+        final mock = setupReconnectMock();
 
         startActive(async);
         injectError(async);
 
         // First attempt fires at 500ms.
         async.elapse(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 1);
+        expect(mock.callCount(), 1);
 
         // Stream is set up but no events sent yet — error it immediately.
         // The counter should NOT have been reset.
-        activeController!.addError(
+        mock.latestController().addError(
           const GrpcError.unavailable('still failing'),
         );
         // Second attempt should use 1s backoff (not 500ms).
@@ -697,13 +715,13 @@ void main() {
           ..flushMicrotasks()
           ..elapse(const Duration(milliseconds: 600));
         expect(
-          resumeCallCount,
+          mock.callCount(),
           1,
           reason: 'Should not retry yet at 500ms',
         );
 
         async.elapse(const Duration(milliseconds: 500));
-        expect(resumeCallCount, 2, reason: 'Should retry at ~1s');
+        expect(mock.callCount(), 2, reason: 'Should retry at ~1s');
       });
     });
   });
@@ -724,10 +742,19 @@ void main() {
         final c = createLifecycleContainer();
         addTearDown(c.dispose);
 
-        // Set up reconnection mock.
-        var resumeCallCount = 0;
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
+        // Track reconnection attempts (calls after initial).
+        var reconnectCount = 0;
+        var isFirstCall = true;
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          final reqStream =
+              inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+          if (isFirstCall) {
+            isFirstCall = false;
+            reqStream.listen(capturedRequests.add);
+            return FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          reconnectCount++;
+          reqStream.listen(capturedRequests.add);
           return ErrorResponseStream<pb.AgentEvent>(
             const GrpcError.unavailable('dns fail'),
           );
@@ -768,7 +795,7 @@ void main() {
           ..flushMicrotasks()
           ..elapse(const Duration(minutes: 2));
         expect(
-          resumeCallCount,
+          reconnectCount,
           0,
           reason: 'No reconnect while paused',
         );
@@ -782,12 +809,21 @@ void main() {
         final c = createLifecycleContainer();
         addTearDown(c.dispose);
 
-        var resumeCallCount = 0;
-        StreamController<pb.AgentEvent>? resumeController;
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
-          resumeController = StreamController<pb.AgentEvent>();
-          return FakeResponseStream<pb.AgentEvent>(resumeController!);
+        var reconnectCount = 0;
+        StreamController<pb.AgentEvent>? reconnectController;
+        var isFirstCall = true;
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          final reqStream =
+              inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+          if (isFirstCall) {
+            isFirstCall = false;
+            reqStream.listen(capturedRequests.add);
+            return FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          reconnectCount++;
+          reconnectController = StreamController<pb.AgentEvent>();
+          reqStream.listen(capturedRequests.add);
+          return FakeResponseStream<pb.AgentEvent>(reconnectController!);
         });
 
         // Go active.
@@ -822,7 +858,7 @@ void main() {
         async
           ..flushMicrotasks()
           ..elapse(const Duration(seconds: 5));
-        expect(resumeCallCount, 0);
+        expect(reconnectCount, 0);
 
         // Foreground the app.
         lifecycleNotifier(c).transition(AppLifecycleState.resumed);
@@ -831,9 +867,9 @@ void main() {
         async
           ..flushMicrotasks()
           ..elapse(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 1, reason: 'Reconnect after resume');
+        expect(reconnectCount, 1, reason: 'Reconnect after resume');
 
-        unawaited(resumeController?.close());
+        unawaited(reconnectController?.close());
         c.dispose();
       });
     });
@@ -869,8 +905,9 @@ void main() {
         );
         async.flushMicrotasks();
 
-        // Stream done while backgrounded.
-        unawaited(eventController.close());
+        // Use close() to explicitly terminate the conversation.
+        // This resets state to initial and clears the paused flag.
+        n.close();
         async.flushMicrotasks();
 
         // Foreground the app.
