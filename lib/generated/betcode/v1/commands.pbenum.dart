@@ -24,16 +24,22 @@ class CommandCategory extends $pb.ProtobufEnum {
       2, _omitEnumNames ? '' : 'COMMAND_CATEGORY_CLAUDE_CODE');
   static const CommandCategory COMMAND_CATEGORY_PLUGIN =
       CommandCategory._(3, _omitEnumNames ? '' : 'COMMAND_CATEGORY_PLUGIN');
+  static const CommandCategory COMMAND_CATEGORY_SKILL =
+      CommandCategory._(4, _omitEnumNames ? '' : 'COMMAND_CATEGORY_SKILL');
+  static const CommandCategory COMMAND_CATEGORY_MCP =
+      CommandCategory._(5, _omitEnumNames ? '' : 'COMMAND_CATEGORY_MCP');
 
   static const $core.List<CommandCategory> values = <CommandCategory>[
     COMMAND_CATEGORY_UNSPECIFIED,
     COMMAND_CATEGORY_SERVICE,
     COMMAND_CATEGORY_CLAUDE_CODE,
     COMMAND_CATEGORY_PLUGIN,
+    COMMAND_CATEGORY_SKILL,
+    COMMAND_CATEGORY_MCP,
   ];
 
   static final $core.List<CommandCategory?> _byValue =
-      $pb.ProtobufEnum.$_initByValueList(values, 3);
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
   static CommandCategory? valueOf($core.int value) =>
       value < 0 || value >= _byValue.length ? null : _byValue[value];
 

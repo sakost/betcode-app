@@ -1,12 +1,31 @@
+import 'dart:async';
+
+import 'package:betcode_app/features/commands/notifiers/commands_notifier.dart';
+import 'package:betcode_app/features/commands/notifiers/commands_providers.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/widgets/agent_mention_overlay.dart';
 import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
 import 'package:betcode_app/features/conversation/widgets/input_bar.dart';
+import 'package:betcode_app/generated/betcode/v1/commands.pb.dart'
+    hide AgentInfo;
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Widget _app(Widget child) => MaterialApp(home: Scaffold(body: child));
+/// A notifier that returns canned async value without gRPC calls.
+class _FakeCommandsNotifier extends CommandsNotifier {
+  @override
+  Future<List<CommandEntry>> build() =>
+      Completer<List<CommandEntry>>().future; // never completes → empty
+}
+
+Widget _app(Widget child) => ProviderScope(
+  overrides: [
+    commandsProvider(null).overrideWith(_FakeCommandsNotifier.new),
+  ],
+  child: MaterialApp(home: Scaffold(body: child)),
+);
 
 final _agents = <String, AgentInfo>{
   'a1': const AgentInfo(

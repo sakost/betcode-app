@@ -30,6 +30,8 @@ class CommandEntry extends $pb.GeneratedMessage {
     ExecutionMode? executionMode,
     $core.String? source,
     $core.String? argsSchema,
+    $core.String? group,
+    $core.String? displayName,
   }) {
     final result = create();
     if (name != null) result.name = name;
@@ -38,6 +40,8 @@ class CommandEntry extends $pb.GeneratedMessage {
     if (executionMode != null) result.executionMode = executionMode;
     if (source != null) result.source = source;
     if (argsSchema != null) result.argsSchema = argsSchema;
+    if (group != null) result.group = group;
+    if (displayName != null) result.displayName = displayName;
     return result;
   }
 
@@ -62,6 +66,8 @@ class CommandEntry extends $pb.GeneratedMessage {
         enumValues: ExecutionMode.values)
     ..aOS(5, _omitFieldNames ? '' : 'source')
     ..aOS(6, _omitFieldNames ? '' : 'argsSchema')
+    ..aOS(7, _omitFieldNames ? '' : 'group')
+    ..aOS(8, _omitFieldNames ? '' : 'displayName')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -136,6 +142,24 @@ class CommandEntry extends $pb.GeneratedMessage {
   $core.bool hasArgsSchema() => $_has(5);
   @$pb.TagNumber(6)
   void clearArgsSchema() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.String get group => $_getSZ(6);
+  @$pb.TagNumber(7)
+  set group($core.String value) => $_setString(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasGroup() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearGroup() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $core.String get displayName => $_getSZ(7);
+  @$pb.TagNumber(8)
+  set displayName($core.String value) => $_setString(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDisplayName() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDisplayName() => $_clearField(8);
 }
 
 /// AgentInfo describes an agent for completion purposes.
@@ -582,7 +606,13 @@ class PluginInfo extends $pb.GeneratedMessage {
 }
 
 class GetCommandRegistryRequest extends $pb.GeneratedMessage {
-  factory GetCommandRegistryRequest() => create();
+  factory GetCommandRegistryRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
 
   GetCommandRegistryRequest._();
 
@@ -597,6 +627,7 @@ class GetCommandRegistryRequest extends $pb.GeneratedMessage {
       _omitMessageNames ? '' : 'GetCommandRegistryRequest',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
       createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -618,6 +649,15 @@ class GetCommandRegistryRequest extends $pb.GeneratedMessage {
   static GetCommandRegistryRequest getDefault() => _defaultInstance ??=
       $pb.GeneratedMessage.$_defaultFor<GetCommandRegistryRequest>(create);
   static GetCommandRegistryRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
 }
 
 class GetCommandRegistryResponse extends $pb.GeneratedMessage {
@@ -905,10 +945,12 @@ class ExecuteServiceCommandRequest extends $pb.GeneratedMessage {
   factory ExecuteServiceCommandRequest({
     $core.String? command,
     $core.Iterable<$core.String>? args,
+    $core.String? sessionId,
   }) {
     final result = create();
     if (command != null) result.command = command;
     if (args != null) result.args.addAll(args);
+    if (sessionId != null) result.sessionId = sessionId;
     return result;
   }
 
@@ -927,6 +969,7 @@ class ExecuteServiceCommandRequest extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'command')
     ..pPS(2, _omitFieldNames ? '' : 'args')
+    ..aOS(3, _omitFieldNames ? '' : 'sessionId')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -962,6 +1005,15 @@ class ExecuteServiceCommandRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(2)
   $pb.PbList<$core.String> get args => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.String get sessionId => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set sessionId($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSessionId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSessionId() => $_clearField(3);
 }
 
 class ListPluginsRequest extends $pb.GeneratedMessage {

@@ -1,19 +1,24 @@
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/commands.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Manages the command registry fetched from the daemon via gRPC.
+/// Manages the command registry fetched from the daemon via gRPC,
+/// scoped by session ID.
 ///
-/// On [build], fetches the full command registry and returns it. Callers can
-/// pull-to-refresh via [refresh], list agents, or list path entries.
+/// On [build], fetches the full command registry for the given session and
+/// returns it. Callers can pull-to-refresh via [refresh], list agents, or
+/// list path entries.
 ///
 /// Watches [connectionStatusProvider] so the provider auto-refreshes when
 /// the gRPC connection state changes.
 class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
   static const _rpcTimeout = Duration(seconds: 10);
+
+  /// The session ID for which commands are fetched. Set by the
+  /// provider factory before [build] is called.
+  String? sessionId;
 
   @override
   Future<List<CommandEntry>> build() async {
@@ -21,15 +26,15 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
     if (status != GrpcConnectionStatus.connected) {
       throw StateError('Not connected to daemon');
     }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
     return _fetchCommands();
   }
 
   Future<List<CommandEntry>> _fetchCommands() async {
     final client = ref.read(commandServiceProvider);
     final response = await client
-        .getCommandRegistry(GetCommandRegistryRequest())
+        .getCommandRegistry(
+          GetCommandRegistryRequest(sessionId: sessionId ?? ''),
+        )
         .timeout(_rpcTimeout);
     return response.commands.toList();
   }
@@ -47,7 +52,9 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
   }) async {
     final client = ref.read(commandServiceProvider);
     final response = await client
-        .listAgents(ListAgentsRequest(query: query, maxResults: maxResults))
+        .listAgents(
+          ListAgentsRequest(query: query, maxResults: maxResults),
+        )
         .timeout(_rpcTimeout);
     return response.agents.toList();
   }
@@ -59,7 +66,9 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
   }) async {
     final client = ref.read(commandServiceProvider);
     final response = await client
-        .listPath(ListPathRequest(query: query, maxResults: maxResults))
+        .listPath(
+          ListPathRequest(query: query, maxResults: maxResults),
+        )
         .timeout(_rpcTimeout);
     return response.entries.toList();
   }
@@ -74,7 +83,11 @@ class CommandsNotifier extends AsyncNotifier<List<CommandEntry>> {
   }) {
     final client = ref.read(commandServiceProvider);
     return client.executeServiceCommand(
-      ExecuteServiceCommandRequest(command: command, args: args),
+      ExecuteServiceCommandRequest(
+        command: command,
+        args: args,
+        sessionId: sessionId ?? '',
+      ),
     );
   }
 }

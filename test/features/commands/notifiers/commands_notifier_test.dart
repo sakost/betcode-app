@@ -80,7 +80,7 @@ void main() {
         ),
       );
 
-      final result = await container.read(commandsProvider.future);
+      final result = await container.read(commandsProvider(null).future);
 
       expect(result, hasLength(2));
       expect(result[0].name, 'cmd-1');
@@ -92,7 +92,7 @@ void main() {
         (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
       );
 
-      final result = await container.read(commandsProvider.future);
+      final result = await container.read(commandsProvider(null).future);
       expect(result, isEmpty);
     });
 
@@ -114,7 +114,7 @@ void main() {
         ),
       );
 
-      final result = await container.read(commandsProvider.future);
+      final result = await container.read(commandsProvider(null).future);
 
       expect(result, hasLength(1));
       final cmd = result.first;
@@ -125,11 +125,81 @@ void main() {
       expect(cmd.source, 'deploy-plugin');
       expect(cmd.argsSchema, '{"type":"object"}');
     });
+
+    test('preserves new group and displayName fields', () async {
+      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          GetCommandRegistryResponse(
+            commands: [
+              CommandEntry(
+                name: 'my-skill',
+                description: 'A skill command',
+                category: CommandCategory.COMMAND_CATEGORY_SKILL,
+                group: 'Skills',
+                displayName: 'My Skill',
+              ),
+              CommandEntry(
+                name: 'mcp-tool',
+                description: 'An MCP tool',
+                category: CommandCategory.COMMAND_CATEGORY_MCP,
+                group: 'MCP Tools',
+                displayName: 'MCP Tool',
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final result = await container.read(commandsProvider(null).future);
+
+      expect(result, hasLength(2));
+      expect(result[0].group, 'Skills');
+      expect(result[0].displayName, 'My Skill');
+      expect(result[0].category, CommandCategory.COMMAND_CATEGORY_SKILL);
+      expect(result[1].group, 'MCP Tools');
+      expect(result[1].displayName, 'MCP Tool');
+      expect(result[1].category, CommandCategory.COMMAND_CATEGORY_MCP);
+    });
+
+    test('passes sessionId to GetCommandRegistryRequest', () async {
+      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
+      );
+
+      final sessionContainer = createTestContainer(
+        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
+      );
+      addTearDown(sessionContainer.dispose);
+
+      await sessionContainer.read(
+        commandsProvider('sess-123').future,
+      );
+
+      final captured =
+          verify(() => mockClient.getCommandRegistry(captureAny()))
+              .captured
+              .single as GetCommandRegistryRequest;
+      expect(captured.sessionId, 'sess-123');
+    });
+
+    test('passes empty sessionId when null', () async {
+      when(() => mockClient.getCommandRegistry(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
+      );
+
+      await container.read(commandsProvider(null).future);
+
+      final captured =
+          verify(() => mockClient.getCommandRegistry(captureAny()))
+              .captured
+              .single as GetCommandRegistryRequest;
+      expect(captured.sessionId, '');
+    });
   });
 
   connectionAwarenessTests(
     label: 'CommandsNotifier',
-    provider: commandsProvider,
+    provider: commandsProvider(null),
     serviceOverrides: () => [
       commandServiceProvider.overrideWithValue(mockClient),
     ],
@@ -139,7 +209,7 @@ void main() {
 
   errorHandlingTests(
     label: 'CommandsNotifier',
-    provider: commandsProvider,
+    provider: commandsProvider(null),
     errorOverrides: (error) => [
       commandServiceProvider.overrideWithValue(_FailingCommandClient(error)),
     ],
@@ -148,17 +218,19 @@ void main() {
   void stubRegistryEmpty() {
     when(
       () => mockClient.getCommandRegistry(any()),
-    ).thenAnswer((_) => FakeResponseFuture.value(GetCommandRegistryResponse()));
+    ).thenAnswer(
+      (_) => FakeResponseFuture.value(GetCommandRegistryResponse()),
+    );
   }
 
   /// Returns an initialized notifier ready for method calls.
   Future<CommandsNotifier> initCommandsNotifier() async {
     await initNotifier(
       container: container,
-      provider: commandsProvider,
+      provider: commandsProvider(null),
       stubEmpty: stubRegistryEmpty,
     );
-    return container.read(commandsProvider.notifier);
+    return container.read(commandsProvider(null).notifier);
   }
 
   group('CommandsNotifier - listAgents', () {
@@ -166,14 +238,22 @@ void main() {
       final notifier = await initCommandsNotifier();
 
       final agents = [
-        AgentInfo(name: 'agent-1', kind: AgentKind.AGENT_KIND_CLAUDE_INTERNAL),
-        AgentInfo(name: 'agent-2', kind: AgentKind.AGENT_KIND_TEAM_MEMBER),
+        AgentInfo(
+          name: 'agent-1',
+          kind: AgentKind.AGENT_KIND_CLAUDE_INTERNAL,
+        ),
+        AgentInfo(
+          name: 'agent-2',
+          kind: AgentKind.AGENT_KIND_TEAM_MEMBER,
+        ),
       ];
       when(() => mockClient.listAgents(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListAgentsResponse(agents: agents)),
+        (_) =>
+            FakeResponseFuture.value(ListAgentsResponse(agents: agents)),
       );
 
-      final result = await notifier.listAgents(query: 'test', maxResults: 10);
+      final result =
+          await notifier.listAgents(query: 'test', maxResults: 10);
 
       expect(result, hasLength(2));
       expect(result[0].name, 'agent-1');
@@ -185,13 +265,16 @@ void main() {
 
       when(
         () => mockClient.listAgents(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListAgentsResponse()));
+      ).thenAnswer(
+        (_) => FakeResponseFuture.value(ListAgentsResponse()),
+      );
 
       await notifier.listAgents(query: 'claude', maxResults: 5);
 
       final captured =
-          verify(() => mockClient.listAgents(captureAny())).captured.single
-              as ListAgentsRequest;
+          verify(() => mockClient.listAgents(captureAny()))
+              .captured
+              .single as ListAgentsRequest;
 
       expect(captured.query, 'claude');
       expect(captured.maxResults, 5);
@@ -222,7 +305,10 @@ void main() {
       final agent = result.first;
       expect(agent.name, 'my-agent');
       expect(agent.kind, AgentKind.AGENT_KIND_DAEMON_ORCHESTRATED);
-      expect(agent.status, CommandAgentStatus.COMMAND_AGENT_STATUS_WORKING);
+      expect(
+        agent.status,
+        CommandAgentStatus.COMMAND_AGENT_STATUS_WORKING,
+      );
       expect(agent.source, 'daemon');
       expect(agent.sessionId, 'sess-123');
     });
@@ -237,13 +323,18 @@ void main() {
           path: '/home/user/project',
           kind: PathKind.PATH_KIND_DIRECTORY,
         ),
-        PathEntry(path: '/home/user/file.txt', kind: PathKind.PATH_KIND_FILE),
+        PathEntry(
+          path: '/home/user/file.txt',
+          kind: PathKind.PATH_KIND_FILE,
+        ),
       ];
       when(() => mockClient.listPath(any())).thenAnswer(
-        (_) => FakeResponseFuture.value(ListPathResponse(entries: entries)),
+        (_) =>
+            FakeResponseFuture.value(ListPathResponse(entries: entries)),
       );
 
-      final result = await notifier.listPath(query: '/home', maxResults: 10);
+      final result =
+          await notifier.listPath(query: '/home', maxResults: 10);
 
       expect(result, hasLength(2));
       expect(result[0].path, '/home/user/project');
@@ -257,13 +348,16 @@ void main() {
 
       when(
         () => mockClient.listPath(any()),
-      ).thenAnswer((_) => FakeResponseFuture.value(ListPathResponse()));
+      ).thenAnswer(
+        (_) => FakeResponseFuture.value(ListPathResponse()),
+      );
 
       await notifier.listPath(query: '/tmp', maxResults: 15);
 
       final captured =
-          verify(() => mockClient.listPath(captureAny())).captured.single
-              as ListPathRequest;
+          verify(() => mockClient.listPath(captureAny()))
+              .captured
+              .single as ListPathRequest;
 
       expect(captured.query, '/tmp');
       expect(captured.maxResults, 15);
@@ -272,13 +366,15 @@ void main() {
 
   refreshTests(
     RefreshTestConfig<List<CommandEntry>>(
-      provider: commandsProvider,
+      provider: commandsProvider(null),
       label: 'CommandsNotifier',
       getContainer: () => container,
       stubInitial: () {
         when(() => mockClient.getCommandRegistry(any())).thenAnswer(
           (_) => FakeResponseFuture.value(
-            GetCommandRegistryResponse(commands: [makeCommand('cmd-1')]),
+            GetCommandRegistryResponse(
+              commands: [makeCommand('cmd-1')],
+            ),
           ),
         );
       },
@@ -286,7 +382,10 @@ void main() {
         when(() => mockClient.getCommandRegistry(any())).thenAnswer(
           (_) => FakeResponseFuture.value(
             GetCommandRegistryResponse(
-              commands: [makeCommand('cmd-1'), makeCommand('cmd-new')],
+              commands: [
+                makeCommand('cmd-1'),
+                makeCommand('cmd-new'),
+              ],
             ),
           ),
         );
@@ -304,13 +403,13 @@ void main() {
     ),
   );
 
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // CommandsNotifier - executeServiceCommand (server-streaming)
-  // ---------------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
   group('CommandsNotifier - executeServiceCommand', () {
-    /// Initializes notifier and stubs executeServiceCommand to use the returned
-    /// controller.
+    /// Initializes notifier and stubs executeServiceCommand to use the
+    /// returned controller.
     Future<
       ({
         CommandsNotifier notifier,
@@ -320,14 +419,14 @@ void main() {
     initForExec() async {
       await initNotifier(
         container: container,
-        provider: commandsProvider,
+        provider: commandsProvider(null),
         stubEmpty: stubRegistryEmpty,
       );
       final controller = StreamController<ServiceCommandOutput>();
       when(
         () => mockClient.executeServiceCommand(any()),
       ).thenAnswer((_) => FakeResponseStream(controller));
-      final notifier = container.read(commandsProvider.notifier);
+      final notifier = container.read(commandsProvider(null).notifier);
       return (notifier: notifier, controller: controller);
     }
 
@@ -367,6 +466,33 @@ void main() {
               as ExecuteServiceCommandRequest;
       expect(captured.command, 'test-cmd');
       expect(captured.args, ['--flag', 'value']);
+    });
+
+    test('passes sessionId to ExecuteServiceCommandRequest', () async {
+      // Create a container with a session-scoped provider.
+      final sessionContainer = createTestContainer(
+        overrides: [commandServiceProvider.overrideWithValue(mockClient)],
+      );
+      addTearDown(sessionContainer.dispose);
+      stubRegistryEmpty();
+      await sessionContainer.read(
+        commandsProvider('sess-456').future,
+      );
+      final sessionCtrl = StreamController<ServiceCommandOutput>();
+      addTearDown(() => unawaited(sessionCtrl.close()));
+      when(
+        () => mockClient.executeServiceCommand(any()),
+      ).thenAnswer((_) => FakeResponseStream(sessionCtrl));
+      sessionContainer
+          .read(commandsProvider('sess-456').notifier)
+          .executeServiceCommand(command: 'deploy');
+
+      final captured =
+          verify(
+                () => mockClient.executeServiceCommand(captureAny()),
+              ).captured.single
+              as ExecuteServiceCommandRequest;
+      expect(captured.sessionId, 'sess-456');
     });
 
     test('defaults to empty args', () async {
@@ -410,7 +536,10 @@ void main() {
       final events = await eventsFuture;
       expect(events, hasLength(1));
       expect(events.first.error, 'command not found');
-      expect(events.first.whichOutput(), ServiceCommandOutput_Output.error);
+      expect(
+        events.first.whichOutput(),
+        ServiceCommandOutput_Output.error,
+      );
     });
 
     test('propagates stream errors', () async {

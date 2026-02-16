@@ -33,6 +33,17 @@ abstract final class AppColors {
   /// Purple - the agent is waiting for user input.
   static const Color agentWaiting = Color(0xFF9C27B0);
 
+  // -- Command categories -----------------------------------------------------
+
+  /// Purple - plugin command category.
+  static const Color commandPlugin = Color(0xFF9C27B0);
+
+  /// Cyan - skill command category.
+  static const Color commandSkill = Color(0xFF00BCD4);
+
+  /// Deep orange - MCP command category.
+  static const Color commandMcp = Color(0xFFFF5722);
+
   // -- Pipeline / CI ---------------------------------------------------------
 
   /// Teal - a scheduled pipeline.

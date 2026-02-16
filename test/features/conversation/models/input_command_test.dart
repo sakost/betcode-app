@@ -1,4 +1,4 @@
-import 'package:betcode_app/features/conversation/models/input_command.dart';
+import 'package:betcode_app/features/commands/models/command_item.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,5 +1,5 @@
+import 'package:betcode_app/features/commands/models/command_item.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
-import 'package:betcode_app/features/conversation/models/input_command.dart';
 import 'package:betcode_app/features/conversation/widgets/agent_mention_overlay.dart';
 import 'package:betcode_app/features/conversation/widgets/command_palette.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +17,7 @@ class InputBar extends StatefulWidget {
     this.onCancel,
     this.agents,
     this.onAgentSelected,
+    this.sessionId,
   });
 
   final ValueChanged<String> onSubmit;
@@ -32,6 +33,9 @@ class InputBar extends StatefulWidget {
 
   /// Called when an agent is selected via @-mention.
   final ValueChanged<String?>? onAgentSelected;
+
+  /// Session ID for fetching session-scoped commands.
+  final String? sessionId;
 
   @override
   State<InputBar> createState() => _InputBarState();
@@ -109,7 +113,7 @@ class _InputBarState extends State<InputBar> {
     _controller.clear();
   }
 
-  void _onCommand(InputCommand cmd) {
+  void _onCommand(CommandItem cmd) {
     _controller.clear();
     widget.onSubmit('/${cmd.name}');
   }
@@ -162,6 +166,7 @@ class _InputBarState extends State<InputBar> {
               CommandPalette(
                 query: _commandQuery,
                 onCommandSelected: _onCommand,
+                sessionId: widget.sessionId,
               ),
             if (_showMentionOverlay)
               AgentMentionOverlay(

@@ -23,6 +23,8 @@ const CommandCategory$json = {
     {'1': 'COMMAND_CATEGORY_SERVICE', '2': 1},
     {'1': 'COMMAND_CATEGORY_CLAUDE_CODE', '2': 2},
     {'1': 'COMMAND_CATEGORY_PLUGIN', '2': 3},
+    {'1': 'COMMAND_CATEGORY_SKILL', '2': 4},
+    {'1': 'COMMAND_CATEGORY_MCP', '2': 5},
   ],
 };
 
@@ -30,7 +32,8 @@ const CommandCategory$json = {
 final $typed_data.Uint8List commandCategoryDescriptor = $convert.base64Decode(
     'Cg9Db21tYW5kQ2F0ZWdvcnkSIAocQ09NTUFORF9DQVRFR09SWV9VTlNQRUNJRklFRBAAEhwKGE'
     'NPTU1BTkRfQ0FURUdPUllfU0VSVklDRRABEiAKHENPTU1BTkRfQ0FURUdPUllfQ0xBVURFX0NP'
-    'REUQAhIbChdDT01NQU5EX0NBVEVHT1JZX1BMVUdJThAD');
+    'REUQAhIbChdDT01NQU5EX0NBVEVHT1JZX1BMVUdJThADEhoKFkNPTU1BTkRfQ0FURUdPUllfU0'
+    'tJTEwQBBIYChRDT01NQU5EX0NBVEVHT1JZX01DUBAF');
 
 @$core.Deprecated('Use executionModeDescriptor instead')
 const ExecutionMode$json = {
@@ -133,6 +136,8 @@ const CommandEntry$json = {
       '10': 'argsSchema',
       '17': true
     },
+    {'1': 'group', '3': 7, '4': 1, '5': 9, '10': 'group'},
+    {'1': 'display_name', '3': 8, '4': 1, '5': 9, '10': 'displayName'},
   ],
   '8': [
     {'1': '_args_schema'},
@@ -145,7 +150,8 @@ final $typed_data.Uint8List commandEntryDescriptor = $convert.base64Decode(
     'ILZGVzY3JpcHRpb24SNwoIY2F0ZWdvcnkYAyABKA4yGy5iZXRjb2RlLnYxLkNvbW1hbmRDYXRl'
     'Z29yeVIIY2F0ZWdvcnkSQAoOZXhlY3V0aW9uX21vZGUYBCABKA4yGS5iZXRjb2RlLnYxLkV4ZW'
     'N1dGlvbk1vZGVSDWV4ZWN1dGlvbk1vZGUSFgoGc291cmNlGAUgASgJUgZzb3VyY2USJAoLYXJn'
-    'c19zY2hlbWEYBiABKAlIAFIKYXJnc1NjaGVtYYgBAUIOCgxfYXJnc19zY2hlbWE=');
+    'c19zY2hlbWEYBiABKAlIAFIKYXJnc1NjaGVtYYgBARIUCgVncm91cBgHIAEoCVIFZ3JvdXASIQ'
+    'oMZGlzcGxheV9uYW1lGAggASgJUgtkaXNwbGF5TmFtZUIOCgxfYXJnc19zY2hlbWE=');
 
 @$core.Deprecated('Use agentInfoDescriptor instead')
 const AgentInfo$json = {
@@ -280,11 +286,16 @@ final $typed_data.Uint8List pluginInfoDescriptor = $convert.base64Decode(
 @$core.Deprecated('Use getCommandRegistryRequestDescriptor instead')
 const GetCommandRegistryRequest$json = {
   '1': 'GetCommandRegistryRequest',
+  '2': [
+    {'1': 'session_id', '3': 1, '4': 1, '5': 9, '10': 'sessionId'},
+  ],
 };
 
 /// Descriptor for `GetCommandRegistryRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getCommandRegistryRequestDescriptor =
-    $convert.base64Decode('ChlHZXRDb21tYW5kUmVnaXN0cnlSZXF1ZXN0');
+    $convert.base64Decode(
+        'ChlHZXRDb21tYW5kUmVnaXN0cnlSZXF1ZXN0Eh0KCnNlc3Npb25faWQYASABKAlSCXNlc3Npb2'
+        '5JZA==');
 
 @$core.Deprecated('Use getCommandRegistryResponseDescriptor instead')
 const GetCommandRegistryResponse$json = {
@@ -381,6 +392,7 @@ const ExecuteServiceCommandRequest$json = {
   '2': [
     {'1': 'command', '3': 1, '4': 1, '5': 9, '10': 'command'},
     {'1': 'args', '3': 2, '4': 3, '5': 9, '10': 'args'},
+    {'1': 'session_id', '3': 3, '4': 1, '5': 9, '10': 'sessionId'},
   ],
 };
 
@@ -388,7 +400,7 @@ const ExecuteServiceCommandRequest$json = {
 final $typed_data.Uint8List executeServiceCommandRequestDescriptor =
     $convert.base64Decode(
         'ChxFeGVjdXRlU2VydmljZUNvbW1hbmRSZXF1ZXN0EhgKB2NvbW1hbmQYASABKAlSB2NvbW1hbm'
-        'QSEgoEYXJncxgCIAMoCVIEYXJncw==');
+        'QSEgoEYXJncxgCIAMoCVIEYXJncxIdCgpzZXNzaW9uX2lkGAMgASgJUglzZXNzaW9uSWQ=');
 
 @$core.Deprecated('Use listPluginsRequestDescriptor instead')
 const ListPluginsRequest$json = {

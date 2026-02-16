@@ -442,6 +442,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
           // Input bar
           InputBar(
             enabled: isIdle,
+            sessionId: widget.sessionId,
             onSubmit: (text) => ref
                 .read(conversationProvider(widget.sessionId).notifier)
                 .sendMessage(text),

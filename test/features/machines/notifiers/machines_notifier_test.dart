@@ -156,7 +156,6 @@ void main() {
     provider: machinesProvider,
     errorOverrides: (error) => [
       machineServiceProvider.overrideWithValue(_FailingMachineClient(error)),
-      selectedMachineIdProvider.overrideWith(_FakeSelectedMachineNotifier.new),
       authNotifierProvider.overrideWith(_FakeAuthNotifier.new),
     ],
   );
