@@ -152,9 +152,76 @@ class LoggingInterceptor extends ClientInterceptor {
     CallOptions options,
     ClientStreamingInvoker<Q, R> invoker,
   ) {
+    final stopwatch = Stopwatch()..start();
     debugPrint('$_tag -> ${method.path} (stream)');
-    return invoker(method, requests, options);
+    return _LoggingResponseStream(
+      invoker(method, requests, options),
+      method.path,
+      stopwatch,
+    );
   }
+}
+
+/// Wraps a [ResponseStream] to log errors and completion.
+class _LoggingResponseStream<R> extends StreamView<R>
+    implements ResponseStream<R> {
+  _LoggingResponseStream(this._delegate, this._method, this._stopwatch)
+      : super(_delegate);
+
+  final ResponseStream<R> _delegate;
+  final String _method;
+  final Stopwatch _stopwatch;
+
+  @override
+  StreamSubscription<R> listen(
+    void Function(R)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return super.listen(
+      onData,
+      onError: (Object error, StackTrace stackTrace) {
+        _stopwatch.stop();
+        debugPrint(
+          '[gRPC] <- $_method stream ERROR '
+          '(${_stopwatch.elapsedMilliseconds}ms): $error',
+        );
+        if (onError != null) {
+          if (onError is void Function(Object, StackTrace)) {
+            onError(error, stackTrace);
+          } else if (onError is void Function(Object)) {
+            onError(error);
+          } else {
+            (onError as dynamic)(error, stackTrace);
+          }
+        } else {
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+      },
+      onDone: () {
+        _stopwatch.stop();
+        debugPrint(
+          '[gRPC] <- $_method stream DONE '
+          '(${_stopwatch.elapsedMilliseconds}ms)',
+        );
+        onDone?.call();
+      },
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  ResponseFuture<R> get single => _delegate.single;
+
+  @override
+  Future<Map<String, String>> get headers => _delegate.headers;
+
+  @override
+  Future<Map<String, String>> get trailers => _delegate.trailers;
+
+  @override
+  Future<void> cancel() => _delegate.cancel();
 }
 
 /// Checks token expiry before each RPC and triggers a refresh if needed.
@@ -346,6 +413,12 @@ class _ErrorMappingResponseStream<R> extends StreamView<R>
     return super.listen(
       onData,
       onError: (Object error, StackTrace stackTrace) {
+        if (error is GrpcError) {
+          debugPrint(
+            '[gRPC] ErrorMapping $_method: '
+            'code=${error.code} message=${error.message}',
+          );
+        }
         final mapped = error is GrpcError
             ? mapGrpcError(error, method: _method)
             : error;

@@ -14,6 +14,10 @@ const _sessionMethods = [
 /// distinguish session-specific NOT_FOUND from generic NOT_FOUND.
 AppException mapGrpcError(GrpcError error, {String? method}) {
   return switch (error.code) {
+    StatusCode.cancelled => NetworkError(
+      message: 'Connection lost. Retrying...',
+      cause: error,
+    ),
     StatusCode.unavailable => _mapUnavailable(error),
     StatusCode.deadlineExceeded => NetworkError(
       message: 'Request timed out. Check your connection and try again.',
@@ -56,9 +60,20 @@ AppException mapGrpcError(GrpcError error, {String? method}) {
 
 AppException _mapUnavailable(GrpcError error) {
   final msg = error.message ?? '';
+
+  // "Channel shutting down" is a transient local error that occurs when the
+  // ClientChannel is replaced during reconnection. It is NOT a TLS or relay
+  // issue — the new channel may work fine. Treat it as a retryable network
+  // error so callers don't display a scary "relay unreachable" banner.
+  if (msg.contains('Channel shutting down')) {
+    return NetworkError(
+      message: 'Connection lost. Retrying...',
+      cause: error,
+    );
+  }
+
   if (msg.contains('HandshakeException') ||
       msg.contains('WRONG_VERSION_NUMBER') ||
-      msg.contains('Channel shutting down') ||
       msg.contains('TLS') ||
       msg.contains('CERTIFICATE')) {
     return RelayUnavailableError(

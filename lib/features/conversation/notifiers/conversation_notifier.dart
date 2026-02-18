@@ -310,7 +310,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   // ---------------------------------------------------------------------------
 
   void _handleStreamError(Object error) {
-    debugPrint('[Conversation] Stream error: $error');
+    final causeInfo =
+        error is AppException && error.cause != null ? error.cause : '';
+    debugPrint('[Conversation] Stream error: $error | cause: $causeInfo');
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
 
