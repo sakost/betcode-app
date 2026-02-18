@@ -86,6 +86,19 @@ class GrpcClientManager {
   /// Whether a health check function has been configured.
   bool get hasHealthCheck => _healthCheckFn != null;
 
+  /// Runs the configured health check against the current channel.
+  ///
+  /// Throws [StateError] if no health check is configured or no channel
+  /// is available. Re-throws whatever the health check function throws
+  /// on failure (typically [GrpcError]).
+  Future<void> healthCheck() async {
+    final fn = _healthCheckFn;
+    if (fn == null) {
+      throw StateError('No health check function configured');
+    }
+    await fn(channel);
+  }
+
   /// The host from the last [connect] call, or null if never connected.
   String? get host => _host;
 

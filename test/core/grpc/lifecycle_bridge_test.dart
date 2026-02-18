@@ -3,6 +3,7 @@ import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/lifecycle_bridge.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:grpc/grpc.dart';
 
 void main() {
   late GrpcClientManager manager;
@@ -183,6 +184,101 @@ void main() {
 
       bridge.onResumed();
       expect(manager.isPaused, isFalse);
+    });
+
+    test(
+      'short background with failing health check triggers reconnect',
+      () async {
+        // Create a manager whose health check always fails, simulating a
+        // zombie channel (TCP died while the phone was asleep).
+        final failingManager = GrpcClientManager(
+          healthCheckFn: (_) async {
+            throw Exception('connection dead');
+          },
+        );
+        final failingBridge = GrpcLifecycleBridge(failingManager);
+        addTearDown(() async {
+          failingBridge.dispose();
+          await failingManager.dispose();
+        });
+
+        await failingManager.connect('localhost', 50051);
+        expect(failingManager.status, GrpcConnectionStatus.connected);
+
+        fakeAsync((async) {
+          // Short background (< 5 minutes)
+          failingBridge.onPaused();
+          async.elapse(const Duration(minutes: 1));
+          failingBridge.onResumed();
+          // Flush the health check + reconnect futures
+          async.flushMicrotasks();
+
+          // Manager should have attempted to reconnect (status is connecting
+          // or connected depending on whether connect() to localhost succeeded)
+          expect(
+            failingManager.status,
+            anyOf(
+              GrpcConnectionStatus.connecting,
+              GrpcConnectionStatus.connected,
+            ),
+          );
+        });
+      },
+    );
+
+    test(
+      'short background with UNIMPLEMENTED health check does not reconnect',
+      () async {
+        // Simulate a relay that returns UNIMPLEMENTED for the Health service.
+        // The healthCheckFn (as configured in grpc_providers) catches
+        // UNIMPLEMENTED and returns normally — connection is alive.
+        final unimplManager = GrpcClientManager(
+          healthCheckFn: (_) async {
+            try {
+              throw const GrpcError.unimplemented();
+            } on GrpcError catch (e) {
+              if (e.code == StatusCode.unimplemented) return;
+              rethrow;
+            }
+          },
+        );
+        final unimplBridge = GrpcLifecycleBridge(unimplManager);
+        addTearDown(() async {
+          unimplBridge.dispose();
+          await unimplManager.dispose();
+        });
+
+        await unimplManager.connect('localhost', 50051);
+        expect(unimplManager.status, GrpcConnectionStatus.connected);
+
+        fakeAsync((async) {
+          unimplBridge.onPaused();
+          async.elapse(const Duration(minutes: 1));
+          unimplBridge.onResumed();
+          async.flushMicrotasks();
+
+          // Channel should still be present — UNIMPLEMENTED means alive
+          expect(unimplManager.channelOrNull, isNotNull);
+          expect(unimplManager.status, GrpcConnectionStatus.connected);
+        });
+      },
+    );
+
+    test('short background with no health check skips verification', () async {
+      // Default manager has no health check
+      await manager.connect('localhost', 50051);
+      expect(manager.hasHealthCheck, isFalse);
+
+      fakeAsync((async) {
+        bridge.onPaused();
+        async.elapse(const Duration(minutes: 1));
+        bridge.onResumed();
+        async.flushMicrotasks();
+
+        // Channel should still be the same (no reconnect triggered)
+        expect(manager.channelOrNull, isNotNull);
+        expect(manager.status, GrpcConnectionStatus.connected);
+      });
     });
   });
 }

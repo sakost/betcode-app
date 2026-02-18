@@ -40,8 +40,9 @@ class GrpcLifecycleBridge {
   /// Called when the app returns to foreground (resumed).
   ///
   /// Cancels the teardown timer if it hasn't fired yet. If the channel was
-  /// torn down during extended background, reconnects using the stored
-  /// connection parameters.
+  /// torn down during extended background, reconnects immediately. Otherwise,
+  /// runs a health check to detect zombie channels (TCP connection killed by
+  /// the OS during sleep) and reconnects if the channel is dead.
   void onResumed() {
     _teardownTimer?.cancel();
     _teardownTimer = null;
@@ -49,6 +50,24 @@ class GrpcLifecycleBridge {
 
     if (_tornDown) {
       _tornDown = false;
+      _reconnect();
+    } else if (_manager.channelOrNull != null && _manager.hasHealthCheck) {
+      // Channel exists but may be a zombie — OS often kills idle TCP sockets
+      // while the app is backgrounded. Fire a health check to find out.
+      unawaited(_verifyOrReconnect());
+    }
+  }
+
+  /// Runs a health check against the existing channel. If it fails, tears
+  /// down the dead channel and reconnects.
+  Future<void> _verifyOrReconnect() async {
+    try {
+      await _manager.healthCheck();
+    } on Object catch (e) {
+      debugPrint(
+        '[GrpcLifecycleBridge] Health check failed after resume, '
+        'reconnecting: $e',
+      );
       _reconnect();
     }
   }
