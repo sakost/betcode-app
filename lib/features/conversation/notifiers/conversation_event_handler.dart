@@ -18,6 +18,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Separated from [ConversationNotifier] to keep file sizes manageable
 /// and isolate event-processing logic from stream lifecycle management.
 mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
+  /// True while replaying historical events via history load.
+  ///
+  /// Fatal errors from history (e.g. a previous session crash) must NOT
+  /// kill the current conversation state — they happened in the past.
+  bool isReplayingHistory = false;
+
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
     debugPrint(
@@ -437,7 +443,10 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   }
 
   void _onError(pb.ErrorEvent error, int seq) {
-    if (error.isFatal) {
+    // During history replay, fatal errors are from a past session run.
+    // Show them as a non-fatal banner so the user can still interact
+    // with the conversation instead of being locked into an error screen.
+    if (error.isFatal && !isReplayingHistory) {
       state = AsyncData(
         ConversationState.error('[${error.code}] ${error.message}'),
       );

@@ -98,6 +98,12 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     state = const AsyncData(ConversationState.connecting());
 
     try {
+      // Close any existing streams from a previous attempt (e.g. retry
+      // after error) to prevent leaked subscriptions.
+      unawaited(_eventSubscription?.cancel());
+      _eventSubscription = null;
+      unawaited(_requestController?.close());
+
       _requestController = StreamController<pb.AgentRequest>();
 
       final responseStream = _client.converse(_requestController!.stream);
@@ -136,8 +142,15 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       // When resuming an existing session, load conversation history from
       // the daemon's event store via the ResumeSession RPC. Events are
       // processed through the same handler and deduplicated by sequence.
+      // History replay uses a flag so _onError treats past fatal errors
+      // as non-fatal banners instead of killing the conversation state.
       if (sessionId != null && sessionId!.isNotEmpty) {
-        await _loadHistory(sessionId!);
+        isReplayingHistory = true;
+        try {
+          await _loadHistory(sessionId!);
+        } finally {
+          isReplayingHistory = false;
+        }
       }
     } on Exception catch (e) {
       final message = e is AppException
