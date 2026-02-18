@@ -124,6 +124,14 @@ class AgentServiceClient extends $grpc.Client {
     return $createUnaryCall(_$renameSession, request, options: options);
   }
 
+  /// Delete a session and all its messages.
+  $grpc.ResponseFuture<$0.DeleteSessionResponse> deleteSession(
+    $0.DeleteSessionRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteSession, request, options: options);
+  }
+
   // method descriptors
 
   static final _$converse = $grpc.ClientMethod<$0.AgentRequest, $0.AgentEvent>(
@@ -180,6 +188,11 @@ class AgentServiceClient extends $grpc.Client {
           '/betcode.v1.AgentService/RenameSession',
           ($0.RenameSessionRequest value) => value.writeToBuffer(),
           $0.RenameSessionResponse.fromBuffer);
+  static final _$deleteSession =
+      $grpc.ClientMethod<$0.DeleteSessionRequest, $0.DeleteSessionResponse>(
+          '/betcode.v1.AgentService/DeleteSession',
+          ($0.DeleteSessionRequest value) => value.writeToBuffer(),
+          $0.DeleteSessionResponse.fromBuffer);
 }
 
 @$pb.GrpcServiceName('betcode.v1.AgentService')
@@ -279,6 +292,15 @@ abstract class AgentServiceBase extends $grpc.Service {
             ($core.List<$core.int> value) =>
                 $0.RenameSessionRequest.fromBuffer(value),
             ($0.RenameSessionResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.DeleteSessionRequest, $0.DeleteSessionResponse>(
+            'DeleteSession',
+            deleteSession_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.DeleteSessionRequest.fromBuffer(value),
+            ($0.DeleteSessionResponse value) => value.writeToBuffer()));
   }
 
   $async.Stream<$0.AgentEvent> converse(
@@ -371,4 +393,13 @@ abstract class AgentServiceBase extends $grpc.Service {
 
   $async.Future<$0.RenameSessionResponse> renameSession(
       $grpc.ServiceCall call, $0.RenameSessionRequest request);
+
+  $async.Future<$0.DeleteSessionResponse> deleteSession_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DeleteSessionRequest> $request) async {
+    return deleteSession($call, await $request);
+  }
+
+  $async.Future<$0.DeleteSessionResponse> deleteSession(
+      $grpc.ServiceCall call, $0.DeleteSessionRequest request);
 }

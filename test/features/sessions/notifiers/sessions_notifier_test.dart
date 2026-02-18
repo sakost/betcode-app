@@ -48,6 +48,7 @@ void main() {
     registerFallbackValue(ListSessionsRequest());
     registerFallbackValue(RenameSessionRequest());
     registerFallbackValue(CompactSessionRequest());
+    registerFallbackValue(DeleteSessionRequest());
     registerFallbackValue((Batch _) async {});
   });
 
@@ -315,6 +316,48 @@ void main() {
       await notifier.compactSession('s-1');
 
       // listSessions is called once for build, once for refresh after compact
+      verify(() => mockClient.listSessions(any())).called(2);
+    });
+  });
+
+  group('SessionsNotifier - deleteSession', () {
+    test('calls deleteSession RPC with correct session ID', () async {
+      // Build initial state
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [makeSession('s-1')]),
+        ),
+      );
+      await container.read(sessionsProvider.future);
+
+      when(
+        () => mockClient.deleteSession(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(DeleteSessionResponse()));
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.deleteSession('s-1');
+
+      final captured =
+          verify(() => mockClient.deleteSession(captureAny())).captured.single
+              as DeleteSessionRequest;
+      expect(captured.sessionId, 's-1');
+    });
+
+    test('refreshes sessions after deletion', () async {
+      await initNotifier(
+        container: container,
+        provider: sessionsProvider,
+        stubEmpty: stubSessionsEmpty,
+      );
+
+      when(
+        () => mockClient.deleteSession(any()),
+      ).thenAnswer((_) => FakeResponseFuture.value(DeleteSessionResponse()));
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.deleteSession('s-1');
+
+      // listSessions is called once for build, once for refresh after delete
       verify(() => mockClient.listSessions(any())).called(2);
     });
   });

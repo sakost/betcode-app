@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' show min;
 
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/lifecycle/lifecycle.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
@@ -28,6 +29,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     Duration(seconds: 10),
     Duration(seconds: 30),
   ];
+
+  /// Default model used for new sessions when no model is explicitly chosen.
+  static const _defaultModel = 'claude-sonnet-4';
 
   StreamController<pb.AgentRequest>? _requestController;
   StreamSubscription<pb.AgentEvent>? _eventSubscription;
@@ -112,6 +116,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           start: pb.StartConversation(
             sessionId: sessionId ?? '',
             workingDirectory: workingDirectory,
+            model: _defaultModel,
           ),
         ),
       );
@@ -135,7 +140,10 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         await _loadHistory(sessionId!);
       }
     } on Exception catch (e) {
-      state = AsyncData(ConversationState.error(e.toString()));
+      final message = e is AppException
+          ? e.message
+          : 'Failed to start conversation: $e';
+      state = AsyncData(ConversationState.error(message));
     }
   }
 
@@ -165,8 +173,13 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       final seq = current is ConversationActive ? current.lastSequence : 0;
       debugPrint('[Conversation] History loaded, lastSequence=$seq');
     } on GrpcError catch (e) {
-      // Non-fatal: continue with empty history if replay fails.
       debugPrint('[Conversation] History load failed: $e');
+      final current = state.value;
+      if (current is ConversationActive) {
+        state = AsyncData(
+          current.copyWith(errorMessage: "Couldn't load message history."),
+        );
+      }
     }
   }
 
@@ -291,9 +304,10 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     // Don't retry fatal errors.
     if (_isFatalError(error)) {
       _isReconnecting = false;
-      state = AsyncData(
-        ConversationState.error('Stream error: $error'),
-      );
+      final message = error is AppException
+          ? error.message
+          : 'Stream error: $error';
+      state = AsyncData(ConversationState.error(message));
       unawaited(_requestController?.close());
       _requestController = null;
       return;
@@ -311,21 +325,19 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       _attemptReconnection(current);
     } else {
       _isReconnecting = false;
-      state = AsyncData(
-        ConversationState.error('Stream error: $error'),
-      );
+      final message = error is AppException
+          ? error.message
+          : 'Stream error: $error';
+      state = AsyncData(ConversationState.error(message));
       unawaited(_requestController?.close());
       _requestController = null;
     }
   }
 
   bool _isFatalError(Object error) {
-    if (error is GrpcError) {
-      return error.code == StatusCode.unauthenticated ||
-          error.code == StatusCode.permissionDenied ||
-          error.code == StatusCode.notFound;
-    }
-    return false;
+    return error is AuthExpiredError ||
+        error is PermissionDeniedError ||
+        error is SessionNotFoundError;
   }
 
   void _attemptReconnection(ConversationActive active) {
@@ -373,8 +385,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         // used resumeSession (server-streaming, read-only) which left
         // _requestController null — silently dropping all user messages.
         _requestController = StreamController<pb.AgentRequest>();
-        final responseStream =
-            _client.converse(_requestController!.stream);
+        final responseStream = _client.converse(_requestController!.stream);
 
         _eventSubscription = responseStream.listen(
           _onReconnectEvent,

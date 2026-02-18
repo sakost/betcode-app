@@ -3415,6 +3415,115 @@ class RenameSessionResponse extends $pb.GeneratedMessage {
   static RenameSessionResponse? _defaultInstance;
 }
 
+class DeleteSessionRequest extends $pb.GeneratedMessage {
+  factory DeleteSessionRequest({
+    $core.String? sessionId,
+  }) {
+    final result = create();
+    if (sessionId != null) result.sessionId = sessionId;
+    return result;
+  }
+
+  DeleteSessionRequest._();
+
+  factory DeleteSessionRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteSessionRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteSessionRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'sessionId')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionRequest copyWith(void Function(DeleteSessionRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteSessionRequest))
+          as DeleteSessionRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionRequest create() => DeleteSessionRequest._();
+  @$core.override
+  DeleteSessionRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteSessionRequest>(create);
+  static DeleteSessionRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get sessionId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set sessionId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSessionId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSessionId() => $_clearField(1);
+}
+
+class DeleteSessionResponse extends $pb.GeneratedMessage {
+  factory DeleteSessionResponse({
+    $core.bool? deleted,
+  }) {
+    final result = create();
+    if (deleted != null) result.deleted = deleted;
+    return result;
+  }
+
+  DeleteSessionResponse._();
+
+  factory DeleteSessionResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteSessionResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteSessionResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'deleted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSessionResponse copyWith(
+          void Function(DeleteSessionResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteSessionResponse))
+          as DeleteSessionResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionResponse create() => DeleteSessionResponse._();
+  @$core.override
+  DeleteSessionResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSessionResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteSessionResponse>(create);
+  static DeleteSessionResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get deleted => $_getBF(0);
+  @$pb.TagNumber(1)
+  set deleted($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeleted() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeleted() => $_clearField(1);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

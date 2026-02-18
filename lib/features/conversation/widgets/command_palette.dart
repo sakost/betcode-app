@@ -27,13 +27,14 @@ class CommandPalette extends ConsumerWidget {
     final lower = query.toLowerCase();
 
     // Local static commands filtered by query.
-    final localCommands = InputCommand.filter(query)
-        .map(CommandItem.fromLocal)
-        .toList();
+    final localCommands = InputCommand.filter(
+      query,
+    ).map(CommandItem.fromLocal).toList();
 
     // Dynamic daemon commands filtered by query.
     final daemonCommandsAsync = ref.watch(commandsProvider(sessionId));
-    final daemonCommands = daemonCommandsAsync.value
+    final daemonCommands =
+        daemonCommandsAsync.value
             ?.where(
               (e) =>
                   e.name.toLowerCase().contains(lower) ||

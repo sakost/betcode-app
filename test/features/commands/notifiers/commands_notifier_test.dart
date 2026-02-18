@@ -176,9 +176,10 @@ void main() {
       );
 
       final captured =
-          verify(() => mockClient.getCommandRegistry(captureAny()))
-              .captured
-              .single as GetCommandRegistryRequest;
+          verify(
+                () => mockClient.getCommandRegistry(captureAny()),
+              ).captured.single
+              as GetCommandRegistryRequest;
       expect(captured.sessionId, 'sess-123');
     });
 
@@ -190,9 +191,10 @@ void main() {
       await container.read(commandsProvider(null).future);
 
       final captured =
-          verify(() => mockClient.getCommandRegistry(captureAny()))
-              .captured
-              .single as GetCommandRegistryRequest;
+          verify(
+                () => mockClient.getCommandRegistry(captureAny()),
+              ).captured.single
+              as GetCommandRegistryRequest;
       expect(captured.sessionId, '');
     });
   });
@@ -248,12 +250,10 @@ void main() {
         ),
       ];
       when(() => mockClient.listAgents(any())).thenAnswer(
-        (_) =>
-            FakeResponseFuture.value(ListAgentsResponse(agents: agents)),
+        (_) => FakeResponseFuture.value(ListAgentsResponse(agents: agents)),
       );
 
-      final result =
-          await notifier.listAgents(query: 'test', maxResults: 10);
+      final result = await notifier.listAgents(query: 'test', maxResults: 10);
 
       expect(result, hasLength(2));
       expect(result[0].name, 'agent-1');
@@ -272,9 +272,8 @@ void main() {
       await notifier.listAgents(query: 'claude', maxResults: 5);
 
       final captured =
-          verify(() => mockClient.listAgents(captureAny()))
-              .captured
-              .single as ListAgentsRequest;
+          verify(() => mockClient.listAgents(captureAny())).captured.single
+              as ListAgentsRequest;
 
       expect(captured.query, 'claude');
       expect(captured.maxResults, 5);
@@ -329,12 +328,10 @@ void main() {
         ),
       ];
       when(() => mockClient.listPath(any())).thenAnswer(
-        (_) =>
-            FakeResponseFuture.value(ListPathResponse(entries: entries)),
+        (_) => FakeResponseFuture.value(ListPathResponse(entries: entries)),
       );
 
-      final result =
-          await notifier.listPath(query: '/home', maxResults: 10);
+      final result = await notifier.listPath(query: '/home', maxResults: 10);
 
       expect(result, hasLength(2));
       expect(result[0].path, '/home/user/project');
@@ -355,9 +352,8 @@ void main() {
       await notifier.listPath(query: '/tmp', maxResults: 15);
 
       final captured =
-          verify(() => mockClient.listPath(captureAny()))
-              .captured
-              .single as ListPathRequest;
+          verify(() => mockClient.listPath(captureAny())).captured.single
+              as ListPathRequest;
 
       expect(captured.query, '/tmp');
       expect(captured.maxResults, 15);
