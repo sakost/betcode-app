@@ -444,9 +444,16 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
 
   void _onError(pb.ErrorEvent error, int seq) {
     // During history replay, fatal errors are from a past session run.
-    // Show them as a non-fatal banner so the user can still interact
-    // with the conversation instead of being locked into an error screen.
-    if (error.isFatal && !isReplayingHistory) {
+    // Just update the sequence counter — don't show a banner or kill
+    // the conversation. The user already knows the previous run failed.
+    if (isReplayingHistory) {
+      _updateActive((active) {
+        return active.copyWith(lastSequence: seq);
+      });
+      return;
+    }
+
+    if (error.isFatal) {
       state = AsyncData(
         ConversationState.error('[${error.code}] ${error.message}'),
       );
