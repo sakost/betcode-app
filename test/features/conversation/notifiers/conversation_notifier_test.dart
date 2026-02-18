@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/lifecycle/app_lifecycle_notifier.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
@@ -138,7 +139,10 @@ void main() {
 
       final s = fc.read(conversationProvider(null)).value;
       expect(s, isA<ConversationError>());
-      expect((s! as ConversationError).message, contains('UNAVAILABLE'));
+      expect(
+        (s! as ConversationError).message,
+        contains('Failed to start conversation'),
+      );
     });
   });
 
@@ -287,12 +291,19 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.addError(const GrpcError.unauthenticated('expired'));
+      eventController.addError(
+        const AuthExpiredError(
+          message: 'Your session has expired. Please log in again.',
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
 
       final s = stateVal();
       expect(s, isA<ConversationError>());
-      expect((s! as ConversationError).message, contains('expired'));
+      expect(
+        (s! as ConversationError).message,
+        'Your session has expired. Please log in again.',
+      );
     });
 
     test('stream done triggers reconnection on active session', () async {
@@ -430,7 +441,8 @@ void main() {
     ({
       int Function() callCount,
       StreamController<pb.AgentEvent> Function() latestController,
-    }) setupReconnectMock({
+    })
+    setupReconnectMock({
       void Function(StreamController<pb.AgentEvent>)? onReconnect,
       bool immediateError = false,
       GrpcError? throwOnConverse,
@@ -440,8 +452,7 @@ void main() {
       var isFirstCall = true;
 
       when(() => mockClient.converse(any())).thenAnswer((inv) {
-        final reqStream =
-            inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+        final reqStream = inv.positionalArguments[0] as Stream<pb.AgentRequest>;
 
         if (isFirstCall) {
           // First call is the initial startConversation.
@@ -544,9 +555,15 @@ void main() {
         final mock = setupReconnectMock();
 
         startActive(async);
-        injectError(async, const GrpcError.unauthenticated('expired'));
 
-        async.elapse(const Duration(seconds: 60));
+        eventController.addError(
+          const AuthExpiredError(
+            message: 'Your session has expired. Please log in again.',
+          ),
+        );
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 60));
 
         expect(mock.callCount(), 0);
 

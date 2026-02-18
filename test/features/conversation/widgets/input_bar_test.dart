@@ -15,9 +15,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// A notifier that returns canned async value without gRPC calls.
 class _FakeCommandsNotifier extends CommandsNotifier {
+  // Never completes — keeps the provider in loading state.
   @override
-  Future<List<CommandEntry>> build() =>
-      Completer<List<CommandEntry>>().future; // never completes → empty
+  Future<List<CommandEntry>> build() => Completer<List<CommandEntry>>().future;
 }
 
 Widget _app(Widget child) => ProviderScope(

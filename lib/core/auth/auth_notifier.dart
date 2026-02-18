@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:betcode_app/core/auth/auth_state.dart';
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/storage/storage.dart';
 import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +113,11 @@ class AuthNotifier extends Notifier<AuthState> {
   /// failure (invalid or revoked token). Network and transient errors
   /// return false — we keep the session alive so reconnection can retry.
   static bool _isAuthError(Object error) {
+    if (error is AuthExpiredError || error is PermissionDeniedError) {
+      return true;
+    }
+    // Fallback: _isAuthError may be called from code paths where the
+    // ErrorMappingInterceptor hasn't run (e.g. health check, token refresh).
     if (error is GrpcError) {
       return error.code == StatusCode.unauthenticated ||
           error.code == StatusCode.permissionDenied;

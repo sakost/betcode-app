@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:betcode_app/core/auth/auth_notifier.dart';
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
+import 'package:betcode_app/core/grpc/error_mapping.dart';
 import 'package:betcode_app/generated/betcode/v1/auth.pbgrpc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
@@ -232,4 +234,152 @@ class TokenRefreshInterceptor extends ClientInterceptor {
     );
     return invoker(method, requests, opts);
   }
+}
+
+/// Maps [GrpcError] responses to typed [AppException] subclasses.
+///
+/// Must be the **last** interceptor in the chain so it wraps errors from
+/// all preceding interceptors (auth refresh, logging, etc.).
+class ErrorMappingInterceptor extends ClientInterceptor {
+  @override
+  ResponseFuture<R> interceptUnary<Q, R>(
+    ClientMethod<Q, R> method,
+    Q request,
+    CallOptions options,
+    ClientUnaryInvoker<Q, R> invoker,
+  ) {
+    final response = invoker(method, request, options);
+    return _ErrorMappingResponseFuture<R>(response, method.path);
+  }
+
+  @override
+  ResponseStream<R> interceptStreaming<Q, R>(
+    ClientMethod<Q, R> method,
+    Stream<Q> requests,
+    CallOptions options,
+    ClientStreamingInvoker<Q, R> invoker,
+  ) {
+    final response = invoker(method, requests, options);
+    return _ErrorMappingResponseStream<R>(response, method.path);
+  }
+}
+
+/// Wraps a [ResponseFuture] and maps [GrpcError]s to [AppException]s.
+///
+/// Delegates all [Future] and [Response] methods to the underlying
+/// [_delegate], intercepting errors in [then] and [catchError] so that
+/// any [GrpcError] is replaced with the typed exception from
+/// [mapGrpcError].
+class _ErrorMappingResponseFuture<R> implements ResponseFuture<R> {
+  _ErrorMappingResponseFuture(this._delegate, this._method);
+
+  final ResponseFuture<R> _delegate;
+  final String _method;
+
+  /// Transforms a [GrpcError] into an [AppException]. Non-[GrpcError]
+  /// exceptions pass through unchanged.
+  Object _mapError(Object error) {
+    if (error is GrpcError) return mapGrpcError(error, method: _method);
+    return error;
+  }
+
+  /// The mapped future: maps errors once, then reuses the result.
+  late final Future<R> _mapped = _delegate.then<R>(
+    (v) => v,
+    onError: (Object error, StackTrace stack) =>
+        Error.throwWithStackTrace(_mapError(error), stack),
+  );
+
+  @override
+  Future<S> then<S>(
+    FutureOr<S> Function(R) onValue, {
+    Function? onError,
+  }) => _mapped.then(onValue, onError: onError);
+
+  @override
+  Future<R> catchError(Function onError, {bool Function(Object)? test}) =>
+      _mapped.catchError(onError, test: test);
+
+  @override
+  Future<R> whenComplete(FutureOr<void> Function() action) =>
+      _mapped.whenComplete(action);
+
+  @override
+  Future<R> timeout(
+    Duration timeLimit, {
+    FutureOr<R> Function()? onTimeout,
+  }) => _mapped.timeout(timeLimit, onTimeout: onTimeout);
+
+  @override
+  Stream<R> asStream() => _mapped.asStream();
+
+  @override
+  Future<Map<String, String>> get headers => _delegate.headers;
+
+  @override
+  Future<Map<String, String>> get trailers => _delegate.trailers;
+
+  @override
+  Future<void> cancel() => _delegate.cancel();
+}
+
+/// Wraps a [ResponseStream] and maps [GrpcError]s to [AppException]s.
+///
+/// Overrides [listen] to intercept errors from the underlying stream,
+/// mapping [GrpcError]s to typed [AppException]s. All other [Stream]
+/// methods (e.g. [map], [where], [toList]) ultimately go through
+/// [listen], so they also benefit from the mapping.
+class _ErrorMappingResponseStream<R> extends StreamView<R>
+    implements ResponseStream<R> {
+  _ErrorMappingResponseStream(this._delegate, this._method) : super(_delegate);
+
+  final ResponseStream<R> _delegate;
+  final String _method;
+
+  @override
+  StreamSubscription<R> listen(
+    void Function(R)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return super.listen(
+      onData,
+      onError: (Object error, StackTrace stackTrace) {
+        final mapped = error is GrpcError
+            ? mapGrpcError(error, method: _method)
+            : error;
+        if (onError != null) {
+          if (onError is void Function(Object, StackTrace)) {
+            onError(mapped, stackTrace);
+          } else if (onError is void Function(Object)) {
+            onError(mapped);
+          } else {
+            // Best-effort: call with both arguments.
+            (onError as dynamic)(mapped, stackTrace);
+          }
+        } else {
+          // No onError callback — rethrow via the zone's error handler
+          // so the subscription can propagate it.
+          Error.throwWithStackTrace(mapped, stackTrace);
+        }
+      },
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  /// [ResponseStream] narrows the return type of [single] from [Future] to
+  /// [ResponseFuture]. We delegate to the original stream's [single].
+  @override
+  ResponseFuture<R> get single => _delegate.single;
+
+  @override
+  Future<Map<String, String>> get headers => _delegate.headers;
+
+  @override
+  Future<Map<String, String>> get trailers => _delegate.trailers;
+
+  @override
+  Future<void> cancel() => _delegate.cancel();
 }

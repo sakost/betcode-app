@@ -86,9 +86,33 @@ void main() {
       );
     });
 
-    test('has exactly four interceptors', () {
+    test('interceptor chain contains ErrorMappingInterceptor', () {
       final manager = container.read(grpcClientManagerProvider);
-      expect(manager.interceptors, hasLength(4));
+      final interceptors = manager.interceptors;
+
+      expect(
+        interceptors.whereType<ErrorMappingInterceptor>(),
+        hasLength(1),
+        reason: 'ErrorMappingInterceptor should be present in the chain',
+      );
+    });
+
+    test('ErrorMappingInterceptor is last in the chain', () {
+      final manager = container.read(grpcClientManagerProvider);
+      final interceptors = manager.interceptors;
+
+      expect(
+        interceptors.last,
+        isA<ErrorMappingInterceptor>(),
+        reason:
+            'ErrorMappingInterceptor must be last so it wraps errors from '
+            'all preceding interceptors',
+      );
+    });
+
+    test('has exactly five interceptors', () {
+      final manager = container.read(grpcClientManagerProvider);
+      expect(manager.interceptors, hasLength(5));
     });
 
     test('has a health check function configured', () {

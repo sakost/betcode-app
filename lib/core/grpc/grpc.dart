@@ -1,5 +1,7 @@
+export 'app_exceptions.dart';
 export 'client_manager.dart';
 export 'connection_state.dart';
+export 'error_mapping.dart';
 export 'grpc_providers.dart';
 export 'interceptors.dart';
 export 'relay_config.dart';
