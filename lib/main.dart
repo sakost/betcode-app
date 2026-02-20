@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:betcode_app/app.dart';
 import 'package:betcode_app/core/auth/auth.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,8 +31,12 @@ Future<void> main() async {
 
   // Load machines and auto-select the sole machine before the app renders,
   // so gRPC calls that require the x-machine-id header have it available.
+  //
+  // NOTE: container.read(provider.future) can hang with Riverpod 3 on a bare
+  // ProviderContainer (before runApp). Use container.listen to reliably await
+  // the async build result.
   try {
-    await container.read(machinesProvider.future);
+    await _awaitProvider<List<MachineInfo>>(container, machinesProvider);
     debugPrint('[main] Machines loaded');
   } on Exception catch (e) {
     debugPrint('[main] Machines pre-load failed: $e');
@@ -39,4 +46,35 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(container: container, child: const BetCodeApp()),
   );
+}
+
+/// Awaits an [AsyncNotifierProvider]'s build by listening for state transitions.
+///
+/// Returns the data value when the provider transitions to [AsyncData], or
+/// throws the error if it transitions to [AsyncError].
+Future<T> _awaitProvider<T>(
+  ProviderContainer container,
+  AsyncNotifierProvider<dynamic, T> provider,
+) {
+  final completer = Completer<T>();
+  late final ProviderSubscription<AsyncValue<T>> sub;
+  sub = container.listen<AsyncValue<T>>(
+    provider,
+    (_, next) {
+      if (completer.isCompleted) return;
+      next.when(
+        data: (value) {
+          completer.complete(value);
+          sub.close();
+        },
+        error: (e, st) {
+          completer.completeError(e, st);
+          sub.close();
+        },
+        loading: () {},
+      );
+    },
+    fireImmediately: true,
+  );
+  return completer.future;
 }
