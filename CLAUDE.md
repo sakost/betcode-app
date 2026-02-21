@@ -164,7 +164,7 @@ All user-initiated actions include idempotency keys (UUIDv7) to handle duplicate
 | Platform | Transport | Secure Storage | Background Sync | Push |
 |----------|-----------|---------------|-----------------|------|
 | Android (SDK 24+) | OkHttp | Keystore | WorkManager | FCM |
-| iOS (15+) | URLSession | Keychain | BGTaskScheduler | APNs |
+| iOS (16+) | URLSession | Keychain | BGTaskScheduler | APNs |
 
 ## Coding Conventions
 
