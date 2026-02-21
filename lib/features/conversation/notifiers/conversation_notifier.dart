@@ -119,6 +119,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
       final responseStream = _client.converse(_requestController!.stream);
 
+      debugPrint('[Conversation] Converse stream opened');
       _eventSubscription = responseStream.listen(
         handleEvent,
         onError: (Object error) {
@@ -128,15 +129,19 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         cancelOnError: false,
       );
 
-      _requestController!.add(
-        pb.AgentRequest(
-          start: pb.StartConversation(
-            sessionId: sessionId ?? '',
-            workingDirectory: workingDirectory,
-            model: _defaultModel,
-          ),
-        ),
+      final startReq = pb.StartConversation(
+        sessionId: sessionId ?? '',
+        workingDirectory: workingDirectory,
+        model: _defaultModel,
       );
+      final startFields =
+          'sessionId: ${startReq.sessionId}, '
+          'workingDirectory: ${startReq.workingDirectory}, '
+          'model: ${startReq.model}';
+      debugPrint(
+        '[Conversation] Sending StartConversation($startFields)',
+      );
+      _requestController!.add(pb.AgentRequest(start: startReq));
 
       // Transition to active immediately so the user can type their first
       // message. The daemon defers subprocess creation until this message
@@ -243,14 +248,20 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       current.copyWith(messages: [...current.messages, userMsg]),
     );
 
-    _requestController!.add(
-      pb.AgentRequest(
-        message: pb.UserMessage(
-          content: content,
-          agentId: current.selectedAgentId ?? '',
-        ),
+    final userRequest = pb.AgentRequest(
+      message: pb.UserMessage(
+        content: content,
+        agentId: current.selectedAgentId ?? '',
       ),
     );
+    final msgFields =
+        'agentId: ${userRequest.message.agentId}, '
+        'sessionId: ${current.sessionId}, '
+        'streamAlive: ${_eventSubscription != null}';
+    debugPrint(
+      '[Conversation] Sending UserMessage($msgFields)',
+    );
+    _requestController!.add(userRequest);
   }
 
   /// Responds to a permission request from the agent.
@@ -346,7 +357,11 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     final causeInfo = error is AppException && error.cause != null
         ? error.cause
         : '';
-    debugPrint('[Conversation] Stream error: $error | cause: $causeInfo');
+    debugPrint(
+      '[Conversation] Stream error: $error '
+      '(type: ${error.runtimeType}, cause: $causeInfo, '
+      'fatal: ${_isFatalError(error)}, paused: $_paused)',
+    );
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
 
@@ -516,11 +531,19 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   }
 
   void _handleStreamDone() {
-    debugPrint('[Conversation] Stream done');
+    final current = state.value;
+    final sessionId =
+        current is ConversationActive ? current.sessionId : 'n/a';
+    final lastSeq =
+        current is ConversationActive ? current.lastSequence : -1;
+    debugPrint(
+      '[Conversation] Stream done '
+      '(sessionId: $sessionId, lastSeq: $lastSeq, '
+      'paused: $_paused, reconnecting: $_isReconnecting)',
+    );
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
 
-    final current = state.value;
     if (current is ConversationActive && current.sessionId.isNotEmpty) {
       // Stream closed while conversation is active — attempt reconnection
       // so the user can continue sending messages. Without this, the UI
@@ -529,6 +552,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       debugPrint('[Conversation] Stream closed unexpectedly, reconnecting');
       _attemptReconnection(current);
     } else {
+      debugPrint('[Conversation] Stream done with no active session, cleaning');
       _cleanup();
     }
   }

@@ -22,15 +22,21 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
 
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
-    debugPrint(
-      '[Conversation] Event received: '
-      '${event.whichEvent().name} seq=${event.sequence}',
-    );
     final seq = event.sequence.toInt();
     final current = state.value;
+    final lastSeq =
+        current is ConversationActive ? current.lastSequence : -1;
+    debugPrint(
+      '[Conversation] Event received: '
+      '${event.whichEvent().name} seq=$seq '
+      '(lastSeq: $lastSeq, replaying: $isReplayingHistory)',
+    );
 
     // Dedup: skip events we have already processed.
-    if (current is ConversationActive && seq <= current.lastSequence) return;
+    if (current is ConversationActive && seq <= current.lastSequence) {
+      debugPrint('[Conversation] Dedup: skipping seq=$seq (lastSeq=$lastSeq)');
+      return;
+    }
 
     final parentId = event.parentToolUseId;
 
@@ -175,6 +181,9 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   // ---------------------------------------------------------------------------
 
   void _onSessionInfo(pb.SessionInfo info, int seq) {
+    debugPrint(
+      '[Conversation] SessionInfo: id="${info.sessionId}", seq=$seq',
+    );
     final active = _active;
     if (active != null) {
       state = AsyncData(
@@ -359,6 +368,9 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   }
 
   void _onStatusChange(pb.StatusChange change, int seq, String parentId) {
+    debugPrint(
+      '[Conversation] StatusChange: ${change.status.name}, seq=$seq',
+    );
     _updateActive((active) {
       // If the status change is for a sub-agent, update that agent's status.
       if (parentId.isNotEmpty && active.agents.containsKey(parentId)) {
@@ -441,6 +453,11 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   }
 
   void _onError(pb.ErrorEvent error, int seq) {
+    debugPrint(
+      '[Conversation] ErrorEvent: code=${error.code}, '
+      'fatal=${error.isFatal}, msg="${error.message}", '
+      'replaying=$isReplayingHistory',
+    );
     // During history replay, fatal errors are from a past session run.
     // Just update the sequence counter — don't show a banner or kill
     // the conversation. The user already knows the previous run failed.
