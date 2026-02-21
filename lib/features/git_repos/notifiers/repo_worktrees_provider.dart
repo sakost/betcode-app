@@ -63,8 +63,16 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
     await refresh();
   }
 
+  /// Re-fetches worktrees for this repo and replaces the current state.
+  ///
+  /// Transitions directly from data→data without an intermediate loading state.
+  /// The external `RefreshIndicator` handles the spinner; emitting
+  /// [AsyncLoading] here would cause a visible flash/rebuild of the list.
   Future<void> refresh() async {
     state = await AsyncValue.guard(_fetchWorktrees);
+    // Invalidate the global worktreesProvider so it picks up changes.
+    // This invalidates all family instances which is acceptable at current
+    // scale (typically < 5 repos viewed).
     ref.invalidate(worktreesProvider);
   }
 }

@@ -47,6 +47,10 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
 
   /// Re-fetches the first page of sessions from the daemon and replaces the
   /// current state.
+  ///
+  /// Transitions directly from data→data without an intermediate loading state.
+  /// The external `RefreshIndicator` handles the spinner; emitting
+  /// [AsyncLoading] here would cause a visible flash/rebuild of the list.
   Future<void> refresh() async {
     state = await AsyncValue.guard(_fetchSessions);
   }

@@ -16,6 +16,7 @@ import 'package:betcode_app/features/machines/notifiers/machines_providers.dart'
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,6 +34,7 @@ class ConversationScreen extends ConsumerStatefulWidget {
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
   bool _isUserScrolledUp = false;
+  bool _hasAutoStarted = false;
 
   @override
   void initState() {
@@ -75,12 +77,13 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   /// working directory can be resolved. Called from initState (for worktrees
   /// already loaded) and from the worktrees listener (for late-arriving data).
   void _tryAutoStart() {
-    if (!mounted) return;
+    if (!mounted || _hasAutoStarted) return;
     final asyncState = ref.read(conversationProvider(widget.sessionId));
     if (asyncState.value is! ConversationInitial) return;
     final workingDirectory =
         widget.workingDirectory ?? _resolveWorkingDirectory();
     if (workingDirectory == null) return;
+    _hasAutoStarted = true;
     _startConversation();
   }
 
@@ -153,17 +156,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(conversationProvider(widget.sessionId));
-    // Watch worktrees and auto-start new conversations when data arrives.
-    // Auto-scroll when new messages arrive and user hasn't scrolled up.
+    // Auto-start new conversations when worktrees data arrives, and
+    // auto-scroll when new messages arrive and user hasn't scrolled up.
     ref
-      ..watch(worktreesProvider)
       ..listen(
         worktreesProvider,
         (_, _) {
           // When worktrees load after initState and state is still initial,
           // trigger auto-start via post-frame callback to avoid build-phase
-          // state mutations.
-          if (widget.sessionId == null) {
+          // state mutations. Once auto-started, skip entirely.
+          if (widget.sessionId == null && !_hasAutoStarted) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _tryAutoStart();
             });
@@ -398,46 +400,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     return 'Conversation';
   }
 
-  /// Resolves the machine/worktree subtitle for the active state AppBar.
-  String? _resolveContextSubtitle() {
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return null;
-
-    final machines = ref.watch(machinesProvider).value;
-    var machineName = machineId;
-    if (machines != null) {
-      for (final m in machines) {
-        if (m.machineId == machineId) {
-          machineName = m.name.isNotEmpty ? m.name : m.machineId;
-          break;
-        }
-      }
-    }
-
-    final worktrees = ref.watch(worktreesProvider).value;
-    final worktreeName =
-        worktrees != null && worktrees.isNotEmpty ? worktrees.first.name : null;
-
-    if (worktreeName != null && worktreeName.isNotEmpty) {
-      return '$machineName \u00b7 $worktreeName';
-    }
-    return machineName;
-  }
-
   Widget _buildAppBarTitle(String title) {
-    final subtitle = _resolveContextSubtitle();
-    if (subtitle == null) return Text(title);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title),
-        Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+    return _AppBarTitle(
+      title: title,
+      workingDirectory: widget.workingDirectory,
     );
   }
 
@@ -668,5 +634,71 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Isolated widget for the AppBar title + machine/worktree subtitle.
+///
+/// Extracted from [_ConversationScreenState] so that the `ref.watch` calls on
+/// [machinesProvider] and [worktreesProvider] only rebuild this small widget
+/// tree instead of the entire conversation screen.
+class _AppBarTitle extends ConsumerWidget {
+  const _AppBarTitle({required this.title, this.workingDirectory});
+
+  final String title;
+  final String? workingDirectory;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final subtitle = _resolveContextSubtitle(ref);
+    if (subtitle == null) return Text(title);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String? _resolveContextSubtitle(WidgetRef ref) {
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return null;
+
+    final machines = ref.watch(machinesProvider).value;
+    var machineName = machineId;
+    if (machines != null) {
+      for (final m in machines) {
+        if (m.machineId == machineId) {
+          machineName = m.name.isNotEmpty ? m.name : m.machineId;
+          break;
+        }
+      }
+    }
+
+    final worktrees = ref.watch(worktreesProvider).value;
+    final worktreeName = _resolveWorktreeName(worktrees);
+
+    if (worktreeName != null && worktreeName.isNotEmpty) {
+      return '$machineName \u00b7 $worktreeName';
+    }
+    return machineName;
+  }
+
+  /// Resolves the active worktree name from [workingDirectory] if available,
+  /// falling back to the first worktree's name.
+  String? _resolveWorktreeName(List<WorktreeDetail>? worktrees) {
+    if (worktrees == null || worktrees.isEmpty) return null;
+    if (workingDirectory != null) {
+      for (final wt in worktrees) {
+        if (wt.path == workingDirectory) return wt.name;
+      }
+    }
+    return worktrees.first.name;
   }
 }

@@ -1521,5 +1521,88 @@ void main() {
       unawaited(historyController.close());
       unawaited(eventController2.close());
     });
+
+    test(
+      'stale history coroutine does not corrupt new conversation state',
+      () async {
+        // First call: history stream that we control manually.
+        final historyController1 = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          return FakeResponseStream<pb.AgentEvent>(historyController1);
+        });
+
+        final n = notifier('sess-stale');
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        await Future<void>.delayed(Duration.zero);
+
+        // Second call while history is loading. Set up a separate history
+        // stream that completes immediately.
+        final historyController2 = StreamController<pb.AgentEvent>();
+        final eventController2 = StreamController<pb.AgentEvent>();
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
+              .listen((_) {});
+          return FakeResponseStream<pb.AgentEvent>(eventController2);
+        });
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          unawaited(historyController2.close());
+          return FakeResponseStream<pb.AgentEvent>(historyController2);
+        });
+
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        // Now complete the first (stale) history stream. The old coroutine
+        // should detect the completer mismatch and return early without
+        // corrupting state.
+        unawaited(historyController1.close());
+        await Future<void>.delayed(Duration.zero);
+
+        // Verify the notifier is still in active state (not corrupted).
+        final state = container.read(
+          conversationProvider('sess-stale'),
+        );
+        expect(state.hasValue, isTrue);
+        expect(state.value, isA<ConversationActive>());
+
+        n.close();
+        unawaited(eventController2.close());
+      },
+    );
+  });
+
+  group('ref.mounted guard after async gap', () {
+    test('does not throw when provider is disposed during startConversation',
+        () async {
+      // Create a separate container that we can dispose mid-stream.
+      final localContainer = ProviderContainer(
+        overrides: [agentServiceProvider.overrideWithValue(mockClient)],
+      );
+
+      // Set up a history stream that never completes (simulates slow network).
+      final slowHistory = StreamController<pb.AgentEvent>();
+      when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+        return FakeResponseStream<pb.AgentEvent>(slowHistory);
+      });
+
+      final n = localContainer.read(
+        conversationProvider('sess-dispose').notifier,
+      );
+      unawaited(n.startConversation(workingDirectory: '/tmp'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Dispose the container while _loadHistory is still awaiting.
+      // This should not throw "Cannot use Ref after disposal".
+      localContainer.dispose();
+
+      // Complete the slow stream — the catch block should hit
+      // ref.mounted == false and return silently.
+      slowHistory.addError(Exception('simulated error'));
+      await Future<void>.delayed(Duration.zero);
+
+      // If we get here without an uncaught exception, the guard works.
+      unawaited(slowHistory.close());
+    });
   });
 }

@@ -13,7 +13,6 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:grpc/grpc.dart';
 
 /// Manages the bidirectional gRPC streaming conversation with the Claude agent.
 ///
@@ -189,29 +188,27 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           fromSequence: Int64.ZERO,
         ),
       );
-      _historyCompleter = Completer<void>();
+      final myCompleter = Completer<void>();
+      _historyCompleter = myCompleter;
       _historySubscription = historyStream.listen(
         handleEvent,
-        onError: _historyCompleter!.completeError,
-        onDone: _historyCompleter!.complete,
+        onError: myCompleter.completeError,
+        onDone: myCompleter.complete,
         cancelOnError: true,
       );
-      await _historyCompleter!.future;
+      await myCompleter.future;
+
+      // After the await, a new startConversation may have replaced our
+      // completer. Only clean up if we are still the active history load.
+      if (_historyCompleter != myCompleter) return;
       _historySubscription = null;
       _historyCompleter = null;
       final current = state.value;
       final seq = current is ConversationActive ? current.lastSequence : 0;
       debugPrint('[Conversation] History loaded, lastSequence=$seq');
-    } on AppException catch (e) {
+    } on Exception catch (e) {
       debugPrint('[Conversation] History load failed: $e');
-      final current = state.value;
-      if (current is ConversationActive) {
-        state = AsyncData(
-          current.copyWith(errorMessage: "Couldn't load message history."),
-        );
-      }
-    } on GrpcError catch (e) {
-      debugPrint('[Conversation] History load failed: $e');
+      if (!ref.mounted) return;
       final current = state.value;
       if (current is ConversationActive) {
         state = AsyncData(
@@ -356,12 +353,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     // Don't retry fatal errors.
     if (_isFatalError(error)) {
       _isReconnecting = false;
-      final message = error is AppException
-          ? error.message
-          : 'Stream error: $error';
-      state = AsyncData(ConversationState.error(message));
-      unawaited(_requestController?.close());
-      _requestController = null;
+      _transitionToError(error);
       return;
     }
 
@@ -377,13 +369,18 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       _attemptReconnection(current);
     } else {
       _isReconnecting = false;
-      final message = error is AppException
-          ? error.message
-          : 'Stream error: $error';
-      state = AsyncData(ConversationState.error(message));
-      unawaited(_requestController?.close());
-      _requestController = null;
+      _transitionToError(error);
     }
+  }
+
+  /// Transitions state to [ConversationError] from a stream error.
+  void _transitionToError(Object error) {
+    final message = error is AppException
+        ? error.message
+        : 'Stream error: $error';
+    state = AsyncData(ConversationState.error(message));
+    unawaited(_requestController?.close());
+    _requestController = null;
   }
 
   bool _isFatalError(Object error) {
