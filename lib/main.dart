@@ -48,7 +48,8 @@ Future<void> main() async {
   );
 }
 
-/// Awaits an [AsyncNotifierProvider]'s build by listening for state transitions.
+/// Awaits an [AsyncNotifierProvider]'s build by listening for state
+/// transitions.
 ///
 /// Returns the data value when the provider transitions to [AsyncData], or
 /// throws the error if it transitions to [AsyncError].

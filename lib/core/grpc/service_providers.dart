@@ -14,8 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Provides the [AgentServiceClient] for conversation streaming, session
 /// management, and input lock operations.
 ///
-/// Watches [connectionStatusProvider] so the client is recreated with the
-/// current [ClientChannel] whenever [GrpcClientManager.connect] replaces
+/// Watches `connectionStatusProvider` so the client is recreated with the
+/// current `ClientChannel` whenever `GrpcClientManager.connect` replaces
 /// the channel (e.g. during reconnection). Without this, stale clients
 /// would hold a reference to the old (shut-down) channel and every RPC
 /// would fail with "Channel shutting down".
