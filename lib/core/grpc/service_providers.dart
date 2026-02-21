@@ -13,8 +13,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Provides the [AgentServiceClient] for conversation streaming, session
 /// management, and input lock operations.
+///
+/// Watches `connectionStatusProvider` so the client is recreated with the
+/// current `ClientChannel` whenever `GrpcClientManager.connect` replaces
+/// the channel (e.g. during reconnection). Without this, stale clients
+/// would hold a reference to the old (shut-down) channel and every RPC
+/// would fail with "Channel shutting down".
 final agentServiceProvider = Provider<AgentServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return AgentServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -26,12 +33,14 @@ final agentServiceProvider = Provider<AgentServiceClient>((ref) {
 /// auth calls themselves are unauthenticated.
 final authServiceProvider = Provider<AuthServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return AuthServiceClient(manager.channel);
 });
 
 /// Provides the [MachineServiceClient] for listing and switching machines.
 final machineServiceProvider = Provider<MachineServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return MachineServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -41,6 +50,7 @@ final machineServiceProvider = Provider<MachineServiceClient>((ref) {
 /// Provides the [WorktreeServiceClient] for worktree CRUD per machine.
 final worktreeServiceProvider = Provider<WorktreeServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return WorktreeServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -51,6 +61,7 @@ final worktreeServiceProvider = Provider<WorktreeServiceClient>((ref) {
 /// configuration management.
 final gitRepoServiceProvider = Provider<GitRepoServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return GitRepoServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -61,6 +72,7 @@ final gitRepoServiceProvider = Provider<GitRepoServiceClient>((ref) {
 /// server listing.
 final configServiceProvider = Provider<ConfigServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return ConfigServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -70,6 +82,7 @@ final configServiceProvider = Provider<ConfigServiceClient>((ref) {
 /// Provides the [GitLabServiceClient] for MR, pipeline, and issue views.
 final gitlabServiceProvider = Provider<GitLabServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return GitLabServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -79,12 +92,14 @@ final gitlabServiceProvider = Provider<GitLabServiceClient>((ref) {
 /// Provides the [HealthClient] for daemon health checks.
 final healthServiceProvider = Provider<HealthClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return HealthClient(manager.channel, interceptors: manager.interceptors);
 });
 
 /// Provides the [BetCodeHealthClient] for relay health checks.
 final betcodeHealthServiceProvider = Provider<BetCodeHealthClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return BetCodeHealthClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -95,6 +110,7 @@ final betcodeHealthServiceProvider = Provider<BetCodeHealthClient>((ref) {
 /// discovery.
 final versionServiceProvider = Provider<VersionServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return VersionServiceClient(
     manager.channel,
     interceptors: manager.interceptors,
@@ -105,6 +121,7 @@ final versionServiceProvider = Provider<VersionServiceClient>((ref) {
 /// service command execution, and plugin management.
 final commandServiceProvider = Provider<CommandServiceClient>((ref) {
   final manager = ref.watch(grpcClientManagerProvider);
+  ref.watch(connectionStatusProvider);
   return CommandServiceClient(
     manager.channel,
     interceptors: manager.interceptors,

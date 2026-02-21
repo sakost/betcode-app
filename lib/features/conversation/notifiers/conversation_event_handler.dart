@@ -1,11 +1,7 @@
 import 'dart:convert';
 
-import 'package:betcode_app/features/conversation/conversation.dart'
-    show ConversationNotifier;
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_notifier.dart'
-    show ConversationNotifier;
-import 'package:betcode_app/features/conversation/notifiers/notifiers.dart'
     show ConversationNotifier;
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
@@ -18,6 +14,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Separated from [ConversationNotifier] to keep file sizes manageable
 /// and isolate event-processing logic from stream lifecycle management.
 mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
+  /// True while replaying historical events via history load.
+  ///
+  /// Fatal errors from history (e.g. a previous session crash) must NOT
+  /// kill the current conversation state — they happened in the past.
+  bool isReplayingHistory = false;
+
   /// Dispatches a single [pb.AgentEvent] to the appropriate handler.
   void handleEvent(pb.AgentEvent event) {
     debugPrint(
@@ -437,6 +439,16 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
   }
 
   void _onError(pb.ErrorEvent error, int seq) {
+    // During history replay, fatal errors are from a past session run.
+    // Just update the sequence counter — don't show a banner or kill
+    // the conversation. The user already knows the previous run failed.
+    if (isReplayingHistory) {
+      _updateActive((active) {
+        return active.copyWith(lastSequence: seq);
+      });
+      return;
+    }
+
     if (error.isFatal) {
       state = AsyncData(
         ConversationState.error('[${error.code}] ${error.message}'),

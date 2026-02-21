@@ -34,13 +34,22 @@ final grpcClientManagerProvider = Provider<GrpcClientManager>((ref) {
         machineIdProvider: () async => ref.read(selectedMachineIdProvider),
       ),
       LoggingInterceptor(),
+      ErrorMappingInterceptor(),
     ],
     healthCheckFn: (channel) async {
       final client = HealthClient(channel);
-      await client.check(
-        HealthCheckRequest(),
-        options: CallOptions(timeout: const Duration(seconds: 5)),
-      );
+      try {
+        await client.check(
+          HealthCheckRequest(),
+          options: CallOptions(timeout: const Duration(seconds: 5)),
+        );
+      } on GrpcError catch (e) {
+        if (e.code == StatusCode.unimplemented) {
+          // Server responded — connection is alive, just no Health service.
+          return;
+        }
+        rethrow;
+      }
     },
   );
 

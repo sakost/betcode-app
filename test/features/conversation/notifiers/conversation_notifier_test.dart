@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/lifecycle/app_lifecycle_notifier.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
@@ -138,7 +139,10 @@ void main() {
 
       final s = fc.read(conversationProvider(null)).value;
       expect(s, isA<ConversationError>());
-      expect((s! as ConversationError).message, contains('UNAVAILABLE'));
+      expect(
+        (s! as ConversationError).message,
+        contains('Failed to start conversation'),
+      );
     });
   });
 
@@ -263,6 +267,41 @@ void main() {
     });
   });
 
+  group('history load', () {
+    test(
+      'AppException during history load sets errorMessage, not fatal',
+      () async {
+        // When the ErrorMappingInterceptor maps a GrpcError to an AppException
+        // during history load, the conversation should stay active with a soft
+        // error message rather than transitioning to ConversationError.
+        const sid = 'sess-history';
+        final historyController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          historyController.addError(
+            const NetworkError(message: 'Connection lost. Retrying...'),
+          );
+          return FakeResponseStream<pb.AgentEvent>(historyController);
+        });
+
+        final n = notifier(sid);
+        await n.startConversation(workingDirectory: '/tmp');
+        await Future<void>.delayed(Duration.zero);
+
+        // startConversation sets state to ConversationActive before calling
+        // _loadHistory. The history load should catch the AppException
+        // gracefully and set errorMessage without killing the conversation.
+        final s = stateVal(sid);
+        expect(s, isA<ConversationActive>());
+        expect(
+          (s! as ConversationActive).errorMessage,
+          "Couldn't load message history.",
+        );
+
+        await historyController.close();
+      },
+    );
+  });
+
   group('stream error handling', () {
     test(
       'transient stream error triggers reconnection on active session',
@@ -287,12 +326,19 @@ void main() {
       final n = notifier();
       await goActive(n);
 
-      eventController.addError(const GrpcError.unauthenticated('expired'));
+      eventController.addError(
+        const AuthExpiredError(
+          message: 'Your session has expired. Please log in again.',
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
 
       final s = stateVal();
       expect(s, isA<ConversationError>());
-      expect((s! as ConversationError).message, contains('expired'));
+      expect(
+        (s! as ConversationError).message,
+        'Your session has expired. Please log in again.',
+      );
     });
 
     test('stream done triggers reconnection on active session', () async {
@@ -430,7 +476,8 @@ void main() {
     ({
       int Function() callCount,
       StreamController<pb.AgentEvent> Function() latestController,
-    }) setupReconnectMock({
+    })
+    setupReconnectMock({
       void Function(StreamController<pb.AgentEvent>)? onReconnect,
       bool immediateError = false,
       GrpcError? throwOnConverse,
@@ -440,8 +487,7 @@ void main() {
       var isFirstCall = true;
 
       when(() => mockClient.converse(any())).thenAnswer((inv) {
-        final reqStream =
-            inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+        final reqStream = inv.positionalArguments[0] as Stream<pb.AgentRequest>;
 
         if (isFirstCall) {
           // First call is the initial startConversation.
@@ -544,9 +590,15 @@ void main() {
         final mock = setupReconnectMock();
 
         startActive(async);
-        injectError(async, const GrpcError.unauthenticated('expired'));
 
-        async.elapse(const Duration(seconds: 60));
+        eventController.addError(
+          const AuthExpiredError(
+            message: 'Your session has expired. Please log in again.',
+          ),
+        );
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 60));
 
         expect(mock.callCount(), 0);
 

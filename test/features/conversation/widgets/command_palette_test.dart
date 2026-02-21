@@ -203,8 +203,9 @@ void main() {
       expect(find.text('/exit'), findsOneWidget);
     });
 
-    testWidgets('daemon command overrides local command with same name',
-        (t) async {
+    testWidgets('daemon command overrides local command with same name', (
+      t,
+    ) async {
       final daemonCommands = AsyncData([
         CommandEntry(
           name: 'exit',

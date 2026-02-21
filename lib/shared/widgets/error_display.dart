@@ -1,3 +1,4 @@
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:flutter/material.dart';
 
 /// A widget that displays an error state with an icon, message, and an
@@ -39,7 +40,9 @@ class ErrorDisplay extends StatelessWidget {
             Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
-              error.toString(),
+              error is AppException
+                  ? (error as AppException).message
+                  : error.toString(),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.error,

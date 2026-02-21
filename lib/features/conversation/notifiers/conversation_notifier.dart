@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' show min;
 
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/lifecycle/lifecycle.dart';
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
@@ -28,6 +29,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     Duration(seconds: 10),
     Duration(seconds: 30),
   ];
+
+  /// Default model used for new sessions when no model is explicitly chosen.
+  static const _defaultModel = 'claude-sonnet-4';
 
   StreamController<pb.AgentRequest>? _requestController;
   StreamSubscription<pb.AgentEvent>? _eventSubscription;
@@ -94,6 +98,12 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     state = const AsyncData(ConversationState.connecting());
 
     try {
+      // Close any existing streams from a previous attempt (e.g. retry
+      // after error) to prevent leaked subscriptions.
+      unawaited(_eventSubscription?.cancel());
+      _eventSubscription = null;
+      unawaited(_requestController?.close());
+
       _requestController = StreamController<pb.AgentRequest>();
 
       final responseStream = _client.converse(_requestController!.stream);
@@ -112,6 +122,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           start: pb.StartConversation(
             sessionId: sessionId ?? '',
             workingDirectory: workingDirectory,
+            model: _defaultModel,
           ),
         ),
       );
@@ -131,11 +142,21 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       // When resuming an existing session, load conversation history from
       // the daemon's event store via the ResumeSession RPC. Events are
       // processed through the same handler and deduplicated by sequence.
+      // History replay uses a flag so _onError treats past fatal errors
+      // as non-fatal banners instead of killing the conversation state.
       if (sessionId != null && sessionId!.isNotEmpty) {
-        await _loadHistory(sessionId!);
+        isReplayingHistory = true;
+        try {
+          await _loadHistory(sessionId!);
+        } finally {
+          isReplayingHistory = false;
+        }
       }
     } on Exception catch (e) {
-      state = AsyncData(ConversationState.error(e.toString()));
+      final message = e is AppException
+          ? e.message
+          : 'Failed to start conversation: $e';
+      state = AsyncData(ConversationState.error(message));
     }
   }
 
@@ -164,9 +185,22 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       final current = state.value;
       final seq = current is ConversationActive ? current.lastSequence : 0;
       debugPrint('[Conversation] History loaded, lastSequence=$seq');
-    } on GrpcError catch (e) {
-      // Non-fatal: continue with empty history if replay fails.
+    } on AppException catch (e) {
       debugPrint('[Conversation] History load failed: $e');
+      final current = state.value;
+      if (current is ConversationActive) {
+        state = AsyncData(
+          current.copyWith(errorMessage: "Couldn't load message history."),
+        );
+      }
+    } on GrpcError catch (e) {
+      debugPrint('[Conversation] History load failed: $e');
+      final current = state.value;
+      if (current is ConversationActive) {
+        state = AsyncData(
+          current.copyWith(errorMessage: "Couldn't load message history."),
+        );
+      }
     }
   }
 
@@ -284,16 +318,20 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   // ---------------------------------------------------------------------------
 
   void _handleStreamError(Object error) {
-    debugPrint('[Conversation] Stream error: $error');
+    final causeInfo = error is AppException && error.cause != null
+        ? error.cause
+        : '';
+    debugPrint('[Conversation] Stream error: $error | cause: $causeInfo');
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
 
     // Don't retry fatal errors.
     if (_isFatalError(error)) {
       _isReconnecting = false;
-      state = AsyncData(
-        ConversationState.error('Stream error: $error'),
-      );
+      final message = error is AppException
+          ? error.message
+          : 'Stream error: $error';
+      state = AsyncData(ConversationState.error(message));
       unawaited(_requestController?.close());
       _requestController = null;
       return;
@@ -311,21 +349,19 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       _attemptReconnection(current);
     } else {
       _isReconnecting = false;
-      state = AsyncData(
-        ConversationState.error('Stream error: $error'),
-      );
+      final message = error is AppException
+          ? error.message
+          : 'Stream error: $error';
+      state = AsyncData(ConversationState.error(message));
       unawaited(_requestController?.close());
       _requestController = null;
     }
   }
 
   bool _isFatalError(Object error) {
-    if (error is GrpcError) {
-      return error.code == StatusCode.unauthenticated ||
-          error.code == StatusCode.permissionDenied ||
-          error.code == StatusCode.notFound;
-    }
-    return false;
+    return error is AuthExpiredError ||
+        error is PermissionDeniedError ||
+        error is SessionNotFoundError;
   }
 
   void _attemptReconnection(ConversationActive active) {
@@ -373,8 +409,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         // used resumeSession (server-streaming, read-only) which left
         // _requestController null — silently dropping all user messages.
         _requestController = StreamController<pb.AgentRequest>();
-        final responseStream =
-            _client.converse(_requestController!.stream);
+        final responseStream = _client.converse(_requestController!.stream);
 
         _eventSubscription = responseStream.listen(
           _onReconnectEvent,

@@ -9,11 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// global commands. Use `ref.watch(commandsProvider(sessionId))` in
 /// widgets to reactively rebuild on loading / data / error transitions.
 // ignore: specify_nonobvious_property_types, the family provider type is not publicly exported
-final commandsProvider = AsyncNotifierProvider.family<
-  CommandsNotifier,
-  List<CommandEntry>,
-  String?
->((sessionId) {
-  final notifier = CommandsNotifier()..sessionId = sessionId;
-  return notifier;
-});
+final commandsProvider =
+    AsyncNotifierProvider.family<CommandsNotifier, List<CommandEntry>, String?>(
+      (sessionId) {
+        final notifier = CommandsNotifier()..sessionId = sessionId;
+        return notifier;
+      },
+    );

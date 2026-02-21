@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
+import 'package:betcode_app/features/sessions/widgets/confirm_delete_dialog.dart';
 import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
 import 'package:betcode_app/features/sessions/widgets/session_card.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
@@ -31,7 +35,7 @@ class SessionsScreen extends ConsumerWidget {
           onTap: () => context.go('/sessions/${session.id}'),
           onRename: (currentName) =>
               _onRename(context, ref, session.id, currentName),
-          onDelete: () => _onDelete(context),
+          onDelete: () => _onDelete(context, ref, session.id),
         ),
       ),
     );
@@ -52,17 +56,41 @@ class SessionsScreen extends ConsumerWidget {
       await ref
           .read(sessionsProvider.notifier)
           .renameSession(sessionId: sessionId, name: newName);
+    } on AppException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
     } on Exception catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Rename failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rename failed: $e')),
+      );
     }
   }
 
-  void _onDelete(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Delete coming soon')));
+  Future<void> _onDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+  ) async {
+    final confirmed = await ConfirmDeleteDialog.show(context);
+    if (confirmed != true) return;
+    try {
+      await ref.read(sessionsProvider.notifier).deleteSession(sessionId);
+    } on SessionNotFoundError catch (_) {
+      // Session already gone — just refresh the list.
+      unawaited(ref.read(sessionsProvider.notifier).refresh());
+    } on AppException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } on Exception catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e')),
+      );
+    }
   }
 }

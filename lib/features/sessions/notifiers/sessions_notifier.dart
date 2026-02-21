@@ -76,6 +76,26 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     await refresh();
   }
 
+  /// Permanently deletes a session and all its messages.
+  ///
+  /// Throws on gRPC/timeout errors so callers can display feedback.
+  Future<void> deleteSession(String sessionId) async {
+    final client = ref.read(agentServiceProvider);
+    await client
+        .deleteSession(DeleteSessionRequest(sessionId: sessionId))
+        .timeout(_mutationTimeout);
+    await _removeFromCache(sessionId);
+    await refresh();
+  }
+
+  /// Removes a deleted session from the local drift cache.
+  Future<void> _removeFromCache(String sessionId) async {
+    final db = ref.read(appDatabaseProvider);
+    await db.batch((batch) {
+      batch.deleteWhere(db.cachedSessions, (t) => t.id.equals(sessionId));
+    });
+  }
+
   /// Upserts each [SessionSummary] into the local [CachedSessions] table so
   /// the data is available when offline.
   Future<void> _cacheToDb(Iterable<SessionSummary> sessions) async {
