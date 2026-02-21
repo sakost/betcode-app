@@ -35,6 +35,8 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   StreamController<pb.AgentRequest>? _requestController;
   StreamSubscription<pb.AgentEvent>? _eventSubscription;
+  StreamSubscription<pb.AgentEvent>? _historySubscription;
+  Completer<void>? _historyCompleter;
   int _reconnectAttempt = 0;
   Timer? _reconnectTimer;
   bool _isReconnecting = false;
@@ -95,6 +97,13 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       '[Conversation] startConversation(workingDirectory: $workingDirectory, '
       'sessionId: $sessionId)',
     );
+
+    // Reset reconnect state so a fresh start gets the full backoff budget.
+    _reconnectAttempt = 0;
+    _isReconnecting = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+
     state = const AsyncData(ConversationState.connecting());
 
     try {
@@ -102,6 +111,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       // after error) to prevent leaked subscriptions.
       unawaited(_eventSubscription?.cancel());
       _eventSubscription = null;
+      unawaited(_historySubscription?.cancel());
+      _historySubscription = null;
+      _completeHistoryIfPending();
       unawaited(_requestController?.close());
 
       _requestController = StreamController<pb.AgentRequest>();
@@ -153,6 +165,9 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         }
       }
     } on Exception catch (e) {
+      // After async gaps the notifier may have been disposed (e.g. a second
+      // startConversation call was issued, or the provider was torn down).
+      if (!ref.mounted) return;
       final message = e is AppException
           ? e.message
           : 'Failed to start conversation: $e';
@@ -174,14 +189,16 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           fromSequence: Int64.ZERO,
         ),
       );
-      final completer = Completer<void>();
-      historyStream.listen(
+      _historyCompleter = Completer<void>();
+      _historySubscription = historyStream.listen(
         handleEvent,
-        onError: completer.completeError,
-        onDone: completer.complete,
+        onError: _historyCompleter!.completeError,
+        onDone: _historyCompleter!.complete,
         cancelOnError: true,
       );
-      await completer.future;
+      await _historyCompleter!.future;
+      _historySubscription = null;
+      _historyCompleter = null;
       final current = state.value;
       final seq = current is ConversationActive ? current.lastSequence : 0;
       debugPrint('[Conversation] History loaded, lastSequence=$seq');
@@ -252,6 +269,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           description: msg.description,
           input: msg.input,
           decision: decision,
+          parentToolUseId: msg.parentToolUseId,
         );
       }
       return msg;
@@ -282,6 +300,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
           options: msg.options,
           multiSelect: msg.multiSelect,
           answers: answers,
+          parentToolUseId: msg.parentToolUseId,
         );
       }
       return msg;
@@ -295,6 +314,15 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     _requestController!.add(
       pb.AgentRequest(questionResponse: questionResponse),
     );
+  }
+
+  /// Clears the error banner in the active state.
+  ///
+  /// No-ops if the state is not [ConversationActive].
+  void clearErrorMessage() {
+    final current = state.value;
+    if (current is! ConversationActive) return;
+    state = AsyncData(current.copyWith(errorMessage: null));
   }
 
   /// Sets the selected agent for filtering conversation messages.
@@ -479,11 +507,14 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     debugPrint('[Conversation] App resumed');
 
     final current = state.value;
-    if (current is ConversationActive && _isReconnecting) {
-      // Restart reconnection with a fresh counter.
-      debugPrint('[Conversation] Resuming reconnection from attempt 0');
-      _reconnectAttempt = 0;
-      _attemptReconnection(current);
+    if (current is ConversationActive && current.sessionId.isNotEmpty) {
+      // Reconnect if stream is gone (died while backgrounded) or if a
+      // reconnect was already in progress when we paused.
+      if (_eventSubscription == null || _isReconnecting) {
+        debugPrint('[Conversation] Resuming reconnection from attempt 0');
+        _reconnectAttempt = 0;
+        _attemptReconnection(current);
+      }
     }
   }
 
@@ -505,14 +536,31 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     }
   }
 
+  /// Completes the history completer if it is pending, unblocking any
+  /// awaiting `_loadHistory` call. Called when the history subscription is
+  /// cancelled externally (by a new `startConversation` or `_cleanup`).
+  void _completeHistoryIfPending() {
+    if (_historyCompleter != null && !_historyCompleter!.isCompleted) {
+      _historyCompleter!.complete();
+    }
+    _historyCompleter = null;
+  }
+
   void _cleanup() {
     unawaited(_eventSubscription?.cancel());
     _eventSubscription = null;
+    unawaited(_historySubscription?.cancel());
+    _historySubscription = null;
+    _completeHistoryIfPending();
     unawaited(_requestController?.close());
     _requestController = null;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
+    _reconnectAttempt = 0;
     _isReconnecting = false;
-    _paused = false;
+    // Note: _paused is NOT reset here. It tracks the app lifecycle state and
+    // is managed by _onAppPaused / _onAppResumed. Resetting it in _cleanup
+    // would cause _onAppResumed to exit early if close() runs while the app
+    // is backgrounded.
   }
 }

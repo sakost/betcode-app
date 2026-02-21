@@ -7,11 +7,18 @@ import 'package:betcode_app/shared/widgets/confirm_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class WorktreesScreen extends ConsumerWidget {
+class WorktreesScreen extends ConsumerStatefulWidget {
   const WorktreesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WorktreesScreen> createState() => _WorktreesScreenState();
+}
+
+class _WorktreesScreenState extends ConsumerState<WorktreesScreen> {
+  bool _isCreating = false;
+
+  @override
+  Widget build(BuildContext context) {
     final worktreesAsync = ref.watch(worktreesProvider);
 
     return Scaffold(
@@ -29,8 +36,14 @@ class WorktreesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateDialog(context, ref),
-        child: const Icon(Icons.add),
+        onPressed: _isCreating ? null : () => _showCreateDialog(context, ref),
+        child: _isCreating
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.add),
       ),
     );
   }
@@ -42,10 +55,9 @@ class WorktreesScreen extends ConsumerWidget {
       builder: (_) => const CreateWorktreeDialog(),
     );
     if (result == null) return;
+    setState(() => _isCreating = true);
     try {
-      await ref
-          .read(worktreesProvider.notifier)
-          .createWorktree(
+      await ref.read(worktreesProvider.notifier).createWorktree(
             name: result.name,
             repoId: result.repoId,
             branch: result.branch,
@@ -55,6 +67,8 @@ class WorktreesScreen extends ConsumerWidget {
       messenger.showSnackBar(
         SnackBar(content: Text('Failed to create worktree: $e')),
       );
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
     }
   }
 

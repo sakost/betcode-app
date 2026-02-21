@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
@@ -45,7 +48,6 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   /// Re-fetches the first page of sessions from the daemon and replaces the
   /// current state.
   Future<void> refresh() async {
-    state = const AsyncLoading();
     state = await AsyncValue.guard(_fetchSessions);
   }
 
@@ -55,11 +57,17 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   /// and tokens saved. Refreshes the session list after compaction.
   Future<CompactSessionResponse> compactSession(String sessionId) async {
     final client = ref.read(agentServiceProvider);
-    final response = await client
-        .compactSession(CompactSessionRequest(sessionId: sessionId))
-        .timeout(_mutationTimeout);
-    await refresh();
-    return response;
+    try {
+      final response = await client
+          .compactSession(CompactSessionRequest(sessionId: sessionId))
+          .timeout(_mutationTimeout);
+      await refresh();
+      return response;
+    } on TimeoutException {
+      throw const NetworkError(
+        message: 'Request timed out. Please try again.',
+      );
+    }
   }
 
   /// Renames a session via gRPC and refreshes the local list.
@@ -70,9 +78,17 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     required String name,
   }) async {
     final client = ref.read(agentServiceProvider);
-    await client
-        .renameSession(RenameSessionRequest(sessionId: sessionId, name: name))
-        .timeout(_mutationTimeout);
+    try {
+      await client
+          .renameSession(
+            RenameSessionRequest(sessionId: sessionId, name: name),
+          )
+          .timeout(_mutationTimeout);
+    } on TimeoutException {
+      throw const NetworkError(
+        message: 'Request timed out. Please try again.',
+      );
+    }
     await refresh();
   }
 
@@ -81,9 +97,15 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   /// Throws on gRPC/timeout errors so callers can display feedback.
   Future<void> deleteSession(String sessionId) async {
     final client = ref.read(agentServiceProvider);
-    await client
-        .deleteSession(DeleteSessionRequest(sessionId: sessionId))
-        .timeout(_mutationTimeout);
+    try {
+      await client
+          .deleteSession(DeleteSessionRequest(sessionId: sessionId))
+          .timeout(_mutationTimeout);
+    } on TimeoutException {
+      throw const NetworkError(
+        message: 'Request timed out. Please try again.',
+      );
+    }
     await _removeFromCache(sessionId);
     await refresh();
   }
@@ -111,7 +133,7 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
           db.cachedSessions,
           CachedSessionsCompanion.insert(
             id: session.id,
-            machineId: '',
+            machineId: ref.read(selectedMachineIdProvider) ?? '',
             model: Value(session.model),
             workingDirectory: Value(session.workingDirectory),
             worktreeId: Value(session.worktreeId),

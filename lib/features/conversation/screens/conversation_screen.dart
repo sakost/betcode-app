@@ -12,6 +12,7 @@ import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
 import 'package:betcode_app/features/conversation/widgets/user_question_dialog.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
@@ -39,11 +40,16 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _scrollController.addListener(_onScroll);
 
     // Auto-resume existing sessions without requiring user to press Start.
-    if (widget.sessionId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _resumeConversation();
-      });
-    }
+    // For new sessions (null sessionId), also auto-start if worktrees are
+    // already available.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.sessionId != null) {
+        _resumeConversation();
+      } else {
+        _tryAutoStart();
+      }
+    });
   }
 
   @override
@@ -61,6 +67,21 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
+  }
+
+  /// Attempts to auto-start a new conversation if worktrees are available.
+  ///
+  /// Only fires when the current state is [ConversationInitial] and a valid
+  /// working directory can be resolved. Called from initState (for worktrees
+  /// already loaded) and from the worktrees listener (for late-arriving data).
+  void _tryAutoStart() {
+    if (!mounted) return;
+    final asyncState = ref.read(conversationProvider(widget.sessionId));
+    if (asyncState.value is! ConversationInitial) return;
+    final workingDirectory =
+        widget.workingDirectory ?? _resolveWorkingDirectory();
+    if (workingDirectory == null) return;
+    _startConversation();
   }
 
   /// Resumes an existing session. Working directory is optional since the
@@ -132,10 +153,23 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(conversationProvider(widget.sessionId));
-    // Pre-load worktrees so they're available when user taps Start.
+    // Watch worktrees and auto-start new conversations when data arrives.
     // Auto-scroll when new messages arrive and user hasn't scrolled up.
     ref
       ..watch(worktreesProvider)
+      ..listen(
+        worktreesProvider,
+        (_, _) {
+          // When worktrees load after initState and state is still initial,
+          // trigger auto-start via post-frame callback to avoid build-phase
+          // state mutations.
+          if (widget.sessionId == null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _tryAutoStart();
+            });
+          }
+        },
+      )
       ..listen(
         conversationProvider(widget.sessionId),
         (prev, next) {
@@ -263,15 +297,37 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                 ],
               );
             }
-            return Column(
+
+            // Verify a valid working directory can be resolved. If all
+            // worktree paths are empty, auto-start will silently fail and
+            // the spinner would hang indefinitely.
+            final dir =
+                widget.workingDirectory ?? _resolveWorkingDirectory();
+            if (dir == null) {
+              return const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.warning_amber_outlined,
+                    size: 48,
+                    color: Colors.orange,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No valid worktree path available.\n'
+                    'The worktree may still be initialising.',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+            }
+
+            return const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Start a conversation'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _startConversation,
-                  child: const Text('Start'),
-                ),
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Starting conversation...'),
               ],
             );
           },
@@ -342,6 +398,49 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     return 'Conversation';
   }
 
+  /// Resolves the machine/worktree subtitle for the active state AppBar.
+  String? _resolveContextSubtitle() {
+    final machineId = ref.watch(selectedMachineIdProvider);
+    if (machineId == null) return null;
+
+    final machines = ref.watch(machinesProvider).value;
+    var machineName = machineId;
+    if (machines != null) {
+      for (final m in machines) {
+        if (m.machineId == machineId) {
+          machineName = m.name.isNotEmpty ? m.name : m.machineId;
+          break;
+        }
+      }
+    }
+
+    final worktrees = ref.watch(worktreesProvider).value;
+    final worktreeName =
+        worktrees != null && worktrees.isNotEmpty ? worktrees.first.name : null;
+
+    if (worktreeName != null && worktreeName.isNotEmpty) {
+      return '$machineName \u00b7 $worktreeName';
+    }
+    return machineName;
+  }
+
+  Widget _buildAppBarTitle(String title) {
+    final subtitle = _resolveContextSubtitle();
+    if (subtitle == null) return Text(title);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActiveState(ConversationActive active) {
     final selectedId = active.selectedAgentId;
     final messages = selectedId == null
@@ -360,7 +459,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: _buildBackButton(),
-        title: Text(title),
+        title: _buildAppBarTitle(title),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -385,9 +484,9 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               backgroundColor: Theme.of(context).colorScheme.errorContainer,
               actions: [
                 TextButton(
-                  onPressed: () {
-                    // Dismiss: reconnection logic clears it
-                  },
+                  onPressed: () => ref
+                      .read(conversationProvider(widget.sessionId).notifier)
+                      .clearErrorMessage(),
                   child: const Text('Dismiss'),
                 ),
               ],

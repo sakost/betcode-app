@@ -197,7 +197,9 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
       final messages = [...active.messages];
       final lastMsg = messages.isNotEmpty ? messages.last : null;
 
-      if (lastMsg is AgentChatMessage && !lastMsg.isComplete) {
+      if (lastMsg is AgentChatMessage &&
+          !lastMsg.isComplete &&
+          lastMsg.parentToolUseId == parentToolUseId) {
         messages[messages.length - 1] =
             ChatMessage.agent(
                   content: lastMsg.content + delta.text,

@@ -211,6 +211,35 @@ void main() {
       );
       expect(stateVal(), isA<ConversationInitial>());
     });
+
+    test('preserves parentToolUseId after response', () async {
+      final n = notifier();
+      await goActive(n);
+
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          parentToolUseId: 'agent-1',
+          permissionRequest: pb.PermissionRequest(
+            requestId: 'perm-1',
+            toolName: 'Bash',
+            description: 'Run ls',
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      n.respondToPermission(
+        'perm-1',
+        PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final active = stateVal()! as ConversationActive;
+      final pm = active.messages.whereType<PermissionRequestMessage>().first;
+      expect(pm.parentToolUseId, 'agent-1');
+      expect(pm.decision, PermissionDecision.PERMISSION_DECISION_ALLOW_ONCE);
+    });
   });
 
   group('respondToQuestion', () {
@@ -246,6 +275,32 @@ void main() {
     test('no-ops when state is not active', () {
       notifier().respondToQuestion('q-1', {'a': 'b'});
       expect(stateVal(), isA<ConversationInitial>());
+    });
+
+    test('preserves parentToolUseId after response', () async {
+      final n = notifier();
+      await goActive(n);
+
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          parentToolUseId: 'agent-1',
+          userQuestion: pb.UserQuestion(
+            questionId: 'q-1',
+            question: 'Which?',
+            multiSelect: false,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      n.respondToQuestion('q-1', {'choice': 'A'});
+      await Future<void>.delayed(Duration.zero);
+
+      final active = stateVal()! as ConversationActive;
+      final qm = active.messages.whereType<UserQuestionMessage>().first;
+      expect(qm.parentToolUseId, 'agent-1');
+      expect(qm.answers, {'choice': 'A'});
     });
   });
 
@@ -1057,6 +1112,176 @@ void main() {
     });
   });
 
+  group('clearErrorMessage', () {
+    test('clears errorMessage on active state', () async {
+      final n = notifier();
+      await goActive(n);
+
+      // Set an error message via a non-fatal error event.
+      eventController.add(
+        pb.AgentEvent(
+          sequence: Int64(2),
+          error: pb.ErrorEvent(
+            code: 'WARN',
+            message: 'rate limited',
+            isFatal: false,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final before = stateVal()! as ConversationActive;
+      expect(before.errorMessage, isNotNull);
+
+      n.clearErrorMessage();
+      await Future<void>.delayed(Duration.zero);
+
+      final after = stateVal()! as ConversationActive;
+      expect(after.errorMessage, isNull);
+    });
+
+    test('no-ops when state is not active', () {
+      final n = notifier();
+      expect(stateVal(), isA<ConversationInitial>());
+      n.clearErrorMessage(); // should not throw
+      expect(stateVal(), isA<ConversationInitial>());
+    });
+
+    test('no-ops when errorMessage is already null', () async {
+      final n = notifier();
+      await goActive(n);
+
+      final before = stateVal()! as ConversationActive;
+      expect(before.errorMessage, isNull);
+
+      n.clearErrorMessage();
+      await Future<void>.delayed(Duration.zero);
+
+      final after = stateVal()! as ConversationActive;
+      expect(after.errorMessage, isNull);
+    });
+  });
+
+  group('history subscription cleanup', () {
+    test('close during history load does not throw', () async {
+      const sid = 'sess-slow-history';
+      final historyController = StreamController<pb.AgentEvent>();
+
+      // Return a stream that never completes, simulating a slow history load.
+      when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+        return FakeResponseStream<pb.AgentEvent>(historyController);
+      });
+
+      final n = notifier(sid);
+      // Start conversation (will call _loadHistory which blocks on the stream).
+      unawaited(n.startConversation(workingDirectory: '/tmp'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Close while history is still loading — should not throw.
+      n.close();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(stateVal(sid), isA<ConversationInitial>());
+
+      // Clean up the controller.
+      await historyController.close();
+    });
+  });
+
+  group('reconnect attempt reset in cleanup', () {
+    test('new conversation after close uses fresh backoff', () {
+      fakeAsync((async) {
+        // Set up to track reconnection attempts.
+        var reconnectCount = 0;
+        var isFirstCall = true;
+        StreamController<pb.AgentEvent>? reconnectController;
+
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          final reqStream =
+              inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+          if (isFirstCall) {
+            isFirstCall = false;
+            reqStream.listen(capturedRequests.add);
+            return FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          reconnectCount++;
+          reconnectController = StreamController<pb.AgentEvent>();
+          reqStream.listen(capturedRequests.add);
+          return FakeResponseStream<pb.AgentEvent>(reconnectController!);
+        });
+
+        // Go active.
+        final n = notifier();
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-1'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Trigger a transient error to start reconnection.
+        eventController.addError(const GrpcError.unavailable('lost'));
+        async
+          ..flushMicrotasks()
+
+          // Advance past first backoff (500ms).
+          ..elapse(const Duration(milliseconds: 600));
+        expect(reconnectCount, 1);
+
+        // Close the conversation (this should reset _reconnectAttempt).
+        n.close();
+        async.flushMicrotasks();
+
+        // Start a new conversation with fresh streams.
+        isFirstCall = true;
+        reconnectCount = 0;
+        final newEventController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          final reqStream =
+              inv.positionalArguments[0] as Stream<pb.AgentRequest>;
+          if (isFirstCall) {
+            isFirstCall = false;
+            reqStream.listen(capturedRequests.add);
+            return FakeResponseStream<pb.AgentEvent>(newEventController);
+          }
+          reconnectCount++;
+          final rc = StreamController<pb.AgentEvent>();
+          reqStream.listen(capturedRequests.add);
+          return FakeResponseStream<pb.AgentEvent>(rc);
+        });
+
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+        newEventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-2'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Trigger another error.
+        newEventController.addError(const GrpcError.unavailable('lost'));
+        async
+          ..flushMicrotasks()
+
+          // First backoff should be 500ms (fresh counter, not 1s).
+          ..elapse(const Duration(milliseconds: 600));
+        expect(
+          reconnectCount,
+          1,
+          reason: 'Should reconnect at first backoff (500ms), '
+              'confirming counter was reset',
+        );
+
+        unawaited(newEventController.close());
+      });
+    });
+  });
+
   group('startConversation without workingDirectory', () {
     test('resume sends empty workingDirectory when not provided', () async {
       await notifier('sess-resume').startConversation();
@@ -1069,6 +1294,232 @@ void main() {
       await notifier().startConversation(workingDirectory: '/my/dir');
       await Future<void>.delayed(Duration.zero);
       expect(capturedRequests.first.start.workingDirectory, '/my/dir');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // App pause/resume lifecycle fixes
+  // ---------------------------------------------------------------------------
+
+  group('app pause/resume reconnection', () {
+    test('reconnects on resume when stream died while backgrounded', () {
+      fakeAsync((async) {
+        unawaited(notifier().startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+
+        // Receive sessionInfo to move into active state.
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-bg'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // App goes to background.
+        container.read(appLifecycleProvider.notifier).state =
+            AppLifecycleState.paused;
+        async.flushMicrotasks();
+
+        // Stream dies while backgrounded — _handleStreamError defers
+        // because _paused is true.
+        eventController.addError(const GrpcError.unavailable('lost'));
+        async.flushMicrotasks();
+
+        // Set up a new stream for reconnection.
+        var reconnected = false;
+        when(() => mockClient.converse(any())).thenAnswer((_) {
+          reconnected = true;
+          final c = StreamController<pb.AgentEvent>();
+          return FakeResponseStream<pb.AgentEvent>(c);
+        });
+
+        // App resumes — should trigger reconnection even though
+        // _isReconnecting was never set to true.
+        container.read(appLifecycleProvider.notifier).state =
+            AppLifecycleState.resumed;
+        // Advance past backoff.
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 1));
+        expect(
+          reconnected,
+          isTrue,
+          reason: 'Should reconnect after resume when stream died while '
+              'backgrounded',
+        );
+      });
+    });
+
+    test('does not reconnect on resume when stream is still alive', () {
+      fakeAsync((async) {
+        unawaited(notifier().startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-alive'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        var reconnected = false;
+        when(() => mockClient.converse(any())).thenAnswer((_) {
+          reconnected = true;
+          final c = StreamController<pb.AgentEvent>();
+          return FakeResponseStream<pb.AgentEvent>(c);
+        });
+
+        // Pause and resume without stream error.
+        container.read(appLifecycleProvider.notifier).state =
+            AppLifecycleState.paused;
+        async.flushMicrotasks();
+        container.read(appLifecycleProvider.notifier).state =
+            AppLifecycleState.resumed;
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 5));
+
+        expect(
+          reconnected,
+          isFalse,
+          reason: 'Should not reconnect when stream is still alive',
+        );
+      });
+    });
+  });
+
+  group('startConversation resets reconnect state', () {
+    test('resets _reconnectAttempt so retry gets full backoff budget', () {
+      fakeAsync((async) {
+        // Track reconnect attempts. Each call to converse() returns a fresh
+        // stream so that reconnection doesn't hit "already listened to".
+        var converseCallCount = 0;
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          converseCallCount++;
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
+              .listen((_) {});
+          if (converseCallCount == 1) {
+            return FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          return FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>(),
+          );
+        });
+
+        final n = notifier();
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+
+        // Go active.
+        eventController.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-reset'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Trigger error, start reconnection, advance past first backoff.
+        eventController.addError(const GrpcError.unavailable('lost'));
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(milliseconds: 600)); // attempt 1 fires
+
+        final attemptsBeforeRetry = converseCallCount;
+
+        // Now call startConversation again (Retry button). This should
+        // reset the backoff counter.
+        final eventController2 = StreamController<pb.AgentEvent>();
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          converseCallCount++;
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
+              .listen((_) {});
+          return FakeResponseStream<pb.AgentEvent>(eventController2);
+        });
+
+        unawaited(n.startConversation(workingDirectory: '/tmp'));
+        async.flushMicrotasks();
+
+        eventController2.add(
+          pb.AgentEvent(
+            sequence: Int64(1),
+            sessionInfo: pb.SessionInfo(sessionId: 'sess-reset-2'),
+          ),
+        );
+        async.flushMicrotasks();
+
+        // Trigger another error — should get full backoff budget starting
+        // at 500ms (attempt 1), not 1s (attempt 2).
+        var reconnectCount = 0;
+        when(() => mockClient.converse(any())).thenAnswer((_) {
+          reconnectCount++;
+          return FakeResponseStream<pb.AgentEvent>(
+            StreamController<pb.AgentEvent>(),
+          );
+        });
+
+        eventController2.addError(const GrpcError.unavailable('lost'));
+        async
+          ..flushMicrotasks()
+
+          // First backoff = 500ms (proving counter was reset to 0).
+          ..elapse(const Duration(milliseconds: 600));
+
+        expect(
+          reconnectCount,
+          1,
+          reason: 'Backoff should start at 500ms (attempt 1), '
+              'proving the counter was reset by startConversation '
+              '(converse calls before retry: $attemptsBeforeRetry)',
+        );
+
+        unawaited(eventController2.close());
+      });
+    });
+  });
+
+  group('history subscription cancelled on retry', () {
+    test('startConversation cancels pending history subscription', () async {
+      final historyController = StreamController<pb.AgentEvent>();
+      when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+        return FakeResponseStream<pb.AgentEvent>(historyController);
+      });
+
+      final n = notifier('sess-hist');
+      // Start — will block on _loadHistory.
+      unawaited(n.startConversation(workingDirectory: '/tmp'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Second call to startConversation (user taps Retry) while history
+      // is still loading. Use a non-resuming session so second call skips
+      // history loading entirely.
+      final eventController2 = StreamController<pb.AgentEvent>();
+      when(() => mockClient.converse(any())).thenAnswer((inv) {
+        (inv.positionalArguments[0] as Stream<pb.AgentRequest>).listen((_) {});
+        return FakeResponseStream<pb.AgentEvent>(eventController2);
+      });
+      // Complete the second history stream immediately so it doesn't block.
+      when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+        final c = StreamController<pb.AgentEvent>();
+        unawaited(c.close());
+        return FakeResponseStream<pb.AgentEvent>(c);
+      });
+
+      unawaited(n.startConversation(workingDirectory: '/tmp'));
+      // Flush to let both startConversation calls settle.
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      // Old history controller should be cancelled.
+      expect(historyController.hasListener, isFalse);
+
+      // Clean up — close the notifier before tearDown to prevent
+      // "Ref disposed" errors from pending stream handlers.
+      n.close();
+      unawaited(historyController.close());
+      unawaited(eventController2.close());
     });
   });
 }

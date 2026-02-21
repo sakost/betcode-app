@@ -1,6 +1,10 @@
+import 'dart:async';
+
+import 'package:betcode_app/core/grpc/app_exceptions.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pbgrpc.dart';
 import 'package:drift/drift.dart' show Batch;
@@ -359,6 +363,130 @@ void main() {
 
       // listSessions is called once for build, once for refresh after delete
       verify(() => mockClient.listSessions(any())).called(2);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-5: Timeout errors bypass typed error handling
+  // ---------------------------------------------------------------------------
+
+  group('SessionsNotifier - timeout handling', () {
+    test('renameSession timeout throws NetworkError', () async {
+      await initNotifier(
+        container: container,
+        provider: sessionsProvider,
+        stubEmpty: stubSessionsEmpty,
+      );
+
+      when(
+        () => mockClient.renameSession(any()),
+      ).thenAnswer(
+        (_) => FakeResponseFuture.error(TimeoutException('timeout')),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      expect(
+        () => notifier.renameSession(sessionId: 's-1', name: 'New'),
+        throwsA(isA<NetworkError>()),
+      );
+    });
+
+    test('deleteSession timeout throws NetworkError', () async {
+      await initNotifier(
+        container: container,
+        provider: sessionsProvider,
+        stubEmpty: stubSessionsEmpty,
+      );
+
+      when(
+        () => mockClient.deleteSession(any()),
+      ).thenAnswer(
+        (_) => FakeResponseFuture.error(TimeoutException('timeout')),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      expect(
+        () => notifier.deleteSession('s-1'),
+        throwsA(isA<NetworkError>()),
+      );
+    });
+
+    test('compactSession timeout throws NetworkError', () async {
+      await initNotifier(
+        container: container,
+        provider: sessionsProvider,
+        stubEmpty: stubSessionsEmpty,
+      );
+
+      when(
+        () => mockClient.compactSession(any()),
+      ).thenAnswer(
+        (_) => FakeResponseFuture.error(TimeoutException('timeout')),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      expect(
+        () => notifier.compactSession('s-1'),
+        throwsA(isA<NetworkError>()),
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-6: Hardcoded empty machineId in session cache
+  // ---------------------------------------------------------------------------
+
+  group('SessionsNotifier - cache machineId', () {
+    test('cached sessions use actual selected machine ID', () async {
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: [makeSession('s-1')]),
+        ),
+      );
+
+      // The default container has machineId='test-machine'
+      await container.read(sessionsProvider.future);
+
+      // Verify selectedMachineIdProvider returns the expected value
+      final machineId = container.read(selectedMachineIdProvider);
+      expect(machineId, 'test-machine');
+
+      // Verify that batch was called (the cache function runs)
+      verify(() => mockDb.batch(any())).called(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-7: refresh() does not flash loading state
+  // ---------------------------------------------------------------------------
+
+  group('SessionsNotifier - refresh does not flash loading', () {
+    test('refresh transitions directly from data to data', () async {
+      final sessions = [makeSession('s-1')];
+      when(() => mockClient.listSessions(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListSessionsResponse(sessions: sessions),
+        ),
+      );
+
+      await container.read(sessionsProvider.future);
+
+      // Capture state transitions during refresh
+      final states = <AsyncValue<List<SessionSummary>>>[];
+      container.listen(
+        sessionsProvider,
+        (_, next) => states.add(next),
+      );
+
+      final notifier = container.read(sessionsProvider.notifier);
+      await notifier.refresh();
+
+      // No loading state should appear — RefreshIndicator handles the spinner
+      expect(states.where((s) => s.isLoading), isEmpty);
+      // Final state has data
+      final finalState = container.read(sessionsProvider);
+      expect(finalState.hasValue, isTrue);
+      expect(finalState.value, hasLength(1));
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/grpc/worktree_helpers.dart';
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -63,7 +64,7 @@ class RepoWorktreesNotifier extends AsyncNotifier<List<WorktreeDetail>> {
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
     state = await AsyncValue.guard(_fetchWorktrees);
+    ref.invalidate(worktreesProvider);
   }
 }

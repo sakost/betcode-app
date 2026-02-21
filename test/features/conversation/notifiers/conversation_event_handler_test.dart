@@ -713,6 +713,110 @@ void main() {
     });
   });
 
+  group('handleEvent - textDelta parentToolUseId separation', () {
+    test(
+      'interleaved agents create separate messages',
+      () {
+        seedActive();
+
+        // Agent-1 starts a message, then Agent-2 (different parentToolUseId).
+        notifier
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(1),
+              parentToolUseId: 'agent-1',
+              textDelta: pb.TextDelta(text: 'Hello from 1'),
+            ),
+          )
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(2),
+              parentToolUseId: 'agent-2',
+              textDelta: pb.TextDelta(text: 'Hello from 2'),
+            ),
+          );
+
+        final active = notifier.state.value! as ConversationActive;
+        expect(active.messages, hasLength(2));
+        expect(
+          (active.messages[0] as AgentChatMessage).parentToolUseId,
+          'agent-1',
+        );
+        expect(
+          (active.messages[1] as AgentChatMessage).parentToolUseId,
+          'agent-2',
+        );
+      },
+    );
+
+    test(
+      'null to non-null parentToolUseId creates new message',
+      () {
+        seedActive();
+
+        // Root agent text (null parentToolUseId), then sub-agent text.
+        notifier
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(1),
+              textDelta: pb.TextDelta(text: 'Root text'),
+            ),
+          )
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(2),
+              parentToolUseId: 'agent-1',
+              textDelta: pb.TextDelta(text: 'Sub-agent text'),
+            ),
+          );
+
+        final active = notifier.state.value! as ConversationActive;
+        expect(active.messages, hasLength(2));
+        expect(
+          (active.messages[0] as AgentChatMessage).parentToolUseId,
+          isNull,
+        );
+        expect(
+          (active.messages[1] as AgentChatMessage).parentToolUseId,
+          'agent-1',
+        );
+      },
+    );
+
+    test(
+      'same agent appends correctly',
+      () {
+        seedActive();
+
+        notifier
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(1),
+              parentToolUseId: 'agent-1',
+              textDelta: pb.TextDelta(text: 'Hello '),
+            ),
+          )
+          ..handleEvent(
+            pb.AgentEvent(
+              sequence: Int64(2),
+              parentToolUseId: 'agent-1',
+              textDelta: pb.TextDelta(
+                text: 'world',
+                isComplete: true,
+              ),
+            ),
+          );
+
+        final active = notifier.state.value! as ConversationActive;
+        expect(active.messages, hasLength(1));
+        final msg = active.messages.first as AgentChatMessage;
+        expect(msg.content, 'Hello world');
+        expect(msg.parentToolUseId, 'agent-1');
+        expect(msg.isComplete, true);
+      },
+    );
+  });
+
   group('handleEvent - permissionRequest', () {
     test('adds permission message and sets waiting status', () {
       seedActive();

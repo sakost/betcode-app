@@ -11,12 +11,16 @@ import 'package:betcode_app/features/conversation/widgets/status_indicator.dart'
 import 'package:betcode_app/features/conversation/widgets/todo_list_panel.dart';
 import 'package:betcode_app/features/conversation/widgets/tool_call_card.dart';
 import 'package:betcode_app/features/conversation/widgets/usage_display.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_notifier.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_notifier.dart';
 import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,19 +74,50 @@ class _FakeSessionsNotifier extends SessionsNotifier {
   Future<List<SessionSummary>> build() async => [];
 }
 
+class _FakeMachinesNotifier extends MachinesNotifier {
+  _FakeMachinesNotifier(this._machines);
+
+  final List<MachineInfo> _machines;
+
+  @override
+  Future<List<MachineInfo>> build() async => _machines;
+}
+
+class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
+  _FakeSelectedMachineNotifier(this._id);
+
+  final String? _id;
+
+  @override
+  String? build() => _id;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 const _sessionId = 'test-session-1';
 
+/// Creates a [MockConversationNotifier] with `startConversation` stubbed.
+MockConversationNotifier _mockNotifier(ConversationState state) {
+  final mock = MockConversationNotifier(state);
+  when(
+    () => mock.startConversation(
+      workingDirectory: any(named: 'workingDirectory'),
+    ),
+  ).thenAnswer((_) async {});
+  return mock;
+}
+
 Widget _buildApp({
   required ConversationState state,
   String? sessionId,
   MockConversationNotifier? notifier,
   List<WorktreeDetail>? worktrees,
+  List<MachineInfo>? machines,
+  String? selectedMachineId,
 }) {
-  final mock = notifier ?? MockConversationNotifier(state);
+  final mock = notifier ?? _mockNotifier(state);
   final defaultWorktrees =
       worktrees ??
       [WorktreeDetail(id: 'wt-1', name: 'main', path: '/home/user/project')];
@@ -93,6 +128,14 @@ Widget _buildApp({
         () => _FakeWorktreesNotifier(defaultWorktrees),
       ),
       sessionsProvider.overrideWith(_FakeSessionsNotifier.new),
+      if (machines != null)
+        machinesProvider.overrideWith(
+          () => _FakeMachinesNotifier(machines),
+        ),
+      if (selectedMachineId != null)
+        selectedMachineIdProvider.overrideWith(
+          () => _FakeSelectedMachineNotifier(selectedMachineId),
+        ),
     ],
     child: MaterialApp(home: ConversationScreen(sessionId: sessionId)),
   );
@@ -109,7 +152,7 @@ Widget _buildAppWithWorktreeState({
     overrides: [
       conversationProvider(
         sessionId,
-      ).overrideWith(() => MockConversationNotifier(state)),
+      ).overrideWith(() => _mockNotifier(state)),
       worktreesProvider.overrideWith(
         () => _FakeAsyncWorktreesNotifier(worktreeState),
       ),
@@ -148,25 +191,10 @@ void main() {
     // -----------------------------------------------------------------------
 
     group('state rendering', () {
-      testWidgets('initial state shows start button', (tester) async {
-        await tester.pumpWidget(
-          _buildApp(state: const ConversationState.initial()),
-        );
-        await tester.pumpAndSettle();
-
-        expect(find.text('Start a conversation'), findsOneWidget);
-        expect(find.byType(ElevatedButton), findsOneWidget);
-      });
-
-      testWidgets('start button calls startConversation', (tester) async {
-        final notifier = MockConversationNotifier(
-          const ConversationState.initial(),
-        );
-        when(
-          () => notifier.startConversation(
-            workingDirectory: any(named: 'workingDirectory'),
-          ),
-        ).thenAnswer((_) async {});
+      testWidgets('initial state auto-starts when worktrees available', (
+        tester,
+      ) async {
+        final notifier = _mockNotifier(const ConversationState.initial());
 
         await tester.pumpWidget(
           _buildApp(
@@ -174,9 +202,9 @@ void main() {
             notifier: notifier,
           ),
         );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.byType(ElevatedButton));
+        // Use pump() twice: once for post-frame callback, once for the
+        // worktrees listener callback.
+        await tester.pump();
         await tester.pump();
 
         verify(
@@ -184,6 +212,41 @@ void main() {
             workingDirectory: '/home/user/project',
           ),
         ).called(1);
+      });
+
+      testWidgets(
+        'initial state shows starting UI with spinner when worktrees available',
+        (tester) async {
+          await tester.pumpWidget(
+            _buildApp(state: const ConversationState.initial()),
+          );
+          // One pump to resolve the worktrees provider.
+          await tester.pump();
+
+          expect(find.text('Starting conversation...'), findsOneWidget);
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        },
+      );
+
+      testWidgets('does not auto-start when worktrees are empty', (
+        tester,
+      ) async {
+        final notifier = _mockNotifier(const ConversationState.initial());
+
+        await tester.pumpWidget(
+          _buildApp(
+            state: const ConversationState.initial(),
+            notifier: notifier,
+            worktrees: [],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        verifyNever(
+          () => notifier.startConversation(
+            workingDirectory: any(named: 'workingDirectory'),
+          ),
+        );
       });
 
       testWidgets('connecting state shows progress indicator', (tester) async {
@@ -292,44 +355,54 @@ void main() {
         expect(find.text('Start a conversation'), findsNothing);
       });
 
-      testWidgets('shows start button when worktrees are available', (
-        tester,
-      ) async {
-        final worktrees = [
-          WorktreeDetail(id: 'wt-1', name: 'main', path: '/home/user/project'),
-        ];
-        await tester.pumpWidget(
-          _buildAppWithWorktreeState(
-            state: const ConversationState.initial(),
-            worktreeState: AsyncData(worktrees),
-          ),
-        );
-        await tester.pumpAndSettle();
+      testWidgets(
+        'shows starting spinner when worktrees are available',
+        (tester) async {
+          final worktrees = [
+            WorktreeDetail(
+              id: 'wt-1',
+              name: 'main',
+              path: '/home/user/project',
+            ),
+          ];
+          await tester.pumpWidget(
+            _buildAppWithWorktreeState(
+              state: const ConversationState.initial(),
+              worktreeState: AsyncData(worktrees),
+            ),
+          );
+          await tester.pump();
 
-        expect(find.text('Start a conversation'), findsOneWidget);
-        expect(find.byType(ElevatedButton), findsOneWidget);
-        expect(find.text('Loading worktrees...'), findsNothing);
-        expect(find.text('No worktrees available.'), findsNothing);
-      });
+          expect(find.text('Starting conversation...'), findsOneWidget);
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
+          expect(find.text('Loading worktrees...'), findsNothing);
+          expect(find.text('No worktrees available.'), findsNothing);
+        },
+      );
 
-      testWidgets('does not show start button when worktrees have empty path', (
-        tester,
-      ) async {
-        final worktrees = [WorktreeDetail(id: 'wt-1', name: 'main', path: '')];
-        await tester.pumpWidget(
-          _buildAppWithWorktreeState(
-            state: const ConversationState.initial(),
-            worktreeState: AsyncData(worktrees),
-          ),
-        );
-        await tester.pumpAndSettle();
+      testWidgets(
+        'shows warning when worktrees exist but all paths are empty',
+        (tester) async {
+          final worktrees = [
+            WorktreeDetail(id: 'wt-1', name: 'main', path: ''),
+          ];
+          await tester.pumpWidget(
+            _buildAppWithWorktreeState(
+              state: const ConversationState.initial(),
+              worktreeState: AsyncData(worktrees),
+            ),
+          );
+          await tester.pump();
 
-        // Worktrees exist but path is empty — _resolveWorkingDirectory
-        // returns null, so Start would fail. The UI should show the
-        // Start button (it checks worktrees.isEmpty, not paths), but
-        // tapping it would show a snackbar.
-        expect(find.text('Start a conversation'), findsOneWidget);
-      });
+          // Worktrees exist but path is empty — show warning instead of
+          // an infinite spinner.
+          expect(
+            find.textContaining('No valid worktree path'),
+            findsOneWidget,
+          );
+          expect(find.byType(CircularProgressIndicator), findsNothing);
+        },
+      );
     });
 
     // -----------------------------------------------------------------------
@@ -736,6 +809,26 @@ void main() {
         // The word "Reconnecting..." should not appear
         expect(find.byType(MaterialBanner), findsNothing);
       });
+
+      testWidgets('dismiss button calls clearErrorMessage', (tester) async {
+        final notifier = MockConversationNotifier(
+          _activeState(errorMessage: 'Reconnecting...'),
+        );
+        when(notifier.clearErrorMessage).thenReturn(null);
+
+        await tester.pumpWidget(
+          _buildApp(
+            state: _activeState(errorMessage: 'Reconnecting...'),
+            notifier: notifier,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Dismiss'));
+        await tester.pump();
+
+        verify(notifier.clearErrorMessage).called(1);
+      });
     });
 
     // -----------------------------------------------------------------------
@@ -747,10 +840,65 @@ void main() {
         await tester.pumpWidget(
           _buildApp(state: const ConversationState.initial()),
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
 
         expect(find.text('Conversation'), findsOneWidget);
       });
+
+      testWidgets(
+        'active state shows machine and worktree in subtitle',
+        (tester) async {
+          final machines = [
+            MachineInfo(machineId: 'mac-1', name: 'My MacBook'),
+          ];
+          final worktrees = [
+            WorktreeDetail(
+              id: 'wt-1',
+              name: 'feat-auth',
+              path: '/home/user/project',
+            ),
+          ];
+          await tester.pumpWidget(
+            _buildApp(
+              state: _activeState(),
+              machines: machines,
+              selectedMachineId: 'mac-1',
+              worktrees: worktrees,
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          // The subtitle should show "machineName · worktreeName"
+          expect(find.textContaining('My MacBook'), findsOneWidget);
+          expect(find.textContaining('feat-auth'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'active state uses machineId as fallback when name is empty',
+        (tester) async {
+          final machines = [MachineInfo(machineId: 'mac-1')];
+          final worktrees = [
+            WorktreeDetail(
+              id: 'wt-1',
+              name: 'main',
+              path: '/home/user/project',
+            ),
+          ];
+          await tester.pumpWidget(
+            _buildApp(
+              state: _activeState(),
+              machines: machines,
+              selectedMachineId: 'mac-1',
+              worktrees: worktrees,
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.textContaining('mac-1'), findsOneWidget);
+          expect(find.textContaining('main'), findsOneWidget);
+        },
+      );
     });
 
     // -----------------------------------------------------------------------

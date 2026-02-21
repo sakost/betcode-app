@@ -1,4 +1,5 @@
 import 'package:betcode_app/core/grpc/service_providers.dart';
+import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -360,6 +361,119 @@ void main() {
           verify(() => mockClient.getWorktree(captureAny())).captured.single
               as GetWorktreeRequest;
       expect(captured.id, 'wt-99');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-7: refresh() does not flash loading state
+  // ---------------------------------------------------------------------------
+
+  group('WorktreesNotifier - refresh does not flash loading', () {
+    test('refresh transitions directly from data to data', () async {
+      final worktrees = [makeWorktree('wt-1')];
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListWorktreesResponse(worktrees: worktrees),
+        ),
+      );
+
+      await container.read(worktreesProvider.future);
+
+      // Capture state transitions during refresh
+      final states = <AsyncValue<List<WorktreeDetail>>>[];
+      container.listen(
+        worktreesProvider,
+        (_, next) => states.add(next),
+      );
+
+      final notifier = container.read(worktreesProvider.notifier);
+      await notifier.refresh();
+
+      // No loading state should appear — RefreshIndicator handles the spinner
+      expect(states.where((s) => s.isLoading), isEmpty);
+      // Final state has data
+      final finalState = container.read(worktreesProvider);
+      expect(finalState.hasValue, isTrue);
+      expect(finalState.value, hasLength(1));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-8: Cross-provider invalidation gap
+  // ---------------------------------------------------------------------------
+
+  group('WorktreesNotifier - cross-provider invalidation', () {
+    test('refresh invalidates repoWorktreesProvider', () async {
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
+        ),
+      );
+
+      await container.read(worktreesProvider.future);
+
+      // Read the repo worktrees provider so it is initialized
+      await container.read(repoWorktreesProvider('repo-1').future);
+
+      // Track if repoWorktreesProvider gets invalidated (re-created)
+      var repoWorktreesRebuilt = false;
+      container.listen(
+        repoWorktreesProvider('repo-1'),
+        (_, _) => repoWorktreesRebuilt = true,
+      );
+
+      final notifier = container.read(worktreesProvider.notifier);
+      await notifier.refresh();
+
+      // Allow the invalidated provider to rebuild asynchronously
+      await container.read(repoWorktreesProvider('repo-1').future);
+
+      expect(repoWorktreesRebuilt, isTrue);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-9: RemoveWorktreeResponse.removed not checked
+  // ---------------------------------------------------------------------------
+
+  group('WorktreesNotifier - removeWorktree response check', () {
+    test('throws StateError when removed is false', () async {
+      await initNotifier(
+        container: container,
+        provider: worktreesProvider,
+        stubEmpty: stubListEmpty,
+      );
+
+      when(() => mockClient.removeWorktree(any())).thenAnswer(
+        (_) =>
+            FakeResponseFuture.value(RemoveWorktreeResponse(removed: false)),
+      );
+
+      final notifier = container.read(worktreesProvider.notifier);
+      expect(
+        () => notifier.removeWorktree('wt-1'),
+        throwsStateError,
+      );
+    });
+
+    test('succeeds and refreshes when removed is true', () async {
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
+        ),
+      );
+      await container.read(worktreesProvider.future);
+
+      when(() => mockClient.removeWorktree(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(RemoveWorktreeResponse(removed: true)),
+      );
+      stubListEmpty();
+
+      final notifier = container.read(worktreesProvider.notifier);
+      await notifier.removeWorktree('wt-1');
+
+      final state = container.read(worktreesProvider);
+      expect(state.value, isEmpty);
     });
   });
 }

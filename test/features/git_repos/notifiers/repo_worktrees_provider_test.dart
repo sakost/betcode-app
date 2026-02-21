@@ -1,6 +1,7 @@
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pbgrpc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -275,6 +276,80 @@ void main() {
       final state = container.read(repoWorktreesProvider('repo-1'));
       expect(state.value, hasLength(2));
       expect(state.value![1].id, 'wt-new');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-7: refresh() does not flash loading state
+  // ---------------------------------------------------------------------------
+
+  group('RepoWorktreesNotifier - refresh does not flash loading', () {
+    test('refresh transitions directly from data to data', () async {
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
+        ),
+      );
+
+      container = createTestContainer(
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
+      );
+
+      await container.read(repoWorktreesProvider('repo-1').future);
+
+      // Capture state transitions during refresh
+      final states = <AsyncValue<List<WorktreeDetail>>>[];
+      container.listen(
+        repoWorktreesProvider('repo-1'),
+        (_, next) => states.add(next),
+      );
+
+      final notifier = container.read(repoWorktreesProvider('repo-1').notifier);
+      await notifier.refresh();
+
+      // No loading state should appear — RefreshIndicator handles the spinner
+      expect(states.where((s) => s.isLoading), isEmpty);
+      // Final state has data
+      final finalState = container.read(repoWorktreesProvider('repo-1'));
+      expect(finalState.hasValue, isTrue);
+      expect(finalState.value, hasLength(1));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // I-8: Cross-provider invalidation gap
+  // ---------------------------------------------------------------------------
+
+  group('RepoWorktreesNotifier - cross-provider invalidation', () {
+    test('refresh invalidates worktreesProvider', () async {
+      when(() => mockClient.listWorktrees(any())).thenAnswer(
+        (_) => FakeResponseFuture.value(
+          ListWorktreesResponse(worktrees: [makeWorktree('wt-1')]),
+        ),
+      );
+
+      container = createTestContainer(
+        overrides: [worktreeServiceProvider.overrideWithValue(mockClient)],
+      );
+
+      // Initialize both providers
+      await container.read(repoWorktreesProvider('repo-1').future);
+      await container.read(worktreesProvider.future);
+
+      // Track if worktreesProvider gets invalidated (re-created)
+      var worktreesRebuilt = false;
+      container.listen(
+        worktreesProvider,
+        (_, _) => worktreesRebuilt = true,
+      );
+
+      final notifier = container.read(repoWorktreesProvider('repo-1').notifier);
+      await notifier.refresh();
+
+      // Allow the invalidated provider to rebuild asynchronously
+      await container.read(worktreesProvider.future);
+
+      expect(worktreesRebuilt, isTrue);
     });
   });
 }

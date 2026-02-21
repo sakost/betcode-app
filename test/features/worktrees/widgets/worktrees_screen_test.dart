@@ -53,6 +53,7 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
   _FakeWorktreesNotifier(this._value);
 
   final AsyncValue<List<WorktreeDetail>> _value;
+  Completer<void>? _createCompleter;
 
   @override
   Future<List<WorktreeDetail>> build() {
@@ -63,6 +64,19 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
       error: Future.error,
     );
   }
+
+  @override
+  Future<void> createWorktree({
+    required String name,
+    required String repoId,
+    required String branch,
+    String? setupScript,
+  }) {
+    _createCompleter = Completer<void>();
+    return _createCompleter!.future;
+  }
+
+  void completeCreate() => _createCompleter?.complete();
 }
 
 /// Shorthand for a ProviderScope wrapping [child] with gitReposProvider
@@ -86,6 +100,7 @@ Widget _worktreesApp(AsyncValue<List<WorktreeDetail>> value) {
     child: _app(const WorktreesScreen()),
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // WorktreesScreen tests
@@ -146,6 +161,72 @@ void main() {
       await t.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    });
+
+    // -------------------------------------------------------------------------
+    // I-10: FAB shows spinner during worktree creation
+    // -------------------------------------------------------------------------
+
+    testWidgets('FAB shows spinner during creation', (t) async {
+      final fakeNotifier = _FakeWorktreesNotifier(const AsyncData([]));
+      final repos = [makeTestRepo(), makeTestRepo(id: 'repo-2', name: 'other')];
+
+      await t.pumpWidget(
+        ProviderScope(
+          overrides: [
+            worktreesProvider.overrideWith(() => fakeNotifier),
+          ],
+          child: withFakeRepos(
+            _app(const WorktreesScreen()),
+            AsyncData(repos),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      // FAB should show the add icon initially
+      expect(find.byIcon(Icons.add), findsOneWidget);
+
+      // Tap FAB to open create dialog
+      await t.tap(find.byType(FloatingActionButton));
+      await t.pumpAndSettle();
+
+      // Fill in required fields
+      await t.enterText(
+        find.widgetWithText(TextFormField, 'Name'),
+        'new-wt',
+      );
+      // Select a repo
+      await t.tap(find.text('Repository'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('my-project').last);
+      await t.pumpAndSettle();
+      // Fill branch
+      await t.enterText(
+        find.widgetWithText(TextFormField, 'Branch'),
+        'main',
+      );
+
+      // Press Create button in dialog
+      await t.tap(find.text('Create'));
+      await t.pump(); // start the creation future
+
+      // While createWorktree is in progress, FAB should show spinner
+      expect(
+        find.descendant(
+          of: find.byType(FloatingActionButton),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.add), findsNothing);
+
+      // Complete the creation
+      fakeNotifier.completeCreate();
+      await t.pumpAndSettle();
+
+      // After completion, FAB should show add icon again
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
   });
