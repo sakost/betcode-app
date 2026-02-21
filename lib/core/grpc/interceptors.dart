@@ -166,7 +166,7 @@ class LoggingInterceptor extends ClientInterceptor {
 class _LoggingResponseStream<R> extends StreamView<R>
     implements ResponseStream<R> {
   _LoggingResponseStream(this._delegate, this._method, this._stopwatch)
-      : super(_delegate);
+    : super(_delegate);
 
   final ResponseStream<R> _delegate;
   final String _method;

@@ -268,35 +268,38 @@ void main() {
   });
 
   group('history load', () {
-    test('AppException during history load sets errorMessage, not fatal', () async {
-      // When the ErrorMappingInterceptor maps a GrpcError to an AppException
-      // during history load, the conversation should stay active with a soft
-      // error message rather than transitioning to ConversationError.
-      const sid = 'sess-history';
-      final historyController = StreamController<pb.AgentEvent>();
-      when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-        historyController.addError(
-          const NetworkError(message: 'Connection lost. Retrying...'),
+    test(
+      'AppException during history load sets errorMessage, not fatal',
+      () async {
+        // When the ErrorMappingInterceptor maps a GrpcError to an AppException
+        // during history load, the conversation should stay active with a soft
+        // error message rather than transitioning to ConversationError.
+        const sid = 'sess-history';
+        final historyController = StreamController<pb.AgentEvent>();
+        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
+          historyController.addError(
+            const NetworkError(message: 'Connection lost. Retrying...'),
+          );
+          return FakeResponseStream<pb.AgentEvent>(historyController);
+        });
+
+        final n = notifier(sid);
+        await n.startConversation(workingDirectory: '/tmp');
+        await Future<void>.delayed(Duration.zero);
+
+        // startConversation sets state to ConversationActive before calling
+        // _loadHistory. The history load should catch the AppException
+        // gracefully and set errorMessage without killing the conversation.
+        final s = stateVal(sid);
+        expect(s, isA<ConversationActive>());
+        expect(
+          (s! as ConversationActive).errorMessage,
+          "Couldn't load message history.",
         );
-        return FakeResponseStream<pb.AgentEvent>(historyController);
-      });
 
-      final n = notifier(sid);
-      await n.startConversation(workingDirectory: '/tmp');
-      await Future<void>.delayed(Duration.zero);
-
-      // startConversation sets state to ConversationActive before calling
-      // _loadHistory. The history load should catch the AppException
-      // gracefully and set errorMessage without killing the conversation.
-      final s = stateVal(sid);
-      expect(s, isA<ConversationActive>());
-      expect(
-        (s! as ConversationActive).errorMessage,
-        "Couldn't load message history.",
-      );
-
-      await historyController.close();
-    });
+        await historyController.close();
+      },
+    );
   });
 
   group('stream error handling', () {
