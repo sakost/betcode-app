@@ -75,6 +75,29 @@ class _TestApp extends ConsumerWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle helpers
+// ---------------------------------------------------------------------------
+
+/// Transitions the app to background through the proper lifecycle sequence:
+/// resumed → inactive → hidden → paused.
+///
+/// IMPORTANT: Do NOT call `tester.pump()` while the app is in `paused` state —
+/// `SchedulerBinding` disables frames when paused, causing `pump()` to hang.
+void simulateAppBackground(WidgetTester tester) {
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+}
+
+/// Transitions the app to foreground through the proper lifecycle sequence:
+/// paused → hidden → inactive → resumed.
+void simulateAppForeground(WidgetTester tester) {
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -106,13 +129,21 @@ void main() {
     testWidgets(
       'pauses reconnection when app is backgrounded and resumes on foreground',
       (tester) async {
-        StreamController<pb.AgentEvent>? resumeController;
-        var resumeCallCount = 0;
+        StreamController<pb.AgentEvent>? reconnectController;
+        var converseCallCount = 0;
 
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
-          resumeController = StreamController<pb.AgentEvent>();
-          return _FakeResponseStream<pb.AgentEvent>(resumeController!);
+        // Reconnection uses converse(), not resumeSession().
+        // Return a fresh stream for each reconnection attempt.
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
+              .listen((_) {});
+          converseCallCount++;
+          if (converseCallCount == 1) {
+            return _FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          // Reconnection attempt.
+          reconnectController = StreamController<pb.AgentEvent>();
+          return _FakeResponseStream<pb.AgentEvent>(reconnectController!);
         });
 
         await tester.pumpWidget(
@@ -145,7 +176,7 @@ void main() {
         eventController.addError(const GrpcError.unavailable('lost'));
         await tester.pump();
 
-        // Verify reconnection state.
+        // Verify reconnection state — timer scheduled for 500ms.
         final reconnecting = container.read(conversationProvider(null)).value;
         expect(reconnecting, isA<ConversationActive>());
         expect(
@@ -153,26 +184,24 @@ void main() {
           contains('Reconnecting'),
         );
 
-        // Simulate app going to background.
-        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        // Background the app — this cancels the pending reconnection timer.
+        // Do NOT pump while paused (SchedulerBinding disables frames).
+        simulateAppBackground(tester);
+
+        // Verify timer was cancelled: only the initial converse call was made.
+        expect(converseCallCount, 1, reason: 'No reconnect while paused');
+
+        // Return to foreground — this resets the attempt counter and
+        // re-schedules the reconnection timer (500ms).
+        simulateAppForeground(tester);
         await tester.pump();
 
-        // Advance time — reconnection should NOT fire while paused.
-        await tester.pump(const Duration(seconds: 5));
-        expect(resumeCallCount, 0, reason: 'No reconnect while paused');
-
-        // Simulate app returning to foreground.
-        tester.binding.handleAppLifecycleStateChanged(
-          AppLifecycleState.resumed,
-        );
-        await tester.pump();
-
-        // Counter should be reset and first attempt fires at 500ms.
+        // Wait for the 500ms reconnection timer to fire.
         await tester.pump(const Duration(milliseconds: 600));
-        expect(resumeCallCount, 1, reason: 'Reconnect after resume');
+        expect(converseCallCount, 2, reason: 'Reconnect after resume');
 
         // Send a successful event to confirm reconnection works.
-        resumeController!.add(
+        reconnectController!.add(
           pb.AgentEvent(
             sequence: Int64(2),
             textDelta: pb.TextDelta(text: 'Back online'),
@@ -180,17 +209,14 @@ void main() {
         );
         await tester.pump();
 
-        final restored = container
-            .read(
-              conversationProvider(null),
-            )
-            .value;
+        final restored =
+            container.read(conversationProvider(null)).value;
         expect(restored, isA<ConversationActive>());
         final restoredActive = restored! as ConversationActive;
         expect(restoredActive.errorMessage, isNull);
         expect(restoredActive.messages, hasLength(1));
 
-        await resumeController?.close();
+        await reconnectController?.close();
       },
     );
 
@@ -198,18 +224,22 @@ void main() {
       'reconnection exhausts max attempts without '
       'infinite loop on immediate errors',
       (tester) async {
-        var resumeCallCount = 0;
+        var converseCallCount = 0;
 
-        when(() => mockClient.resumeSession(any())).thenAnswer((_) {
-          resumeCallCount++;
-          // Stream that immediately errors.
+        // Reconnection uses converse(), not resumeSession().
+        // First call returns the real stream; subsequent calls error.
+        when(() => mockClient.converse(any())).thenAnswer((inv) {
+          (inv.positionalArguments[0] as Stream<pb.AgentRequest>)
+              .listen((_) {});
+          converseCallCount++;
+          if (converseCallCount == 1) {
+            return _FakeResponseStream<pb.AgentEvent>(eventController);
+          }
+          // Reconnection attempts — return a fresh stream that immediately
+          // errors to simulate persistent network failure.
           final controller = StreamController<pb.AgentEvent>()
-            ..addError(
-              const GrpcError.unavailable('dns fail'),
-            );
-          return _FakeResponseStream<pb.AgentEvent>(
-            controller,
-          );
+            ..addError(const GrpcError.unavailable('dns fail'));
+          return _FakeResponseStream<pb.AgentEvent>(controller);
         });
 
         await tester.pumpWidget(
@@ -233,15 +263,26 @@ void main() {
         );
         await tester.pump();
 
-        // Trigger first error.
+        // Trigger first error on the original stream.
         eventController.addError(const GrpcError.unavailable('initial'));
         await tester.pump();
 
-        // Advance past all backoff durations (500ms + 1s + 3s + 10s + 30s).
-        await tester.pump(const Duration(minutes: 2));
+        // Wait for all 5 reconnection attempts to exhaust.
+        // Backoff durations: 500ms + 1s + 3s + 10s + 30s = 44.5s.
+        // Use runAsync so real timers fire outside the test frame scheduler.
+        await tester.runAsync(() async {
+          // Poll until all reconnection attempts complete.
+          for (var i = 0; i < 100; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 500));
+            final s = container.read(conversationProvider(null)).value;
+            if (s is ConversationError) break;
+          }
+        });
+        await tester.pump();
 
-        // Should have made exactly 5 attempts.
-        expect(resumeCallCount, 5);
+        // Should have made exactly 5 reconnection attempts
+        // (converseCallCount = 1 initial + 5 reconnects = 6).
+        expect(converseCallCount, 6);
 
         final s = container.read(conversationProvider(null)).value;
         expect(s, isA<ConversationError>());
