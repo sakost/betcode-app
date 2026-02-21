@@ -69,11 +69,17 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
       case pb.AgentEvent_Event.userInput:
         _onUserInput(event.userInput, seq);
       case pb.AgentEvent_Event.encrypted:
-        break; // Encrypted envelope – handled at transport layer, not here.
+        debugPrint(
+          '[Conversation] WARNING: Received encrypted event at seq=$seq — '
+          'app-layer decryption not implemented, event dropped',
+        );
       case pb.AgentEvent_Event.error:
         _onError(event.error, seq);
       case pb.AgentEvent_Event.notSet:
-        break;
+        debugPrint(
+          '[Conversation] WARNING: Event with no type set '
+          'at seq=$seq',
+        );
     }
   }
 
@@ -182,8 +188,17 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
 
   void _onSessionInfo(pb.SessionInfo info, int seq) {
     debugPrint(
-      '[Conversation] SessionInfo: id="${info.sessionId}", seq=$seq',
+      '[Conversation] SessionInfo: id="${info.sessionId}", '
+      'workingDirectory="${info.workingDirectory}", seq=$seq',
     );
+
+    // Update the stored working directory from the daemon's authoritative
+    // value so reconnection uses it even if the initial call had an empty
+    // working directory (e.g. resumed before worktrees loaded).
+    if (info.workingDirectory.isNotEmpty) {
+      onWorkingDirectoryReceived(info.workingDirectory);
+    }
+
     final active = _active;
     if (active != null) {
       state = AsyncData(
@@ -199,6 +214,12 @@ mixin ConversationEventHandler on AsyncNotifier<ConversationState> {
         ),
       );
     }
+  }
+
+  /// Called by subclasses to update their stored working directory
+  /// when the daemon sends a `SessionInfo` with a non-empty path.
+  void onWorkingDirectoryReceived(String workingDirectory) {
+    // Default no-op; overridden in ConversationNotifier.
   }
 
   void _onTextDelta(pb.TextDelta delta, int seq, String? parentToolUseId) {

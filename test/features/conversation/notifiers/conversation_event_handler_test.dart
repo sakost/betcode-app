@@ -13,8 +13,16 @@ import 'package:protobuf/well_known_types/google/protobuf/struct.pb.dart'
 /// A minimal AsyncNotifier that mixes in ConversationEventHandler for testing.
 class _TestNotifier extends AsyncNotifier<ConversationState>
     with ConversationEventHandler {
+  /// Records calls to [onWorkingDirectoryReceived] for assertion.
+  final receivedWorkingDirectories = <String>[];
+
   @override
   FutureOr<ConversationState> build() => const ConversationState.initial();
+
+  @override
+  void onWorkingDirectoryReceived(String workingDirectory) {
+    receivedWorkingDirectories.add(workingDirectory);
+  }
 }
 
 final _testProvider = AsyncNotifierProvider<_TestNotifier, ConversationState>(
@@ -74,6 +82,31 @@ void main() {
       final active = notifier.state.value! as ConversationActive;
       expect(active.sessionId, 'sess-updated');
       expect(active.lastSequence, 2);
+    });
+
+    test('calls onWorkingDirectoryReceived when workingDirectory is set', () {
+      final event = pb.AgentEvent(
+        sequence: Int64(1),
+        sessionInfo: pb.SessionInfo(
+          sessionId: 'sess-wd',
+          workingDirectory: '/home/user/project',
+        ),
+      );
+
+      notifier.handleEvent(event);
+
+      expect(notifier.receivedWorkingDirectories, ['/home/user/project']);
+    });
+
+    test('does not call onWorkingDirectoryReceived when empty', () {
+      final event = pb.AgentEvent(
+        sequence: Int64(1),
+        sessionInfo: pb.SessionInfo(sessionId: 'sess-no-wd'),
+      );
+
+      notifier.handleEvent(event);
+
+      expect(notifier.receivedWorkingDirectories, isEmpty);
     });
   });
 

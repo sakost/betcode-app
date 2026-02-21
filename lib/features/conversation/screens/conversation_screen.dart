@@ -35,6 +35,7 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
   bool _isUserScrolledUp = false;
   bool _hasAutoStarted = false;
+  bool _hasResumed = false;
 
   @override
   void initState() {
@@ -87,16 +88,24 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     _startConversation();
   }
 
-  /// Resumes an existing session. Working directory is optional since the
-  /// daemon already knows it for existing sessions.
+  /// Resumes an existing session.
   ///
   /// Only fires when the current state is [ConversationInitial], preventing
   /// duplicate resume attempts when the state has already transitioned.
+  /// If worktrees haven't loaded yet, returns early; the worktrees listener
+  /// in [build] will retry once worktree data arrives.
   void _resumeConversation() {
-    if (!mounted) return;
+    if (!mounted || _hasResumed) return;
     final asyncState = ref.read(conversationProvider(widget.sessionId));
     if (asyncState.value is! ConversationInitial) return;
-    final workingDirectory = _resolveWorkingDirectory() ?? '';
+    final workingDirectory = _resolveWorkingDirectory();
+    if (workingDirectory == null) {
+      debugPrint(
+        '[ConversationScreen] Resume deferred: worktrees not loaded yet',
+      );
+      return;
+    }
+    _hasResumed = true;
     unawaited(
       ref
           .read(conversationProvider(widget.sessionId).notifier)
@@ -163,13 +172,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
         worktreesProvider,
         (_, _) {
           // When worktrees load after initState and state is still initial,
-          // trigger auto-start via post-frame callback to avoid build-phase
-          // state mutations. Once auto-started, skip entirely.
-          if (widget.sessionId == null && !_hasAutoStarted) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+          // trigger auto-start or resume via post-frame callback to avoid
+          // build-phase state mutations.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (widget.sessionId == null && !_hasAutoStarted) {
               _tryAutoStart();
-            });
-          }
+            } else if (widget.sessionId != null) {
+              _resumeConversation();
+            }
+          });
         },
       )
       ..listen(

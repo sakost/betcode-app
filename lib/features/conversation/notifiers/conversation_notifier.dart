@@ -40,12 +40,25 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
   Timer? _reconnectTimer;
   bool _isReconnecting = false;
   bool _paused = false;
+  DateTime? _pausedAt;
+
+  /// The working directory for the current session. Stored so that
+  /// reconnection can include it in the `StartConversation` message.
+  /// Updated from [SessionInfo] when the daemon responds.
+  String _workingDirectory = '';
 
   /// The session ID this notifier was created with.
   /// Set by the family provider factory.
   String? sessionId;
 
   AgentServiceClient get _client => ref.read(agentServiceProvider);
+
+  @override
+  void onWorkingDirectoryReceived(String workingDirectory) {
+    if (workingDirectory.isNotEmpty) {
+      _workingDirectory = workingDirectory;
+    }
+  }
 
   @override
   FutureOr<ConversationState> build() {
@@ -96,6 +109,11 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       '[Conversation] startConversation(workingDirectory: $workingDirectory, '
       'sessionId: $sessionId)',
     );
+
+    // Remember the working directory for reconnection.
+    if (workingDirectory.isNotEmpty) {
+      _workingDirectory = workingDirectory;
+    }
 
     // Reset reconnect state so a fresh start gets the full backoff budget.
     _reconnectAttempt = 0;
@@ -459,10 +477,14 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
         );
 
         // Send a StartConversation with the existing session ID so the
-        // daemon knows this is a resume, not a new session.
+        // daemon knows this is a resume, not a new session. Include the
+        // working directory so the daemon doesn't fall back to $HOME.
         _requestController!.add(
           pb.AgentRequest(
-            start: pb.StartConversation(sessionId: active.sessionId),
+            start: pb.StartConversation(
+              sessionId: active.sessionId,
+              workingDirectory: _workingDirectory,
+            ),
           ),
         );
 
@@ -506,6 +528,7 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
 
   void _onAppPaused() {
     _paused = true;
+    _pausedAt = DateTime.now();
     if (_isReconnecting) {
       debugPrint('[Conversation] App paused, suspending reconnection');
       _reconnectTimer?.cancel();
@@ -513,21 +536,50 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
     }
   }
 
+  /// Threshold beyond which a paused HTTP/2 stream is assumed dead.
+  /// gRPC keepalive and mobile OS background limits typically kill
+  /// idle connections within 30-60 seconds.
+  static const _stalePauseThreshold = Duration(seconds: 30);
+
   void _onAppResumed() {
     if (!_paused) return;
     _paused = false;
-    debugPrint('[Conversation] App resumed');
+    final pauseDuration = _pausedAt != null
+        ? DateTime.now().difference(_pausedAt!)
+        : Duration.zero;
+    _pausedAt = null;
+    debugPrint(
+      '[Conversation] App resumed '
+      '(paused for ${pauseDuration.inSeconds}s)',
+    );
 
     final current = state.value;
-    if (current is ConversationActive && current.sessionId.isNotEmpty) {
-      // Reconnect if stream is gone (died while backgrounded) or if a
-      // reconnect was already in progress when we paused.
-      if (_eventSubscription == null || _isReconnecting) {
-        debugPrint('[Conversation] Resuming reconnection from attempt 0');
-        _reconnectAttempt = 0;
-        _attemptReconnection(current);
-      }
-    }
+    if (current is! ConversationActive || current.sessionId.isEmpty) return;
+
+    // Reconnect when:
+    // 1. Stream died while paused (error/done nulled the subscription).
+    // 2. Reconnection was already in progress before the pause.
+    // 3. App was backgrounded long enough for the HTTP/2 connection to
+    //    die silently (zombie stream — subscription exists but is dead).
+    final shouldReconnect = _eventSubscription == null ||
+        _isReconnecting ||
+        pauseDuration > _stalePauseThreshold;
+
+    if (!shouldReconnect) return;
+
+    debugPrint(
+      '[Conversation] Forcing fresh reconnection after resume '
+      '(sub=${_eventSubscription != null}, '
+      'reconn=$_isReconnecting, '
+      'pauseSec=${pauseDuration.inSeconds})',
+    );
+    unawaited(_eventSubscription?.cancel());
+    _eventSubscription = null;
+    unawaited(_requestController?.close());
+    _requestController = null;
+    _reconnectAttempt = 0;
+    _isReconnecting = false;
+    _attemptReconnection(current);
   }
 
   void _handleStreamDone() {
