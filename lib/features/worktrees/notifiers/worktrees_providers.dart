@@ -10,3 +10,17 @@ final worktreesProvider =
     AsyncNotifierProvider<WorktreesNotifier, List<WorktreeDetail>>(
       WorktreesNotifier.new,
     );
+
+/// Provides the list of [WorktreeDetail] objects for a specific repo.
+///
+/// Fetches worktrees filtered by `repoId` from the daemon via gRPC.
+// ignore: specify_nonobvious_property_types, the family provider type is not publicly exported
+final repoWorktreesProvider =
+    AsyncNotifierProvider.family<
+      WorktreesNotifier,
+      List<WorktreeDetail>,
+      String
+    >((repoId) {
+      final notifier = WorktreesNotifier()..repoId = repoId;
+      return notifier;
+    });

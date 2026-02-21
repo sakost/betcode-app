@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:betcode_app/features/git_repos/notifiers/git_repos_providers.dart';
-import 'package:betcode_app/features/git_repos/notifiers/repo_worktrees_provider.dart';
 import 'package:betcode_app/features/git_repos/screens/repo_detail_screen.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
+import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
@@ -39,7 +40,7 @@ WorktreeDetail _makeWorktree({
   );
 }
 
-class _FakeRepoWorktreesNotifier extends RepoWorktreesNotifier {
+class _FakeRepoWorktreesNotifier extends WorktreesNotifier {
   _FakeRepoWorktreesNotifier(this._value);
 
   final AsyncValue<List<WorktreeDetail>> _value;

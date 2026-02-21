@@ -1,5 +1,6 @@
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:betcode_app/shared/theme/app_colors.dart';
+import 'package:betcode_app/shared/widgets/compact_chip.dart';
 import 'package:betcode_app/shared/widgets/icon_label_row.dart';
 import 'package:betcode_app/shared/widgets/status_badge.dart';
 import 'package:betcode_app/shared/widgets/tappable_card.dart';
@@ -87,22 +88,9 @@ class MergeRequestCard extends StatelessWidget {
               spacing: 4,
               runSpacing: 4,
               children: [
-                if (mergeRequest.draft)
-                  const Chip(
-                    label: Text('Draft'),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    labelPadding: EdgeInsets.symmetric(horizontal: 6),
-                  ),
+                if (mergeRequest.draft) const CompactChip(label: 'Draft'),
                 ...mergeRequest.labels.map(
-                  (label) => Chip(
-                    label: Text(label),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                  ),
+                  (label) => CompactChip(label: label),
                 ),
               ],
             ),

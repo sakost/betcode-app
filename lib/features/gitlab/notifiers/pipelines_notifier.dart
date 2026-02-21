@@ -1,7 +1,5 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,27 +9,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// On [build], fetches all pipelines and returns them. Callers can
 /// pull-to-refresh via [refresh].
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
-  static const _rpcTimeout = Duration(seconds: 10);
-
   @override
-  Future<List<PipelineInfo>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchPipelines();
-  }
+  Future<List<PipelineInfo>> build() => grpcListBuild(ref, _fetchPipelines);
 
   Future<List<PipelineInfo>> _fetchPipelines() async {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
         .listPipelines(ListPipelinesRequest())
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.pipelines.toList();
   }
 
@@ -51,7 +38,7 @@ class PipelinesNotifier extends AsyncNotifier<List<PipelineInfo>> {
         .getPipeline(
           GetPipelineRequest(project: project, pipelineId: pipelineId),
         )
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.pipeline;
   }
 }

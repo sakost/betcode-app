@@ -1,4 +1,5 @@
 export 'async_list_scaffold.dart';
+export 'compact_chip.dart';
 export 'confirm_dialog.dart';
 export 'connection_indicator.dart';
 export 'connectivity_banner.dart';

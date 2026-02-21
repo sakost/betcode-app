@@ -1,9 +1,7 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
 import 'package:betcode_app/core/storage/database.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,29 +12,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// local drift database for offline access, and returns them. Callers can
 /// pull-to-refresh via [refresh].
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
   static const _pageSize = 20;
-  static const _rpcTimeout = Duration(seconds: 10);
-  static const _mutationTimeout = Duration(seconds: 30);
 
   @override
-  Future<List<SessionSummary>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchSessions();
-  }
+  Future<List<SessionSummary>> build() => grpcListBuild(ref, _fetchSessions);
 
   Future<List<SessionSummary>> _fetchSessions({int offset = 0}) async {
     final client = ref.read(agentServiceProvider);
     final response = await client
         .listSessions(ListSessionsRequest(limit: _pageSize, offset: offset))
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
 
     await _cacheToDb(response.sessions);
     return response.sessions.toList();
@@ -57,7 +44,7 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     final client = ref.read(agentServiceProvider);
     final response = await client
         .compactSession(CompactSessionRequest(sessionId: sessionId))
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await refresh();
     return response;
   }
@@ -72,7 +59,7 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     final client = ref.read(agentServiceProvider);
     await client
         .renameSession(RenameSessionRequest(sessionId: sessionId, name: name))
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await refresh();
   }
 
@@ -83,7 +70,7 @@ class SessionsNotifier extends AsyncNotifier<List<SessionSummary>> {
     final client = ref.read(agentServiceProvider);
     await client
         .deleteSession(DeleteSessionRequest(sessionId: sessionId))
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await _removeFromCache(sessionId);
     await refresh();
   }

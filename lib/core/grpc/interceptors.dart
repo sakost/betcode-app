@@ -162,13 +162,53 @@ class LoggingInterceptor extends ClientInterceptor {
   }
 }
 
-/// Wraps a [ResponseStream] to log errors and completion.
-class _LoggingResponseStream<R> extends StreamView<R>
+/// Base class that delegates [ResponseStream] members (`single`, `headers`,
+/// `trailers`, `cancel`) to an inner [_delegate].
+///
+/// Subclasses only need to override [listen] to add their own behaviour.
+abstract class _ResponseStreamWrapper<R> extends StreamView<R>
     implements ResponseStream<R> {
-  _LoggingResponseStream(this._delegate, this._method, this._stopwatch)
-    : super(_delegate);
+  _ResponseStreamWrapper(this._delegate) : super(_delegate);
 
   final ResponseStream<R> _delegate;
+
+  @override
+  ResponseFuture<R> get single => _delegate.single;
+
+  @override
+  Future<Map<String, String>> get headers => _delegate.headers;
+
+  @override
+  Future<Map<String, String>> get trailers => _delegate.trailers;
+
+  @override
+  Future<void> cancel() => _delegate.cancel();
+}
+
+/// Dispatches an error to an [onError] callback whose exact arity is unknown.
+///
+/// Both [_LoggingResponseStream] and [_ErrorMappingResponseStream] need to
+/// relay errors through a caller-supplied [Function?] that may accept one
+/// argument `(Object)` or two `(Object, StackTrace)`. This helper
+/// consolidates that three-way type check.
+void _dispatchError(Function? onError, Object error, StackTrace stackTrace) {
+  if (onError != null) {
+    if (onError is void Function(Object, StackTrace)) {
+      onError(error, stackTrace);
+    } else if (onError is void Function(Object)) {
+      onError(error);
+    } else {
+      (onError as dynamic)(error, stackTrace);
+    }
+  } else {
+    Error.throwWithStackTrace(error, stackTrace);
+  }
+}
+
+/// Wraps a [ResponseStream] to log errors and completion.
+class _LoggingResponseStream<R> extends _ResponseStreamWrapper<R> {
+  _LoggingResponseStream(super._delegate, this._method, this._stopwatch);
+
   final String _method;
   final Stopwatch _stopwatch;
 
@@ -187,17 +227,7 @@ class _LoggingResponseStream<R> extends StreamView<R>
           '[gRPC] <- $_method stream ERROR '
           '(${_stopwatch.elapsedMilliseconds}ms): $error',
         );
-        if (onError != null) {
-          if (onError is void Function(Object, StackTrace)) {
-            onError(error, stackTrace);
-          } else if (onError is void Function(Object)) {
-            onError(error);
-          } else {
-            (onError as dynamic)(error, stackTrace);
-          }
-        } else {
-          Error.throwWithStackTrace(error, stackTrace);
-        }
+        _dispatchError(onError, error, stackTrace);
       },
       onDone: () {
         _stopwatch.stop();
@@ -210,18 +240,6 @@ class _LoggingResponseStream<R> extends StreamView<R>
       cancelOnError: cancelOnError,
     );
   }
-
-  @override
-  ResponseFuture<R> get single => _delegate.single;
-
-  @override
-  Future<Map<String, String>> get headers => _delegate.headers;
-
-  @override
-  Future<Map<String, String>> get trailers => _delegate.trailers;
-
-  @override
-  Future<void> cancel() => _delegate.cancel();
 }
 
 /// Checks token expiry before each RPC and triggers a refresh if needed.
@@ -396,11 +414,9 @@ class _ErrorMappingResponseFuture<R> implements ResponseFuture<R> {
 /// mapping [GrpcError]s to typed [AppException]s. All other [Stream]
 /// methods (e.g. [map], [where], [toList]) ultimately go through
 /// [listen], so they also benefit from the mapping.
-class _ErrorMappingResponseStream<R> extends StreamView<R>
-    implements ResponseStream<R> {
-  _ErrorMappingResponseStream(this._delegate, this._method) : super(_delegate);
+class _ErrorMappingResponseStream<R> extends _ResponseStreamWrapper<R> {
+  _ErrorMappingResponseStream(super._delegate, this._method);
 
-  final ResponseStream<R> _delegate;
   final String _method;
 
   @override
@@ -416,37 +432,10 @@ class _ErrorMappingResponseStream<R> extends StreamView<R>
         final mapped = error is GrpcError
             ? mapGrpcError(error, method: _method)
             : error;
-        if (onError != null) {
-          if (onError is void Function(Object, StackTrace)) {
-            onError(mapped, stackTrace);
-          } else if (onError is void Function(Object)) {
-            onError(mapped);
-          } else {
-            // Best-effort: call with both arguments.
-            (onError as dynamic)(mapped, stackTrace);
-          }
-        } else {
-          // No onError callback — rethrow via the zone's error handler
-          // so the subscription can propagate it.
-          Error.throwWithStackTrace(mapped, stackTrace);
-        }
+        _dispatchError(onError, mapped, stackTrace);
       },
       onDone: onDone,
       cancelOnError: cancelOnError,
     );
   }
-
-  /// [ResponseStream] narrows the return type of [single] from [Future] to
-  /// [ResponseFuture]. We delegate to the original stream's [single].
-  @override
-  ResponseFuture<R> get single => _delegate.single;
-
-  @override
-  Future<Map<String, String>> get headers => _delegate.headers;
-
-  @override
-  Future<Map<String, String>> get trailers => _delegate.trailers;
-
-  @override
-  Future<void> cancel() => _delegate.cancel();
 }

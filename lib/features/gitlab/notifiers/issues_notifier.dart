@@ -1,7 +1,5 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,27 +9,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// On [build], fetches all issues and returns them. Callers can
 /// pull-to-refresh via [refresh].
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class IssuesNotifier extends AsyncNotifier<List<IssueInfo>> {
-  static const _rpcTimeout = Duration(seconds: 10);
-
   @override
-  Future<List<IssueInfo>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchIssues();
-  }
+  Future<List<IssueInfo>> build() => grpcListBuild(ref, _fetchIssues);
 
   Future<List<IssueInfo>> _fetchIssues() async {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
         .listIssues(ListIssuesRequest())
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.issues.toList();
   }
 
@@ -49,7 +36,7 @@ class IssuesNotifier extends AsyncNotifier<List<IssueInfo>> {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
         .getIssue(GetIssueRequest(project: project, iid: iid))
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.issue;
   }
 }

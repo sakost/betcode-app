@@ -1,7 +1,5 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/gitlab.pb.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,27 +9,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// On [build], fetches all merge requests and returns them. Callers can
 /// pull-to-refresh via [refresh].
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class MergeRequestsNotifier extends AsyncNotifier<List<MergeRequestInfo>> {
-  static const _rpcTimeout = Duration(seconds: 10);
-
   @override
-  Future<List<MergeRequestInfo>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchMergeRequests();
-  }
+  Future<List<MergeRequestInfo>> build() =>
+      grpcListBuild(ref, _fetchMergeRequests);
 
   Future<List<MergeRequestInfo>> _fetchMergeRequests() async {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
         .listMergeRequests(ListMergeRequestsRequest())
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.mergeRequests.toList();
   }
 
@@ -49,7 +37,7 @@ class MergeRequestsNotifier extends AsyncNotifier<List<MergeRequestInfo>> {
     final client = ref.read(gitlabServiceProvider);
     final response = await client
         .getMergeRequest(GetMergeRequestRequest(project: project, iid: iid))
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.mergeRequest;
   }
 }

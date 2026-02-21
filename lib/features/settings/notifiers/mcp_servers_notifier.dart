@@ -1,33 +1,20 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Manages the list of MCP servers fetched from the daemon via gRPC.
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class McpServersNotifier extends AsyncNotifier<List<McpServerInfo>> {
-  static const _rpcTimeout = Duration(seconds: 10);
-
   @override
-  Future<List<McpServerInfo>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchServers();
-  }
+  Future<List<McpServerInfo>> build() => grpcListBuild(ref, _fetchServers);
 
   Future<List<McpServerInfo>> _fetchServers() async {
     final client = ref.read(configServiceProvider);
     final response = await client
         .listMcpServers(ListMcpServersRequest())
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.servers.toList();
   }
 

@@ -90,6 +90,23 @@ CustomTransitionPage<void> _buildTabPage({
   );
 }
 
+/// Returns a `pageBuilder` closure for a tab at [tabIndex] showing [child].
+///
+/// Captures [ref] so each call site doesn't repeat the same boilerplate.
+Page<void> Function(BuildContext, GoRouterState) _tabPageBuilder(
+  int tabIndex,
+  Ref ref,
+  Widget child,
+) {
+  return (context, state) => _buildTabPage(
+    state: state,
+    tabIndex: tabIndex,
+    previousTabIndex: ref.read(_previousTabIndexProvider),
+    ref: ref,
+    child: child,
+  );
+}
+
 /// Provides the app's [GoRouter] instance with auth-aware redirects and
 /// bottom-navigation shell routing.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -138,13 +155,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/machines',
-            pageBuilder: (context, state) => _buildTabPage(
-              state: state,
-              tabIndex: 0,
-              previousTabIndex: ref.read(_previousTabIndexProvider),
-              ref: ref,
-              child: const MachinesScreen(),
-            ),
+            pageBuilder: _tabPageBuilder(0, ref, const MachinesScreen()),
             routes: [
               GoRoute(
                 path: ':machineId',
@@ -154,13 +165,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/sessions',
-            pageBuilder: (context, state) => _buildTabPage(
-              state: state,
-              tabIndex: 1,
-              previousTabIndex: ref.read(_previousTabIndexProvider),
-              ref: ref,
-              child: const SessionsScreen(),
-            ),
+            pageBuilder: _tabPageBuilder(1, ref, const SessionsScreen()),
             routes: [
               GoRoute(
                 path: ':sessionId',
@@ -176,13 +181,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/code',
-            pageBuilder: (context, state) => _buildTabPage(
-              state: state,
-              tabIndex: 2,
-              previousTabIndex: ref.read(_previousTabIndexProvider),
-              ref: ref,
-              child: const GitReposScreen(),
-            ),
+            pageBuilder: _tabPageBuilder(2, ref, const GitReposScreen()),
             routes: [
               GoRoute(
                 path: 'repos/:repoId',
@@ -193,13 +192,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/settings',
-            pageBuilder: (context, state) => _buildTabPage(
-              state: state,
-              tabIndex: 3,
-              previousTabIndex: ref.read(_previousTabIndexProvider),
-              ref: ref,
-              child: const SettingsScreen(),
-            ),
+            pageBuilder: _tabPageBuilder(3, ref, const SettingsScreen()),
           ),
         ],
       ),

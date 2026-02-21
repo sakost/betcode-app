@@ -1,7 +1,5 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/git_repo.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,28 +9,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// pull-to-refresh via [refresh], register new repos, or unregister existing
 /// ones.
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcListBuild] which watches connection status and selected machine.
 class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
-  static const _rpcTimeout = Duration(seconds: 10);
-  static const _mutationTimeout = Duration(seconds: 30);
-
   @override
-  Future<List<GitRepoDetail>> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) return [];
-    return _fetchRepos();
-  }
+  Future<List<GitRepoDetail>> build() => grpcListBuild(ref, _fetchRepos);
 
   Future<List<GitRepoDetail>> _fetchRepos() async {
     final client = ref.read(gitRepoServiceProvider);
     final response = await client
         .listRepos(ListReposRequest())
-        .timeout(_rpcTimeout);
+        .timeout(grpcRpcTimeout);
     return response.repos.toList();
   }
 
@@ -65,7 +51,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
             autoGitignore: autoGitignore,
           ),
         )
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await refresh();
   }
 
@@ -76,14 +62,14 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
         .unregisterRepo(
           UnregisterRepoRequest(id: id, removeWorktrees: removeWorktrees),
         )
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await refresh();
   }
 
   /// Fetches a single repository by ID.
   Future<GitRepoDetail> getRepo(String id) async {
     final client = ref.read(gitRepoServiceProvider);
-    return client.getRepo(GetRepoRequest(id: id)).timeout(_rpcTimeout);
+    return client.getRepo(GetRepoRequest(id: id)).timeout(grpcRpcTimeout);
   }
 
   /// Updates a repository's configuration and refreshes the list.
@@ -108,7 +94,9 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
     if (customPath != null) request.customPath = customPath;
     if (setupScript != null) request.setupScript = setupScript;
     if (autoGitignore != null) request.autoGitignore = autoGitignore;
-    final result = await client.updateRepo(request).timeout(_mutationTimeout);
+    final result = await client
+        .updateRepo(request)
+        .timeout(grpcMutationTimeout);
     await refresh();
     return result;
   }
@@ -121,7 +109,7 @@ class GitReposNotifier extends AsyncNotifier<List<GitRepoDetail>> {
     final client = ref.read(gitRepoServiceProvider);
     final response = await client
         .scanRepos(ScanReposRequest(scanPath: scanPath, maxDepth: maxDepth))
-        .timeout(_mutationTimeout);
+        .timeout(grpcMutationTimeout);
     await refresh();
     return response.repos.toList();
   }

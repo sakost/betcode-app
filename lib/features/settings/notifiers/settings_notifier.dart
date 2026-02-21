@@ -1,7 +1,5 @@
-import 'package:betcode_app/core/grpc/connection_state.dart';
-import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/core/grpc/grpc_notifier_helpers.dart';
 import 'package:betcode_app/core/grpc/service_providers.dart';
-import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,27 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// On [build], fetches the current settings. Callers can pull-to-refresh
 /// via [refresh] or push changes via [updateSettings].
 ///
-/// Watches [connectionStatusProvider] so the provider auto-refreshes when
-/// the gRPC connection state changes.
+/// Uses [grpcSingleBuild] which watches connection status and selected machine.
 class SettingsNotifier extends AsyncNotifier<Settings> {
-  static const _rpcTimeout = Duration(seconds: 10);
-
   @override
-  Future<Settings> build() async {
-    final status = await ref.watch(connectionStatusProvider.future);
-    if (status != GrpcConnectionStatus.connected) {
-      throw StateError('Not connected to daemon');
-    }
-    final machineId = ref.watch(selectedMachineIdProvider);
-    if (machineId == null) {
-      throw StateError('No machine selected');
-    }
-    return _fetchSettings();
-  }
+  Future<Settings> build() => grpcSingleBuild(ref, _fetchSettings);
 
   Future<Settings> _fetchSettings() async {
     final client = ref.read(configServiceProvider);
-    return client.getSettings(GetSettingsRequest()).timeout(_rpcTimeout);
+    return client.getSettings(GetSettingsRequest()).timeout(grpcRpcTimeout);
   }
 
   /// Re-fetches the settings from the daemon and replaces the current state.

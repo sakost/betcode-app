@@ -1,5 +1,5 @@
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
-import 'package:betcode_app/features/worktrees/widgets/create_worktree_dialog.dart';
+import 'package:betcode_app/features/worktrees/widgets/create_worktree_action.dart';
 import 'package:betcode_app/features/worktrees/widgets/worktree_card.dart';
 import 'package:betcode_app/generated/betcode/v1/worktree.pb.dart';
 import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
@@ -29,33 +29,13 @@ class WorktreesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateDialog(context, ref),
+        onPressed: () => showCreateWorktreeDialog(
+          context,
+          onCreate: ref.read(worktreesProvider.notifier).createWorktree,
+        ),
         child: const Icon(Icons.add),
       ),
     );
-  }
-
-  Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final result = await showDialog<CreateWorktreeResult>(
-      context: context,
-      builder: (_) => const CreateWorktreeDialog(),
-    );
-    if (result == null) return;
-    try {
-      await ref
-          .read(worktreesProvider.notifier)
-          .createWorktree(
-            name: result.name,
-            repoId: result.repoId,
-            branch: result.branch,
-            setupScript: result.setupScript,
-          );
-    } on Exception catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('Failed to create worktree: $e')),
-      );
-    }
   }
 
   Future<void> _confirmDelete(
