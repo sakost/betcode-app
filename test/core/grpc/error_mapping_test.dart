@@ -15,13 +15,13 @@ void main() {
       expect(result.cause, grpcError);
     });
 
-    test('UNAVAILABLE with channel shutting down -> RelayUnavailableError', () {
+    test('UNAVAILABLE with channel shutting down -> NetworkError', () {
       const grpcError = GrpcError.custom(
         StatusCode.unavailable,
         'Channel shutting down.',
       );
       final result = mapGrpcError(grpcError);
-      expect(result, isA<RelayUnavailableError>());
+      expect(result, isA<NetworkError>());
     });
 
     test('UNAVAILABLE with TLS keyword -> RelayUnavailableError', () {

@@ -13,19 +13,18 @@ class BetCodeApp extends ConsumerWidget {
     ref.watch(relayAutoReconnectProvider);
     final router = ref.watch(routerProvider);
 
-    return Column(
-      children: [
-        const ConnectivityBanner(),
-        Expanded(
-          child: MaterialApp.router(
-            title: 'BetCode',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            routerConfig: router,
-          ),
-        ),
-      ],
+    return MaterialApp.router(
+      title: 'BetCode',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      routerConfig: router,
+      builder: (context, child) => Column(
+        children: [
+          const ConnectivityBanner(),
+          Expanded(child: child ?? const SizedBox.shrink()),
+        ],
+      ),
     );
   }
 }

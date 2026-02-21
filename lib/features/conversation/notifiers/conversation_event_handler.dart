@@ -1,11 +1,7 @@
 import 'dart:convert';
 
-import 'package:betcode_app/features/conversation/conversation.dart'
-    show ConversationNotifier;
 import 'package:betcode_app/features/conversation/models/conversation_state.dart';
 import 'package:betcode_app/features/conversation/notifiers/conversation_notifier.dart'
-    show ConversationNotifier;
-import 'package:betcode_app/features/conversation/notifiers/notifiers.dart'
     show ConversationNotifier;
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart' as pb;
 import 'package:betcode_app/generated/betcode/v1/common.pb.dart';

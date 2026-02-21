@@ -247,7 +247,7 @@ void main() {
       expect(captured, same(opts));
     });
 
-    test('returns invoker response stream', () {
+    test('returns invoker response stream wrapped for logging', () async {
       final interceptor = LoggingInterceptor();
       final expected = FakeInterceptorResponseStream(
         Stream<String>.fromIterable(['d']),
@@ -258,7 +258,9 @@ void main() {
         CallOptions(),
         (m, r, o) => expected,
       );
-      expect(result, same(expected));
+      expect(result, isA<ResponseStream<String>>());
+      expect(result, isNot(same(expected)));
+      expect(await result.toList(), ['d']);
     });
   });
 

@@ -175,6 +175,10 @@ class GrpcClientManager {
         ),
       );
 
+      // Health check is best-effort during initial connect: we don't block
+      // the connection on it because the relay may be up while the daemon
+      // behind it is still starting. Callers can use healthCheck() explicitly
+      // for stricter verification (e.g. GrpcLifecycleBridge on app resume).
       if (_healthCheckFn != null) {
         try {
           await _healthCheckFn(_channel!);

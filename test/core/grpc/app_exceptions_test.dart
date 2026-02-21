@@ -31,6 +31,13 @@ void main() {
       expect(error.cause, isNull);
     });
 
+    test('SessionNotFoundError works without sessionId', () {
+      const error = SessionNotFoundError(message: 'not found');
+
+      expect(error.sessionId, isNull);
+      expect(error.message, 'not found');
+    });
+
     test('all subtypes are AppException', () {
       const exceptions = <AppException>[
         NetworkError(message: 'a'),

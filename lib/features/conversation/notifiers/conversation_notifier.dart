@@ -185,6 +185,14 @@ class ConversationNotifier extends AsyncNotifier<ConversationState>
       final current = state.value;
       final seq = current is ConversationActive ? current.lastSequence : 0;
       debugPrint('[Conversation] History loaded, lastSequence=$seq');
+    } on AppException catch (e) {
+      debugPrint('[Conversation] History load failed: $e');
+      final current = state.value;
+      if (current is ConversationActive) {
+        state = AsyncData(
+          current.copyWith(errorMessage: "Couldn't load message history."),
+        );
+      }
     } on GrpcError catch (e) {
       debugPrint('[Conversation] History load failed: $e');
       final current = state.value;

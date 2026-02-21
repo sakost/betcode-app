@@ -28,7 +28,6 @@ AppException mapGrpcError(GrpcError error, {String? method}) {
           ? SessionNotFoundError(
               message: 'Session no longer exists.',
               cause: error,
-              sessionId: '',
             )
           : ServerError(
               message: 'The requested resource was not found.',

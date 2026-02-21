@@ -33,12 +33,12 @@ final class SessionNotFoundError extends AppException {
   /// Creates a [SessionNotFoundError] for the given [sessionId].
   const SessionNotFoundError({
     required super.message,
-    required this.sessionId,
+    this.sessionId,
     super.cause,
   });
 
-  /// The ID of the session that was not found.
-  final String sessionId;
+  /// The ID of the session that was not found, if available.
+  final String? sessionId;
 }
 
 /// The session exists but is in an invalid state (e.g. corrupted, expired).

@@ -413,12 +413,6 @@ class _ErrorMappingResponseStream<R> extends StreamView<R>
     return super.listen(
       onData,
       onError: (Object error, StackTrace stackTrace) {
-        if (error is GrpcError) {
-          debugPrint(
-            '[gRPC] ErrorMapping $_method: '
-            'code=${error.code} message=${error.message}',
-          );
-        }
         final mapped = error is GrpcError
             ? mapGrpcError(error, method: _method)
             : error;
