@@ -1,3 +1,4 @@
 export 'notifiers/notifiers.dart';
+export 'screens/machine_picker_screen.dart';
 export 'screens/machines_screen.dart';
 export 'widgets/machine_card.dart';

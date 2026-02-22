@@ -6,6 +6,8 @@ import 'package:betcode_app/core/grpc/relay_notifier.dart';
 import 'package:betcode_app/core/router.dart';
 import 'package:betcode_app/core/storage/secure_storage.dart';
 import 'package:betcode_app/core/storage/storage_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +45,12 @@ class TestConnectedRelayNotifier extends RelayConfigNotifier {
   }
 }
 
+/// Machine selection notifier with a pre-selected machine for testing.
+class TestSelectedMachineNotifier extends SelectedMachineNotifier {
+  @override
+  String? build() => 'test-machine';
+}
+
 // ---------------------------------------------------------------------------
 // Widget builders
 // ---------------------------------------------------------------------------
@@ -71,13 +79,19 @@ Widget _buildRoutedApp({
 
 /// Builds a fully-routed, authenticated app for widget tests.
 ///
-/// Overrides [secureStorageProvider], [authNotifierProvider], and
-/// [relayConfigNotifierProvider] so that the router's redirect guard treats
-/// the user as logged in. Pass extra [overrides] to layer on
-/// feature-specific provider stubs.
+/// Overrides [secureStorageProvider], [authNotifierProvider],
+/// [relayConfigNotifierProvider], and (when [withMachine] is true)
+/// [selectedMachineIdProvider] so that the router's redirect guard treats
+/// the user as logged in with a machine selected.
+///
+/// Set [withMachine] to `false` to test the machine-picker gate
+/// (selectedMachineIdProvider defaults to null).
+///
+/// Pass extra [overrides] to layer on feature-specific provider stubs.
 Widget buildAuthApp({
   required MockSecureStorageService mockStorage,
   String? initialLocation,
+  bool withMachine = true,
   List<Override> overrides = const [],
 }) {
   return _buildRoutedApp(
@@ -86,6 +100,8 @@ Widget buildAuthApp({
       secureStorageProvider.overrideWithValue(mockStorage),
       authNotifierProvider.overrideWith(TestAuthenticatedNotifier.new),
       relayConfigNotifierProvider.overrideWith(TestConnectedRelayNotifier.new),
+      if (withMachine)
+        selectedMachineIdProvider.overrideWith(TestSelectedMachineNotifier.new),
       ...overrides,
     ],
   );

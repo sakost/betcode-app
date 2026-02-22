@@ -63,3 +63,4 @@ app.*.map.json
 # Git worktrees
 .worktrees/
 
+.claude/worktrees/

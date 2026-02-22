@@ -5,6 +5,7 @@ import 'package:betcode_app/features/conversation/conversation.dart';
 import 'package:betcode_app/features/git_repos/git_repos.dart';
 import 'package:betcode_app/features/machines/machines.dart';
 import 'package:betcode_app/features/sessions/sessions.dart';
+import 'package:betcode_app/features/settings/screens/machine_detail_screen.dart';
 import 'package:betcode_app/features/settings/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +24,7 @@ final _previousTabIndexProvider =
 
 class _PreviousTabIndexNotifier extends Notifier<int> {
   @override
-  int build() => 1; // default: sessions (initial route)
+  int build() => 0; // default: sessions (initial route)
 
   // ignore: use_setters_to_change_properties, Notifier state update used as callback
   void update(int value) => state = value;
@@ -37,14 +38,14 @@ final _targetTabIndexProvider = NotifierProvider<_TargetTabIndexNotifier, int>(
 
 class _TargetTabIndexNotifier extends Notifier<int> {
   @override
-  int build() => 1; // default: sessions (initial route)
+  int build() => 0; // default: sessions (initial route)
 
   // ignore: use_setters_to_change_properties, Notifier state update used as callback
   void update(int value) => state = value;
 }
 
 /// Route paths for the bottom navigation tabs (single source of truth).
-const _tabPaths = ['/machines', '/sessions', '/code', '/settings'];
+const _tabPaths = ['/sessions', '/code', '/settings'];
 
 /// Builds a [CustomTransitionPage] that slides in from the correct direction
 /// based on the tab index relative to the previous tab.
@@ -94,7 +95,8 @@ CustomTransitionPage<void> _buildTabPage({
 /// bottom-navigation shell routing.
 final routerProvider = Provider<GoRouter>((ref) {
   // Notifier that triggers GoRouter redirect re-evaluation when
-  // auth or relay config changes — without recreating the GoRouter.
+  // auth, relay config, or machine selection changes — without recreating
+  // the GoRouter.
   final refreshNotifier = _RouterRefreshNotifier();
 
   ref
@@ -106,6 +108,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       relayConfigNotifierProvider,
       (_, _) => refreshNotifier.notify(),
     )
+    ..listen(
+      selectedMachineIdProvider,
+      (_, _) => refreshNotifier.notify(),
+    )
     ..onDispose(refreshNotifier.dispose);
 
   return GoRouter(
@@ -115,12 +121,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuth = ref.read(authNotifierProvider) is AuthAuthenticated;
       final hasRelay = ref.read(relayConfigNotifierProvider) != null;
+      final hasMachine = ref.read(selectedMachineIdProvider) != null;
       final isAuthRoute =
           state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
+      final isMachinePickerRoute =
+          state.matchedLocation == '/machine-picker';
 
+      // Not authenticated → login.
       if ((!isAuth || !hasRelay) && !isAuthRoute) return '/login';
-      if (isAuth && hasRelay && isAuthRoute) return '/sessions';
+      if (isAuth && hasRelay && isAuthRoute) {
+        // Authenticated but no machine → machine picker.
+        if (!hasMachine) return '/machine-picker';
+        return '/sessions';
+      }
+
+      // Authenticated + relay but no machine → machine picker.
+      if (isAuth && hasRelay && !hasMachine && !isMachinePickerRoute) {
+        return '/machine-picker';
+      }
+
+      // Has machine but on machine picker → sessions.
+      if (isAuth && hasRelay && hasMachine && isMachinePickerRoute) {
+        return '/sessions';
+      }
+
       return null;
     },
     routes: [
@@ -131,32 +156,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
 
+      // Machine picker gate (no shell)
+      GoRoute(
+        path: '/machine-picker',
+        builder: (context, state) => const MachinePickerScreen(),
+      ),
+
       // Main app shell with bottom navigation
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AppShell(child: child),
         routes: [
           GoRoute(
-            path: '/machines',
-            pageBuilder: (context, state) => _buildTabPage(
-              state: state,
-              tabIndex: 0,
-              previousTabIndex: ref.read(_previousTabIndexProvider),
-              ref: ref,
-              child: const MachinesScreen(),
-            ),
-            routes: [
-              GoRoute(
-                path: ':machineId',
-                builder: (context, state) => const MachinesScreen(),
-              ),
-            ],
-          ),
-          GoRoute(
             path: '/sessions',
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
-              tabIndex: 1,
+              tabIndex: 0,
               previousTabIndex: ref.read(_previousTabIndexProvider),
               ref: ref,
               child: const SessionsScreen(),
@@ -178,7 +193,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/code',
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
-              tabIndex: 2,
+              tabIndex: 1,
               previousTabIndex: ref.read(_previousTabIndexProvider),
               ref: ref,
               child: const GitReposScreen(),
@@ -195,11 +210,17 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             pageBuilder: (context, state) => _buildTabPage(
               state: state,
-              tabIndex: 3,
+              tabIndex: 2,
               previousTabIndex: ref.read(_previousTabIndexProvider),
               ref: ref,
               child: const SettingsScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: 'machine',
+                builder: (context, state) => const MachineDetailScreen(),
+              ),
+            ],
           ),
         ],
       ),
@@ -209,8 +230,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 /// A [ChangeNotifier] that GoRouter listens to via `refreshListenable`.
 ///
-/// When auth or relay state changes, [notify] is called, which triggers
-/// GoRouter to re-evaluate its `redirect` without recreating the router.
+/// When auth, relay, or machine selection state changes, [notify] is called,
+/// which triggers GoRouter to re-evaluate its `redirect` without recreating
+/// the router.
 class _RouterRefreshNotifier extends ChangeNotifier {
   void notify() => notifyListeners();
 }
@@ -230,11 +252,6 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   static const _destinations = [
-    NavigationDestination(
-      icon: Icon(Icons.computer_outlined),
-      selectedIcon: Icon(Icons.computer),
-      label: 'Machines',
-    ),
     NavigationDestination(
       icon: Icon(Icons.history_outlined),
       selectedIcon: Icon(Icons.history),

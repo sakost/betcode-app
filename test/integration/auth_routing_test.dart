@@ -131,13 +131,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NavigationBar), findsOneWidget);
-      // "Sessions" appears in both the screen title and the nav bar label,
-      // so we verify it exists at least once in the NavigationBar.
+      // Verify the 3-tab layout: Sessions, Code, Settings.
       final navBarFinder = find.byType(NavigationBar);
-      expect(
-        find.descendant(of: navBarFinder, matching: find.text('Machines')),
-        findsOneWidget,
-      );
       expect(
         find.descendant(of: navBarFinder, matching: find.text('Sessions')),
         findsOneWidget,
@@ -149,6 +144,11 @@ void main() {
       expect(
         find.descendant(of: navBarFinder, matching: find.text('Settings')),
         findsOneWidget,
+      );
+      // Machines tab was removed — machine selection is now in Settings.
+      expect(
+        find.descendant(of: navBarFinder, matching: find.text('Machines')),
+        findsNothing,
       );
     });
   });
