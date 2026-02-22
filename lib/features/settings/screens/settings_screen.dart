@@ -1,3 +1,4 @@
+import 'package:betcode_app/core/app_version.dart';
 import 'package:betcode_app/core/auth/auth.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
@@ -252,16 +253,23 @@ class _McpServersSection extends ConsumerWidget {
   }
 }
 
-class _AboutSection extends StatelessWidget {
+class _AboutSection extends ConsumerWidget {
   const _AboutSection();
 
   @override
-  Widget build(BuildContext context) {
-    return const ExpansionTile(
-      title: Text('About'),
-      leading: Icon(Icons.info),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final versionAsync = ref.watch(appVersionProvider);
+    final versionText = versionAsync.when(
+      data: (v) => v,
+      loading: () => '...',
+      error: (_, _) => 'Unknown',
+    );
+
+    return ExpansionTile(
+      title: const Text('About'),
+      leading: const Icon(Icons.info),
       children: [
-        ListTile(title: Text('App Version'), trailing: Text('1.0.0-dev')),
+        ListTile(title: const Text('App Version'), trailing: Text(versionText)),
       ],
     );
   }

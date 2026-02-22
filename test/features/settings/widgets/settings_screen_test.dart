@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:betcode_app/core/app_version.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/relay_config.dart';
@@ -106,6 +107,7 @@ Widget _settingsApp({
           servers ?? const AsyncData([]),
         ),
       ),
+      appVersionProvider.overrideWith((_) async => '0.1.0-test'),
       ...extraOverrides,
     ],
     child: _app(const SettingsScreen()),
@@ -233,6 +235,19 @@ void main() {
       await t.pumpAndSettle();
 
       expect(find.text('About'), findsOneWidget);
+    });
+
+    testWidgets('displays app version from provider', (t) async {
+      await t.pumpWidget(_settingsApp());
+      await t.pumpAndSettle();
+
+      // Scroll to About and expand it
+      await t.scrollUntilVisible(find.text('About'), 200);
+      await t.tap(find.text('About'));
+      await t.pumpAndSettle();
+
+      expect(find.text('App Version'), findsOneWidget);
+      expect(find.text('0.1.0-test'), findsOneWidget);
     });
 
     testWidgets('shows auto-compact as Disabled when off', (t) async {
