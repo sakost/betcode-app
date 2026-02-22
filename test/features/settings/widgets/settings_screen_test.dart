@@ -243,25 +243,12 @@ void main() {
       expect(find.text('Permission Settings'), findsNothing);
     });
 
-    testWidgets('displays session settings section', (t) async {
-      await t.pumpWidget(
-        _settingsApp(
-          settings: AsyncData(
-            makeTestSettings(
-              defaultModel: 'claude-opus-4',
-              autoCompactThreshold: 150,
-              maxMessagesPerSession: 1000,
-            ),
-          ),
-        ),
-      );
+    testWidgets('does not show session settings (moved to machine detail)',
+        (t) async {
+      await t.pumpWidget(_settingsApp());
       await t.pumpAndSettle();
 
-      expect(find.text('Session Settings'), findsOneWidget);
-      expect(find.text('claude-opus-4'), findsOneWidget);
-      expect(find.text('Enabled'), findsWidgets);
-      expect(find.text('150'), findsOneWidget);
-      expect(find.text('1000'), findsOneWidget);
+      expect(find.text('Session Settings'), findsNothing);
     });
 
     testWidgets('displays permission settings section', (t) async {
@@ -320,10 +307,16 @@ void main() {
       expect(find.text('0.1.0-test'), findsOneWidget);
     });
 
-    testWidgets('shows auto-compact as Disabled when off', (t) async {
+    testWidgets('shows auto-approve as Disabled when off', (t) async {
       await t.pumpWidget(
-        _settingsApp(settings: AsyncData(makeTestSettings(autoCompact: false))),
+        _settingsApp(
+          settings: AsyncData(makeTestSettings(enableAutoApprove: false)),
+        ),
       );
+      await t.pumpAndSettle();
+
+      // Scroll to permission settings
+      await t.scrollUntilVisible(find.text('Permission Settings'), 200);
       await t.pumpAndSettle();
 
       expect(find.text('Disabled'), findsWidgets);

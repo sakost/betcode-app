@@ -59,8 +59,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Connect to a relay to view session, permission, '
-                        'and MCP server settings.',
+                        'Connect to a relay to view permission settings.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -78,7 +77,6 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
               data: (settings) => [
-                _SessionSettingsSection(settings: settings),
                 _PermissionSettingsSection(settings: settings),
               ],
             ),
@@ -181,44 +179,6 @@ class _RelayConnectionSection extends ConsumerWidget {
             },
             child: const Text('Disconnect'),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SessionSettingsSection extends StatelessWidget {
-  const _SessionSettingsSection({required this.settings});
-
-  final Settings settings;
-
-  @override
-  Widget build(BuildContext context) {
-    final session = settings.sessions;
-
-    return ExpansionTile(
-      title: const Text('Session Settings'),
-      leading: const Icon(Icons.chat),
-      initiallyExpanded: true,
-      children: [
-        ListTile(
-          title: const Text('Default Model'),
-          trailing: Text(
-            session.defaultModel.isNotEmpty ? session.defaultModel : 'Not set',
-          ),
-        ),
-        ListTile(
-          title: const Text('Auto-Compact'),
-          trailing: Text(session.autoCompact ? 'Enabled' : 'Disabled'),
-        ),
-        if (session.autoCompact)
-          ListTile(
-            title: const Text('Auto-Compact Threshold'),
-            trailing: Text('${session.autoCompactThreshold}'),
-          ),
-        ListTile(
-          title: const Text('Max Messages per Session'),
-          trailing: Text('${session.maxMessagesPerSession}'),
         ),
       ],
     );

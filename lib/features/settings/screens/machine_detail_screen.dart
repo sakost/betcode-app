@@ -1,7 +1,7 @@
 import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
-import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
+import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
 import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:betcode_app/shared/theme/app_colors.dart';
 import 'package:betcode_app/shared/widgets/status_badge.dart';
@@ -11,7 +11,8 @@ import 'package:go_router/go_router.dart';
 
 /// Machine detail subpage shown from Settings.
 ///
-/// Displays selected machine info, MCP servers, worktrees, and a delete action.
+/// Displays selected machine info, session settings (per-machine), worktrees,
+/// and a delete action.
 class MachineDetailScreen extends ConsumerWidget {
   const MachineDetailScreen({super.key});
 
@@ -19,6 +20,7 @@ class MachineDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedId = ref.watch(selectedMachineIdProvider);
     final machinesAsync = ref.watch(machinesProvider);
+    final settingsAsync = ref.watch(settingsProvider);
     final machine = machinesAsync.value?.cast<MachineInfo?>().firstWhere(
       (m) => m?.machineId == selectedId,
       orElse: () => null,
@@ -30,8 +32,24 @@ class MachineDetailScreen extends ConsumerWidget {
         children: [
           _MachineInfoSection(machine: machine, machineId: selectedId),
           const Divider(),
-          _McpServersSection(),
-          const Divider(),
+          ...settingsAsync.when(
+            loading: () => [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ],
+            error: (_, _) => [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Session settings unavailable'),
+              ),
+            ],
+            data: (settings) => [
+              _SessionSettingsSection(settings: settings),
+              const Divider(),
+            ],
+          ),
           _WorktreesSection(),
           const Divider(),
           _DeleteMachineAction(machineId: selectedId),
@@ -41,14 +59,14 @@ class MachineDetailScreen extends ConsumerWidget {
   }
 }
 
-class _MachineInfoSection extends StatelessWidget {
+class _MachineInfoSection extends ConsumerWidget {
   const _MachineInfoSection({this.machine, this.machineId});
 
   final MachineInfo? machine;
   final String? machineId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Padding(
@@ -81,7 +99,11 @@ class _MachineInfoSection extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           FilledButton.tonal(
-            onPressed: () => context.go('/machine-picker'),
+            onPressed: () async {
+              await ref.read(selectedMachineIdProvider.notifier).clear();
+              if (!context.mounted) return;
+              context.go('/machine-picker');
+            },
             child: const Text('Change Machine'),
           ),
         ],
@@ -99,47 +121,38 @@ class _MachineInfoSection extends StatelessWidget {
   }
 }
 
-class _McpServersSection extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final serversAsync = ref.watch(mcpServersProvider);
+class _SessionSettingsSection extends StatelessWidget {
+  const _SessionSettingsSection({required this.settings});
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  final Settings settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = settings.sessions;
+
+    return ExpansionTile(
+      title: const Text('Session Settings'),
+      leading: const Icon(Icons.chat),
+      initiallyExpanded: true,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'MCP Servers',
-            style: Theme.of(context).textTheme.titleMedium,
+        ListTile(
+          title: const Text('Default Model'),
+          trailing: Text(
+            session.defaultModel.isNotEmpty ? session.defaultModel : 'Not set',
           ),
         ),
-        serversAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
+        ListTile(
+          title: const Text('Auto-Compact'),
+          trailing: Text(session.autoCompact ? 'Enabled' : 'Disabled'),
+        ),
+        if (session.autoCompact)
+          ListTile(
+            title: const Text('Auto-Compact Threshold'),
+            trailing: Text('${session.autoCompactThreshold}'),
           ),
-          error: (error, _) => Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              error.toString(),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-          data: (servers) {
-            if (servers.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No MCP servers configured'),
-              );
-            }
-            return Column(
-              children:
-                  servers
-                      .map((server) => McpServerCard(server: server))
-                      .toList(),
-            );
-          },
+        ListTile(
+          title: const Text('Max Messages per Session'),
+          trailing: Text('${session.maxMessagesPerSession}'),
         ),
       ],
     );

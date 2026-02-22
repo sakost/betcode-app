@@ -132,7 +132,8 @@ void main() {
   });
 
   group('Router - deep linking', () {
-    testWidgets('conversation with sessionId parameter', (tester) async {
+    testWidgets('conversation with sessionId parameter (no navbar)',
+        (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -143,11 +144,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
     });
 
     testWidgets(
-      '/sessions/new routes to ConversationScreen with null sessionId',
+      '/sessions/new routes to ConversationScreen with null sessionId (no navbar)',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(1200, 60000));
         addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
@@ -159,7 +160,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
         expect(find.text('Conversation'), findsOneWidget);
       },
     );

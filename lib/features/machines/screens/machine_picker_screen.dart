@@ -44,11 +44,45 @@ class MachinePickerScreen extends ConsumerWidget {
                 onTap: () => ref
                     .read(selectedMachineIdProvider.notifier)
                     .select(machine.machineId),
+                onLongPress: () =>
+                    _confirmDelete(context, ref, machine),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    MachineInfo machine,
+  ) async {
+    final name = machine.name.isNotEmpty ? machine.name : machine.machineId;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Machine'),
+        content: Text('Remove "$name"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    await ref.read(machinesProvider.notifier).removeMachine(machine.machineId);
   }
 }

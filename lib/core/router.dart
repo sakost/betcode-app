@@ -162,6 +162,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MachinePickerScreen(),
       ),
 
+      // Conversation screen (outside shell — no bottom nav)
+      GoRoute(
+        path: '/sessions/:sessionId',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final raw = state.pathParameters['sessionId'];
+          return ConversationScreen(
+            sessionId: raw == 'new' ? null : raw,
+            workingDirectory: state.extra as String?,
+          );
+        },
+      ),
+
       // Main app shell with bottom navigation
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -176,18 +189,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               ref: ref,
               child: const SessionsScreen(),
             ),
-            routes: [
-              GoRoute(
-                path: ':sessionId',
-                builder: (context, state) {
-                  final raw = state.pathParameters['sessionId'];
-                  return ConversationScreen(
-                    sessionId: raw == 'new' ? null : raw,
-                    workingDirectory: state.extra as String?,
-                  );
-                },
-              ),
-            ],
           ),
           GoRoute(
             path: '/code',
