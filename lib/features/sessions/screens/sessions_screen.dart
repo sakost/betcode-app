@@ -5,6 +5,7 @@ import 'package:betcode_app/features/sessions/notifiers/sessions_providers.dart'
 import 'package:betcode_app/features/sessions/widgets/confirm_delete_dialog.dart';
 import 'package:betcode_app/features/sessions/widgets/rename_session_dialog.dart';
 import 'package:betcode_app/features/sessions/widgets/session_card.dart';
+import 'package:betcode_app/features/sessions/widgets/worktree_picker_dialog.dart';
 import 'package:betcode_app/generated/betcode/v1/agent.pb.dart';
 import 'package:betcode_app/shared/widgets/async_list_scaffold.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ class SessionsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Sessions')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/sessions/new'),
+        onPressed: () => _onNewSession(context),
         child: const Icon(Icons.add),
       ),
       body: AsyncListScaffold<SessionSummary>(
@@ -39,6 +40,12 @@ class SessionsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _onNewSession(BuildContext context) async {
+    final worktree = await WorktreePickerDialog.show(context);
+    if (worktree == null || !context.mounted) return;
+    context.go('/sessions/new', extra: worktree.path);
   }
 
   Future<void> _onRename(

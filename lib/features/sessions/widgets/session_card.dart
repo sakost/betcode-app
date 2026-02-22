@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 
 /// A card displaying a single [SessionSummary] in the sessions list.
 ///
-/// Shows session name (or last message preview as fallback), model name, status
-/// badge, message count, cost, and a relative timestamp.
+/// Shows session name (or last message preview as fallback), worktree/branch
+/// context, status badge, message count, cost, and a relative timestamp.
 ///
 /// [onTap] is called when the card is tapped.
 /// [onRename] is called with the current name when the user picks Rename from
@@ -36,10 +36,23 @@ class SessionCard extends StatelessWidget {
     return session.model.isNotEmpty ? session.model : 'Unknown';
   }
 
+  /// Builds a short context string like "my-worktree \u00b7 feature/login"
+  /// from the working directory path, or returns null if no info is available.
+  String? get _worktreeContext {
+    final dir = session.workingDirectory;
+    if (dir.isEmpty) return null;
+
+    // Extract the last path component as the worktree/repo name.
+    final segments = dir.split('/')..removeWhere((s) => s.isEmpty);
+    if (segments.isEmpty) return null;
+    return segments.last;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final worktreeCtx = _worktreeContext;
 
     return TappableCard(
       onTap: onTap,
@@ -65,8 +78,33 @@ class SessionCard extends StatelessWidget {
             ],
           ),
 
-          // Subtitle: show model when name is used as title, or preview
-          // when model was used as title
+          // Worktree/branch context line
+          if (worktreeCtx != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.account_tree_outlined,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    worktreeCtx,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontFamily: 'JetBrains Mono',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // Subtitle: show preview when name is used as title
           if (session.name.isNotEmpty &&
               session.lastMessagePreview.isNotEmpty) ...[
             const SizedBox(height: 8),

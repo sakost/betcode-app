@@ -151,6 +151,35 @@ void main() {
     });
   });
 
+  group('SessionCard - worktree context', () {
+    testWidgets('shows worktree context from workingDirectory', (t) async {
+      await t.pumpWidget(
+        _app(
+          SessionCard(
+            session: makeTestSession(
+              workingDirectory: '/home/user/projects/my-repo',
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('my-repo'), findsOneWidget);
+      expect(find.byIcon(Icons.account_tree_outlined), findsOneWidget);
+    });
+
+    testWidgets('hides worktree context when workingDirectory is empty', (
+      t,
+    ) async {
+      await t.pumpWidget(
+        _app(SessionCard(session: makeTestSession())),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.byIcon(Icons.account_tree_outlined), findsNothing);
+    });
+  });
+
   group('SessionCard - status and info', () {
     testWidgets('displays status badge', (t) async {
       await t.pumpWidget(
