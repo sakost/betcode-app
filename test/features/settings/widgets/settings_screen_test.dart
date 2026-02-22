@@ -5,12 +5,16 @@ import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
 import 'package:betcode_app/core/grpc/relay_config.dart';
 import 'package:betcode_app/core/grpc/relay_notifier.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_notifier.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/selected_machine_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/mcp_servers_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_notifier.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
 import 'package:betcode_app/features/settings/screens/settings_screen.dart';
 import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
 import 'package:betcode_app/shared/theme/app_theme.dart';
 import 'package:betcode_app/shared/widgets/connection_indicator.dart';
 import 'package:flutter/material.dart';
@@ -89,10 +93,41 @@ class _FakeRelayNotifier extends RelayConfigNotifier {
   }
 }
 
-/// Wraps [SettingsScreen] with fake providers for settings and MCP servers.
+class _FakeMachinesNotifier extends MachinesNotifier {
+  _FakeMachinesNotifier(this._value);
+  final AsyncValue<List<MachineInfo>> _value;
+
+  @override
+  Future<List<MachineInfo>> build() {
+    return _value.when(
+      data: Future.value,
+      loading: () => Completer<List<MachineInfo>>().future,
+      error: Future.error,
+    );
+  }
+}
+
+class _FakeSelectedMachineNotifier extends SelectedMachineNotifier {
+  _FakeSelectedMachineNotifier(this._id);
+  final String? _id;
+
+  @override
+  String? build() => _id;
+}
+
+MachineInfo _makeMachine({
+  String machineId = 'm-1',
+  String name = 'dev-box',
+  MachineStatus status = MachineStatus.MACHINE_STATUS_ONLINE,
+}) => MachineInfo(machineId: machineId, name: name, status: status);
+
+/// Wraps [SettingsScreen] with fake providers for settings, MCP servers,
+/// machines, and machine selection.
 Widget _settingsApp({
   AsyncValue<Settings>? settings,
   AsyncValue<List<McpServerInfo>>? servers,
+  AsyncValue<List<MachineInfo>>? machines,
+  String? selectedMachineId = 'm-1',
   List<Override> extraOverrides = const [],
 }) {
   return ProviderScope(
@@ -107,6 +142,15 @@ Widget _settingsApp({
           servers ?? const AsyncData([]),
         ),
       ),
+      machinesProvider.overrideWith(
+        () => _FakeMachinesNotifier(
+          machines ??
+              AsyncData([_makeMachine()]),
+        ),
+      ),
+      selectedMachineIdProvider.overrideWith(
+        () => _FakeSelectedMachineNotifier(selectedMachineId),
+      ),
       appVersionProvider.overrideWith((_) async => '0.1.0-test'),
       ...extraOverrides,
     ],
@@ -119,6 +163,47 @@ Widget _settingsApp({
 // ---------------------------------------------------------------------------
 
 void main() {
+  group('SettingsScreen - Machine row', () {
+    testWidgets('shows machine name and status', (t) async {
+      await t.pumpWidget(
+        _settingsApp(
+          machines: AsyncData([
+            _makeMachine(name: 'my-dev-box'),
+          ]),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('Machine'), findsOneWidget);
+      expect(find.text('my-dev-box'), findsOneWidget);
+      expect(find.text('Online'), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    });
+
+    testWidgets('shows machine ID when name is empty', (t) async {
+      await t.pumpWidget(
+        _settingsApp(
+          machines: AsyncData([_makeMachine(name: '')]),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('m-1'), findsOneWidget);
+    });
+
+    testWidgets('shows "No machine" when none selected', (t) async {
+      await t.pumpWidget(
+        _settingsApp(
+          selectedMachineId: null,
+          machines: const AsyncData([]),
+        ),
+      );
+      await t.pumpAndSettle();
+
+      expect(find.text('No machine'), findsOneWidget);
+    });
+  });
+
   group('SettingsScreen', () {
     testWidgets('shows loading indicator while fetching', (t) async {
       await t.pumpWidget(
@@ -194,36 +279,21 @@ void main() {
       );
       await t.pumpAndSettle();
 
+      // Scroll to reveal permission section (may be below the fold).
+      await t.scrollUntilVisible(find.text('Permission Settings'), 200);
+      await t.pumpAndSettle();
+
       expect(find.text('Permission Settings'), findsOneWidget);
       expect(find.text('45s'), findsOneWidget);
       expect(find.text('180s'), findsOneWidget);
     });
 
-    testWidgets('displays MCP servers section with cards', (t) async {
-      final servers = [
-        _makeServer(
-          tools: ['query-docs', 'resolve-library-id'],
-        ),
-        _makeServer(
-          name: 'serena',
-          serverType: 'sse',
-          endpoint: 'http://localhost:8080',
-          status: McpServerStatus.MCP_SERVER_STATUS_STOPPED,
-          tools: [],
-        ),
-      ];
-
-      await t.pumpWidget(_settingsApp(servers: AsyncData(servers)));
+    testWidgets('does not show MCP servers section (moved to machine detail)',
+        (t) async {
+      await t.pumpWidget(_settingsApp());
       await t.pumpAndSettle();
 
-      // Scroll down to reveal MCP servers section
-      await t.scrollUntilVisible(find.text('MCP Servers'), 200);
-      await t.pumpAndSettle();
-
-      expect(find.text('MCP Servers'), findsOneWidget);
-      expect(find.byType(McpServerCard), findsNWidgets(2));
-      expect(find.text('context7'), findsOneWidget);
-      expect(find.text('serena'), findsOneWidget);
+      expect(find.text('MCP Servers'), findsNothing);
     });
 
     testWidgets('displays about section', (t) async {
