@@ -282,3 +282,114 @@ final $typed_data.Uint8List gitRepoDetailDescriptor = $convert.base64Decode(
     'CmNyZWF0ZWRfYXQYCiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgljcmVhdGVkQX'
     'QSOwoLbGFzdF9hY3RpdmUYCyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wUgpsYXN0'
     'QWN0aXZl');
+
+@$core.Deprecated('Use branchInfoDescriptor instead')
+const BranchInfo$json = {
+  '1': 'BranchInfo',
+  '2': [
+    {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'is_head', '3': 2, '4': 1, '5': 8, '10': 'isHead'},
+    {'1': 'commit_sha', '3': 3, '4': 1, '5': 9, '10': 'commitSha'},
+    {'1': 'commit_message', '3': 4, '4': 1, '5': 9, '10': 'commitMessage'},
+    {'1': 'has_worktree', '3': 5, '4': 1, '5': 8, '10': 'hasWorktree'},
+    {'1': 'is_remote', '3': 6, '4': 1, '5': 8, '10': 'isRemote'},
+  ],
+};
+
+/// Descriptor for `BranchInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List branchInfoDescriptor = $convert.base64Decode(
+    'CgpCcmFuY2hJbmZvEhIKBG5hbWUYASABKAlSBG5hbWUSFwoHaXNfaGVhZBgCIAEoCFIGaXNIZW'
+    'FkEh0KCmNvbW1pdF9zaGEYAyABKAlSCWNvbW1pdFNoYRIlCg5jb21taXRfbWVzc2FnZRgEIAEo'
+    'CVINY29tbWl0TWVzc2FnZRIhCgxoYXNfd29ya3RyZWUYBSABKAhSC2hhc1dvcmt0cmVlEhsKCW'
+    'lzX3JlbW90ZRgGIAEoCFIIaXNSZW1vdGU=');
+
+@$core.Deprecated('Use listBranchesRequestDescriptor instead')
+const ListBranchesRequest$json = {
+  '1': 'ListBranchesRequest',
+  '2': [
+    {'1': 'repo_id', '3': 1, '4': 1, '5': 9, '10': 'repoId'},
+    {'1': 'include_remote', '3': 2, '4': 1, '5': 8, '10': 'includeRemote'},
+  ],
+};
+
+/// Descriptor for `ListBranchesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listBranchesRequestDescriptor = $convert.base64Decode(
+    'ChNMaXN0QnJhbmNoZXNSZXF1ZXN0EhcKB3JlcG9faWQYASABKAlSBnJlcG9JZBIlCg5pbmNsdW'
+    'RlX3JlbW90ZRgCIAEoCFINaW5jbHVkZVJlbW90ZQ==');
+
+@$core.Deprecated('Use listBranchesResponseDescriptor instead')
+const ListBranchesResponse$json = {
+  '1': 'ListBranchesResponse',
+  '2': [
+    {
+      '1': 'branches',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.betcode.v1.BranchInfo',
+      '10': 'branches'
+    },
+  ],
+};
+
+/// Descriptor for `ListBranchesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listBranchesResponseDescriptor = $convert.base64Decode(
+    'ChRMaXN0QnJhbmNoZXNSZXNwb25zZRIyCghicmFuY2hlcxgBIAMoCzIWLmJldGNvZGUudjEuQn'
+    'JhbmNoSW5mb1IIYnJhbmNoZXM=');
+
+@$core.Deprecated('Use createBranchRequestDescriptor instead')
+const CreateBranchRequest$json = {
+  '1': 'CreateBranchRequest',
+  '2': [
+    {'1': 'repo_id', '3': 1, '4': 1, '5': 9, '10': 'repoId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'start_point', '3': 3, '4': 1, '5': 9, '10': 'startPoint'},
+  ],
+};
+
+/// Descriptor for `CreateBranchRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List createBranchRequestDescriptor = $convert.base64Decode(
+    'ChNDcmVhdGVCcmFuY2hSZXF1ZXN0EhcKB3JlcG9faWQYASABKAlSBnJlcG9JZBISCgRuYW1lGA'
+    'IgASgJUgRuYW1lEh8KC3N0YXJ0X3BvaW50GAMgASgJUgpzdGFydFBvaW50');
+
+@$core.Deprecated('Use deleteBranchRequestDescriptor instead')
+const DeleteBranchRequest$json = {
+  '1': 'DeleteBranchRequest',
+  '2': [
+    {'1': 'repo_id', '3': 1, '4': 1, '5': 9, '10': 'repoId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+    {'1': 'force', '3': 3, '4': 1, '5': 8, '10': 'force'},
+  ],
+};
+
+/// Descriptor for `DeleteBranchRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteBranchRequestDescriptor = $convert.base64Decode(
+    'ChNEZWxldGVCcmFuY2hSZXF1ZXN0EhcKB3JlcG9faWQYASABKAlSBnJlcG9JZBISCgRuYW1lGA'
+    'IgASgJUgRuYW1lEhQKBWZvcmNlGAMgASgIUgVmb3JjZQ==');
+
+@$core.Deprecated('Use deleteBranchResponseDescriptor instead')
+const DeleteBranchResponse$json = {
+  '1': 'DeleteBranchResponse',
+  '2': [
+    {'1': 'deleted', '3': 1, '4': 1, '5': 8, '10': 'deleted'},
+  ],
+};
+
+/// Descriptor for `DeleteBranchResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteBranchResponseDescriptor =
+    $convert.base64Decode(
+        'ChREZWxldGVCcmFuY2hSZXNwb25zZRIYCgdkZWxldGVkGAEgASgIUgdkZWxldGVk');
+
+@$core.Deprecated('Use getBranchRequestDescriptor instead')
+const GetBranchRequest$json = {
+  '1': 'GetBranchRequest',
+  '2': [
+    {'1': 'repo_id', '3': 1, '4': 1, '5': 9, '10': 'repoId'},
+    {'1': 'name', '3': 2, '4': 1, '5': 9, '10': 'name'},
+  ],
+};
+
+/// Descriptor for `GetBranchRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBranchRequestDescriptor = $convert.base64Decode(
+    'ChBHZXRCcmFuY2hSZXF1ZXN0EhcKB3JlcG9faWQYASABKAlSBnJlcG9JZBISCgRuYW1lGAIgAS'
+    'gJUgRuYW1l');

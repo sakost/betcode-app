@@ -853,6 +853,511 @@ class GitRepoDetail extends $pb.GeneratedMessage {
   $1.Timestamp ensureLastActive() => $_ensure(10);
 }
 
+class BranchInfo extends $pb.GeneratedMessage {
+  factory BranchInfo({
+    $core.String? name,
+    $core.bool? isHead,
+    $core.String? commitSha,
+    $core.String? commitMessage,
+    $core.bool? hasWorktree,
+    $core.bool? isRemote,
+  }) {
+    final result = create();
+    if (name != null) result.name = name;
+    if (isHead != null) result.isHead = isHead;
+    if (commitSha != null) result.commitSha = commitSha;
+    if (commitMessage != null) result.commitMessage = commitMessage;
+    if (hasWorktree != null) result.hasWorktree = hasWorktree;
+    if (isRemote != null) result.isRemote = isRemote;
+    return result;
+  }
+
+  BranchInfo._();
+
+  factory BranchInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory BranchInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BranchInfo',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'name')
+    ..aOB(2, _omitFieldNames ? '' : 'isHead')
+    ..aOS(3, _omitFieldNames ? '' : 'commitSha')
+    ..aOS(4, _omitFieldNames ? '' : 'commitMessage')
+    ..aOB(5, _omitFieldNames ? '' : 'hasWorktree')
+    ..aOB(6, _omitFieldNames ? '' : 'isRemote')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BranchInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BranchInfo copyWith(void Function(BranchInfo) updates) =>
+      super.copyWith((message) => updates(message as BranchInfo)) as BranchInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static BranchInfo create() => BranchInfo._();
+  @$core.override
+  BranchInfo createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static BranchInfo getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BranchInfo>(create);
+  static BranchInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get name => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set name($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasName() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearName() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get isHead => $_getBF(1);
+  @$pb.TagNumber(2)
+  set isHead($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIsHead() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIsHead() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get commitSha => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set commitSha($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasCommitSha() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearCommitSha() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get commitMessage => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set commitMessage($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasCommitMessage() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearCommitMessage() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.bool get hasWorktree => $_getBF(4);
+  @$pb.TagNumber(5)
+  set hasWorktree($core.bool value) => $_setBool(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasHasWorktree() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearHasWorktree() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.bool get isRemote => $_getBF(5);
+  @$pb.TagNumber(6)
+  set isRemote($core.bool value) => $_setBool(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasIsRemote() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearIsRemote() => $_clearField(6);
+}
+
+class ListBranchesRequest extends $pb.GeneratedMessage {
+  factory ListBranchesRequest({
+    $core.String? repoId,
+    $core.bool? includeRemote,
+  }) {
+    final result = create();
+    if (repoId != null) result.repoId = repoId;
+    if (includeRemote != null) result.includeRemote = includeRemote;
+    return result;
+  }
+
+  ListBranchesRequest._();
+
+  factory ListBranchesRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListBranchesRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBranchesRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'repoId')
+    ..aOB(2, _omitFieldNames ? '' : 'includeRemote')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBranchesRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBranchesRequest copyWith(void Function(ListBranchesRequest) updates) =>
+      super.copyWith((message) => updates(message as ListBranchesRequest))
+          as ListBranchesRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListBranchesRequest create() => ListBranchesRequest._();
+  @$core.override
+  ListBranchesRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListBranchesRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBranchesRequest>(create);
+  static ListBranchesRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get repoId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repoId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepoId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepoId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.bool get includeRemote => $_getBF(1);
+  @$pb.TagNumber(2)
+  set includeRemote($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasIncludeRemote() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearIncludeRemote() => $_clearField(2);
+}
+
+class ListBranchesResponse extends $pb.GeneratedMessage {
+  factory ListBranchesResponse({
+    $core.Iterable<BranchInfo>? branches,
+  }) {
+    final result = create();
+    if (branches != null) result.branches.addAll(branches);
+    return result;
+  }
+
+  ListBranchesResponse._();
+
+  factory ListBranchesResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory ListBranchesResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListBranchesResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..pPM<BranchInfo>(1, _omitFieldNames ? '' : 'branches',
+        subBuilder: BranchInfo.create)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBranchesResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListBranchesResponse copyWith(void Function(ListBranchesResponse) updates) =>
+      super.copyWith((message) => updates(message as ListBranchesResponse))
+          as ListBranchesResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static ListBranchesResponse create() => ListBranchesResponse._();
+  @$core.override
+  ListBranchesResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static ListBranchesResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListBranchesResponse>(create);
+  static ListBranchesResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<BranchInfo> get branches => $_getList(0);
+}
+
+class CreateBranchRequest extends $pb.GeneratedMessage {
+  factory CreateBranchRequest({
+    $core.String? repoId,
+    $core.String? name,
+    $core.String? startPoint,
+  }) {
+    final result = create();
+    if (repoId != null) result.repoId = repoId;
+    if (name != null) result.name = name;
+    if (startPoint != null) result.startPoint = startPoint;
+    return result;
+  }
+
+  CreateBranchRequest._();
+
+  factory CreateBranchRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory CreateBranchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CreateBranchRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'repoId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOS(3, _omitFieldNames ? '' : 'startPoint')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreateBranchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CreateBranchRequest copyWith(void Function(CreateBranchRequest) updates) =>
+      super.copyWith((message) => updates(message as CreateBranchRequest))
+          as CreateBranchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static CreateBranchRequest create() => CreateBranchRequest._();
+  @$core.override
+  CreateBranchRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static CreateBranchRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CreateBranchRequest>(create);
+  static CreateBranchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get repoId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repoId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepoId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepoId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  /// Base ref (branch, tag, or commit SHA). Empty = HEAD.
+  @$pb.TagNumber(3)
+  $core.String get startPoint => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set startPoint($core.String value) => $_setString(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStartPoint() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStartPoint() => $_clearField(3);
+}
+
+class DeleteBranchRequest extends $pb.GeneratedMessage {
+  factory DeleteBranchRequest({
+    $core.String? repoId,
+    $core.String? name,
+    $core.bool? force,
+  }) {
+    final result = create();
+    if (repoId != null) result.repoId = repoId;
+    if (name != null) result.name = name;
+    if (force != null) result.force = force;
+    return result;
+  }
+
+  DeleteBranchRequest._();
+
+  factory DeleteBranchRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteBranchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteBranchRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'repoId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..aOB(3, _omitFieldNames ? '' : 'force')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteBranchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteBranchRequest copyWith(void Function(DeleteBranchRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteBranchRequest))
+          as DeleteBranchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteBranchRequest create() => DeleteBranchRequest._();
+  @$core.override
+  DeleteBranchRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteBranchRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteBranchRequest>(create);
+  static DeleteBranchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get repoId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repoId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepoId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepoId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get force => $_getBF(2);
+  @$pb.TagNumber(3)
+  set force($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasForce() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearForce() => $_clearField(3);
+}
+
+class DeleteBranchResponse extends $pb.GeneratedMessage {
+  factory DeleteBranchResponse({
+    $core.bool? deleted,
+  }) {
+    final result = create();
+    if (deleted != null) result.deleted = deleted;
+    return result;
+  }
+
+  DeleteBranchResponse._();
+
+  factory DeleteBranchResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory DeleteBranchResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteBranchResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOB(1, _omitFieldNames ? '' : 'deleted')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteBranchResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteBranchResponse copyWith(void Function(DeleteBranchResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteBranchResponse))
+          as DeleteBranchResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static DeleteBranchResponse create() => DeleteBranchResponse._();
+  @$core.override
+  DeleteBranchResponse createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static DeleteBranchResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteBranchResponse>(create);
+  static DeleteBranchResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.bool get deleted => $_getBF(0);
+  @$pb.TagNumber(1)
+  set deleted($core.bool value) => $_setBool(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeleted() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeleted() => $_clearField(1);
+}
+
+class GetBranchRequest extends $pb.GeneratedMessage {
+  factory GetBranchRequest({
+    $core.String? repoId,
+    $core.String? name,
+  }) {
+    final result = create();
+    if (repoId != null) result.repoId = repoId;
+    if (name != null) result.name = name;
+    return result;
+  }
+
+  GetBranchRequest._();
+
+  factory GetBranchRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromBuffer(data, registry);
+  factory GetBranchRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      create()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBranchRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'betcode.v1'),
+      createEmptyInstance: create)
+    ..aOS(1, _omitFieldNames ? '' : 'repoId')
+    ..aOS(2, _omitFieldNames ? '' : 'name')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBranchRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBranchRequest copyWith(void Function(GetBranchRequest) updates) =>
+      super.copyWith((message) => updates(message as GetBranchRequest))
+          as GetBranchRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static GetBranchRequest create() => GetBranchRequest._();
+  @$core.override
+  GetBranchRequest createEmptyInstance() => create();
+  @$core.pragma('dart2js:noInline')
+  static GetBranchRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBranchRequest>(create);
+  static GetBranchRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get repoId => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set repoId($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRepoId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRepoId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get name => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set name($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasName() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearName() => $_clearField(2);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

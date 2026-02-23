@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:betcode_app/features/git_repos/notifiers/branches_provider.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_notifier.dart';
 import 'package:betcode_app/features/worktrees/notifiers/worktrees_providers.dart';
 import 'package:betcode_app/features/worktrees/screens/worktrees_screen.dart';
@@ -79,15 +80,50 @@ class _FakeWorktreesNotifier extends WorktreesNotifier {
   void completeCreate() => _createCompleter?.complete();
 }
 
+/// Default fake branches returned by the overridden branchesProvider.
+List<BranchInfo> _defaultBranches() => [
+      BranchInfo(
+        name: 'main',
+        isHead: true,
+        commitSha: 'abc123',
+        commitMessage: 'initial commit',
+      ),
+      BranchInfo(
+        name: 'develop',
+        commitSha: 'def456',
+        commitMessage: 'dev branch',
+      ),
+      BranchInfo(
+        name: 'feat/existing',
+        commitSha: 'ghi789',
+        commitMessage: 'feature branch',
+        hasWorktree: true,
+      ),
+    ];
+
 /// Shorthand for a ProviderScope wrapping [child] with gitReposProvider
-/// overridden to return canned data.
-ProviderScope _withRepos(Widget child, [List<GitRepoDetail>? repos]) {
-  return withFakeRepos(
+/// and branchesProvider overridden to return canned data.
+ProviderScope _withRepos(
+  Widget child, [
+  List<GitRepoDetail>? repos,
+  List<BranchInfo>? branches,
+]) {
+  final scope = withFakeRepos(
     child,
     AsyncData(
       repos ??
           [makeTestRepo(), makeTestRepo(id: 'repo-2', name: 'other-project')],
     ),
+  );
+  // Add branchesProvider override to the same ProviderScope.
+  return ProviderScope(
+    overrides: [
+      ...scope.overrides,
+      branchesProvider.overrideWith(
+        (ref, repoId) async => branches ?? _defaultBranches(),
+      ),
+    ],
+    child: scope.child!,
   );
 }
 
@@ -177,9 +213,9 @@ void main() {
           overrides: [
             worktreesProvider.overrideWith(() => fakeNotifier),
           ],
-          child: withFakeRepos(
+          child: _withRepos(
             _app(const WorktreesScreen()),
-            AsyncData(repos),
+            repos,
           ),
         ),
       );
@@ -202,11 +238,16 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.text('my-project').last);
       await t.pumpAndSettle();
-      // Fill branch
+      // Fill branch — the Autocomplete field now loads suggestions.
+      // Type into the branch field (finds the TextFormField with 'Branch' label).
       await t.enterText(
         find.widgetWithText(TextFormField, 'Branch'),
         'main',
       );
+      await t.pumpAndSettle();
+      // Select from autocomplete suggestions
+      await t.tap(find.text('main').last);
+      await t.pumpAndSettle();
 
       // Press Create button in dialog
       await t.tap(find.text('Create'));
@@ -303,11 +344,19 @@ void main() {
   group('CreateWorktreeDialog', () {
     /// Pumps the dialog directly (not via showDialog).
     Future<void> pumpDialog(
-      WidgetTester t, [
+      WidgetTester t, {
       List<GitRepoDetail>? repos,
-    ]) async {
+      String? initialRepoId,
+    }) async {
       await t.pumpWidget(
-        _withRepos(_app(const Scaffold(body: CreateWorktreeDialog())), repos),
+        _withRepos(
+          _app(
+            Scaffold(
+              body: CreateWorktreeDialog(initialRepoId: initialRepoId),
+            ),
+          ),
+          repos,
+        ),
       );
       await t.pumpAndSettle();
     }
@@ -317,6 +366,7 @@ void main() {
 
       expect(find.text('Name'), findsOneWidget);
       expect(find.text('Repository'), findsOneWidget);
+      // Branch is disabled (no repo selected), but the label is still there.
       expect(find.text('Branch'), findsOneWidget);
       expect(find.text('Setup Script'), findsOneWidget);
     });
@@ -328,12 +378,20 @@ void main() {
       expect(find.text('Create'), findsOneWidget);
     });
 
+    testWidgets('branch field is disabled when no repo is selected', (t) async {
+      await pumpDialog(t);
+
+      // Find the disabled TextFormField with hint text
+      expect(find.text('Select a repository first'), findsOneWidget);
+    });
+
     /// Pumps a dialog-opening scaffold that captures
     /// the [CreateWorktreeResult].
     Future<CreateWorktreeResult? Function()> pumpDialogOpener(
-      WidgetTester t, [
+      WidgetTester t, {
       List<GitRepoDetail>? repos,
-    ]) async {
+      String? initialRepoId,
+    }) async {
       CreateWorktreeResult? result;
       var resultSet = false;
       await t.pumpWidget(
@@ -345,7 +403,9 @@ void main() {
                   onPressed: () async {
                     final r = await showDialog<CreateWorktreeResult>(
                       context: context,
-                      builder: (_) => const CreateWorktreeDialog(),
+                      builder: (_) => CreateWorktreeDialog(
+                        initialRepoId: initialRepoId,
+                      ),
                     );
                     result = r;
                     resultSet = true;
@@ -374,10 +434,13 @@ void main() {
     });
 
     testWidgets('returns form values when Create is pressed', (t) async {
-      final getResult = await pumpDialogOpener(t, [
-        makeTestRepo(),
-        makeTestRepo(id: 'repo-2', name: 'other-project'),
-      ]);
+      final getResult = await pumpDialogOpener(
+        t,
+        repos: [
+          makeTestRepo(),
+          makeTestRepo(id: 'repo-2', name: 'other-project'),
+        ],
+      );
 
       // Fill in the Name field.
       await t.enterText(
@@ -391,11 +454,12 @@ void main() {
       await t.tap(find.text('my-project').last);
       await t.pumpAndSettle();
 
-      // Fill in the Branch field.
+      // Fill in the Branch field (now an Autocomplete).
       await t.enterText(
         find.widgetWithText(TextFormField, 'Branch'),
         'feat/login',
       );
+      await t.pumpAndSettle();
 
       // Fill in the Setup Script field.
       await t.enterText(
@@ -425,6 +489,93 @@ void main() {
       expect(find.text('Create'), findsOneWidget);
       // result should not have been set (dialog still open)
       expect(getResult(), isNull);
+    });
+
+    // -----------------------------------------------------------------------
+    // initialRepoId
+    // -----------------------------------------------------------------------
+
+    testWidgets('pre-selects repo when initialRepoId is provided', (t) async {
+      final repos = [
+        makeTestRepo(),
+        makeTestRepo(id: 'repo-2', name: 'other-project'),
+      ];
+
+      await pumpDialog(t, repos: repos, initialRepoId: 'repo-1');
+
+      // The dropdown should show the pre-selected repo name.
+      expect(find.text('my-project'), findsOneWidget);
+      // Branch field should be enabled (not showing disabled hint).
+      expect(find.text('Select a repository first'), findsNothing);
+    });
+
+    // -----------------------------------------------------------------------
+    // Setup script pre-fill
+    // -----------------------------------------------------------------------
+
+    testWidgets('pre-fills setup script from repo config', (t) async {
+      final repos = [
+        makeTestRepo(setupScript: 'make setup'),
+        makeTestRepo(id: 'repo-2', name: 'other-project'),
+      ];
+
+      await pumpDialog(t, repos: repos, initialRepoId: 'repo-1');
+
+      // The setup script field should be pre-filled.
+      expect(find.text('make setup'), findsOneWidget);
+    });
+
+    testWidgets('setup script not overwritten after manual edit', (t) async {
+      final repos = [
+        makeTestRepo(setupScript: 'make setup'),
+        makeTestRepo(
+          id: 'repo-2',
+          name: 'other-project',
+          setupScript: 'npm install',
+        ),
+      ];
+
+      await pumpDialog(t, repos: repos, initialRepoId: 'repo-1');
+
+      // Pre-filled from repo-1.
+      expect(find.text('make setup'), findsOneWidget);
+
+      // User manually edits the script.
+      await t.enterText(
+        find.widgetWithText(TextFormField, 'Setup Script'),
+        'custom script',
+      );
+      await t.pumpAndSettle();
+
+      // Switch to repo-2.
+      await t.tap(find.text('my-project'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('other-project').last);
+      await t.pumpAndSettle();
+
+      // The setup script should NOT be overwritten because user edited it.
+      expect(find.text('custom script'), findsOneWidget);
+      expect(find.text('npm install'), findsNothing);
+    });
+
+    // -----------------------------------------------------------------------
+    // Branch autocomplete
+    // -----------------------------------------------------------------------
+
+    testWidgets('shows branch suggestions from provider', (t) async {
+      final repos = [makeTestRepo()];
+
+      await pumpDialog(t, repos: repos, initialRepoId: 'repo-1');
+
+      // Tap into the branch field to trigger autocomplete.
+      final branchField = find.widgetWithText(TextFormField, 'Branch');
+      await t.tap(branchField);
+      await t.pumpAndSettle();
+
+      // The autocomplete should show all branches.
+      expect(find.text('main'), findsWidgets);
+      expect(find.text('develop'), findsWidgets);
+      expect(find.text('feat/existing'), findsWidgets);
     });
   });
 }

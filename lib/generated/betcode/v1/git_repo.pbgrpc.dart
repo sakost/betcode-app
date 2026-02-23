@@ -81,6 +81,38 @@ class GitRepoServiceClient extends $grpc.Client {
     return $createUnaryCall(_$scanRepos, request, options: options);
   }
 
+  /// List branches in a registered repository.
+  $grpc.ResponseFuture<$0.ListBranchesResponse> listBranches(
+    $0.ListBranchesRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$listBranches, request, options: options);
+  }
+
+  /// Create a new branch in a registered repository.
+  $grpc.ResponseFuture<$0.BranchInfo> createBranch(
+    $0.CreateBranchRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$createBranch, request, options: options);
+  }
+
+  /// Delete a branch from a registered repository.
+  $grpc.ResponseFuture<$0.DeleteBranchResponse> deleteBranch(
+    $0.DeleteBranchRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$deleteBranch, request, options: options);
+  }
+
+  /// Get details about a specific branch.
+  $grpc.ResponseFuture<$0.BranchInfo> getBranch(
+    $0.GetBranchRequest request, {
+    $grpc.CallOptions? options,
+  }) {
+    return $createUnaryCall(_$getBranch, request, options: options);
+  }
+
   // method descriptors
 
   static final _$registerRepo =
@@ -113,6 +145,26 @@ class GitRepoServiceClient extends $grpc.Client {
           '/betcode.v1.GitRepoService/ScanRepos',
           ($0.ScanReposRequest value) => value.writeToBuffer(),
           $0.ListReposResponse.fromBuffer);
+  static final _$listBranches =
+      $grpc.ClientMethod<$0.ListBranchesRequest, $0.ListBranchesResponse>(
+          '/betcode.v1.GitRepoService/ListBranches',
+          ($0.ListBranchesRequest value) => value.writeToBuffer(),
+          $0.ListBranchesResponse.fromBuffer);
+  static final _$createBranch =
+      $grpc.ClientMethod<$0.CreateBranchRequest, $0.BranchInfo>(
+          '/betcode.v1.GitRepoService/CreateBranch',
+          ($0.CreateBranchRequest value) => value.writeToBuffer(),
+          $0.BranchInfo.fromBuffer);
+  static final _$deleteBranch =
+      $grpc.ClientMethod<$0.DeleteBranchRequest, $0.DeleteBranchResponse>(
+          '/betcode.v1.GitRepoService/DeleteBranch',
+          ($0.DeleteBranchRequest value) => value.writeToBuffer(),
+          $0.DeleteBranchResponse.fromBuffer);
+  static final _$getBranch =
+      $grpc.ClientMethod<$0.GetBranchRequest, $0.BranchInfo>(
+          '/betcode.v1.GitRepoService/GetBranch',
+          ($0.GetBranchRequest value) => value.writeToBuffer(),
+          $0.BranchInfo.fromBuffer);
 }
 
 @$pb.GrpcServiceName('betcode.v1.GitRepoService')
@@ -165,6 +217,39 @@ abstract class GitRepoServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.ScanReposRequest.fromBuffer(value),
         ($0.ListReposResponse value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.ListBranchesRequest, $0.ListBranchesResponse>(
+            'ListBranches',
+            listBranches_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.ListBranchesRequest.fromBuffer(value),
+            ($0.ListBranchesResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.CreateBranchRequest, $0.BranchInfo>(
+        'CreateBranch',
+        createBranch_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) =>
+            $0.CreateBranchRequest.fromBuffer(value),
+        ($0.BranchInfo value) => value.writeToBuffer()));
+    $addMethod(
+        $grpc.ServiceMethod<$0.DeleteBranchRequest, $0.DeleteBranchResponse>(
+            'DeleteBranch',
+            deleteBranch_Pre,
+            false,
+            false,
+            ($core.List<$core.int> value) =>
+                $0.DeleteBranchRequest.fromBuffer(value),
+            ($0.DeleteBranchResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.GetBranchRequest, $0.BranchInfo>(
+        'GetBranch',
+        getBranch_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.GetBranchRequest.fromBuffer(value),
+        ($0.BranchInfo value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.GitRepoDetail> registerRepo_Pre($grpc.ServiceCall $call,
@@ -215,4 +300,38 @@ abstract class GitRepoServiceBase extends $grpc.Service {
 
   $async.Future<$0.ListReposResponse> scanRepos(
       $grpc.ServiceCall call, $0.ScanReposRequest request);
+
+  $async.Future<$0.ListBranchesResponse> listBranches_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.ListBranchesRequest> $request) async {
+    return listBranches($call, await $request);
+  }
+
+  $async.Future<$0.ListBranchesResponse> listBranches(
+      $grpc.ServiceCall call, $0.ListBranchesRequest request);
+
+  $async.Future<$0.BranchInfo> createBranch_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.CreateBranchRequest> $request) async {
+    return createBranch($call, await $request);
+  }
+
+  $async.Future<$0.BranchInfo> createBranch(
+      $grpc.ServiceCall call, $0.CreateBranchRequest request);
+
+  $async.Future<$0.DeleteBranchResponse> deleteBranch_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.DeleteBranchRequest> $request) async {
+    return deleteBranch($call, await $request);
+  }
+
+  $async.Future<$0.DeleteBranchResponse> deleteBranch(
+      $grpc.ServiceCall call, $0.DeleteBranchRequest request);
+
+  $async.Future<$0.BranchInfo> getBranch_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.GetBranchRequest> $request) async {
+    return getBranch($call, await $request);
+  }
+
+  $async.Future<$0.BranchInfo> getBranch(
+      $grpc.ServiceCall call, $0.GetBranchRequest request);
 }

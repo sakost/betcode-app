@@ -70,7 +70,7 @@ class RepoDetailScreen extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final result = await showDialog<CreateWorktreeResult>(
       context: context,
-      builder: (_) => const CreateWorktreeDialog(),
+      builder: (_) => CreateWorktreeDialog(initialRepoId: repoId),
     );
     if (result == null) return;
     try {

@@ -17,6 +17,7 @@ GitRepoDetail makeTestRepo({
   String repoPath = '/home/user/projects/my-project',
   WorktreeMode worktreeMode = WorktreeMode.WORKTREE_MODE_GLOBAL,
   int worktreeCount = 3,
+  String setupScript = '',
 }) {
   return GitRepoDetail(
     id: id,
@@ -24,6 +25,7 @@ GitRepoDetail makeTestRepo({
     repoPath: repoPath,
     worktreeMode: worktreeMode,
     worktreeCount: worktreeCount,
+    setupScript: setupScript,
   );
 }
 
