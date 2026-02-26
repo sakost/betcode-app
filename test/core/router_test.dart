@@ -16,7 +16,7 @@ void main() {
   });
 
   group('Router - redirect logic', () {
-    for (final route in ['/sessions', '/machines', '/settings']) {
+    for (final route in ['/sessions', '/code', '/settings']) {
       testWidgets('unauthenticated user accessing $route -> /login', (
         tester,
       ) async {
@@ -61,8 +61,79 @@ void main() {
     });
   });
 
+  group('Router - machine picker gate', () {
+    testWidgets(
+      'authenticated user with no machine -> /machine-picker',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(800, 60000));
+        addTearDown(
+          () => tester.binding.setSurfaceSize(const Size(800, 600)),
+        );
+
+        await tester.pumpWidget(
+          buildAuthApp(
+            initialLocation: '/sessions',
+            mockStorage: mockStorage,
+            withMachine: false,
+          ),
+        );
+        // Use pump() — machine picker may show loading spinner.
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Select a machine'), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'authenticated user with machine selected -> /sessions',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(800, 60000));
+        addTearDown(
+          () => tester.binding.setSurfaceSize(const Size(800, 600)),
+        );
+
+        await tester.pumpWidget(
+          buildAuthApp(
+            initialLocation: '/sessions',
+            mockStorage: mockStorage,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Should land on sessions, not machine picker.
+        expect(find.text('Select a machine'), findsNothing);
+        expect(find.byType(NavigationBar), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '/machine-picker is accessible directly',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(800, 60000));
+        addTearDown(
+          () => tester.binding.setSurfaceSize(const Size(800, 600)),
+        );
+
+        await tester.pumpWidget(
+          buildAuthApp(
+            initialLocation: '/machine-picker',
+            mockStorage: mockStorage,
+            withMachine: false,
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Select a machine'), findsOneWidget);
+      },
+    );
+  });
+
   group('Router - deep linking', () {
-    testWidgets('conversation with sessionId parameter', (tester) async {
+    testWidgets('conversation with sessionId parameter (no navbar)',
+        (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
       addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
 
@@ -73,11 +144,11 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
     });
 
     testWidgets(
-      '/sessions/new routes to ConversationScreen with null sessionId',
+      '/sessions/new routes to ConversationScreen with null sessionId (no navbar)',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(1200, 60000));
         addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
@@ -89,24 +160,10 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(NavigationBar), findsOneWidget);
+        expect(find.byType(NavigationBar), findsNothing);
         expect(find.text('Conversation'), findsOneWidget);
       },
     );
-
-    testWidgets('machines with machineId parameter', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 60000));
-      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
-
-      await tester.pumpWidget(
-        buildAuthApp(
-          initialLocation: '/machines/m-1',
-          mockStorage: mockStorage,
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(NavigationBar), findsOneWidget);
-    });
 
     testWidgets('code with repoId parameter', (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 60000));
@@ -121,6 +178,21 @@ void main() {
       // Use pump() instead of pumpAndSettle() because RepoDetailScreen
       // shows a CircularProgressIndicator while loading worktrees, which
       // animates indefinitely and prevents settling.
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NavigationBar), findsOneWidget);
+    });
+
+    testWidgets('/settings/machine routes to machine detail', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 60000));
+      addTearDown(() => tester.binding.setSurfaceSize(const Size(800, 600)));
+
+      await tester.pumpWidget(
+        buildAuthApp(
+          initialLocation: '/settings/machine',
+          mockStorage: mockStorage,
+        ),
+      );
       await tester.pump();
       await tester.pump();
       expect(find.byType(NavigationBar), findsOneWidget);
@@ -170,11 +242,11 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('has exactly 4 navigation destinations', (tester) async {
+    testWidgets('has exactly 3 navigation destinations', (tester) async {
       await pumpLargeAuthApp(tester);
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.destinations, hasLength(4));
+      expect(navBar.destinations, hasLength(3));
     });
 
     testWidgets('shell route paths match navigation destinations', (
@@ -205,17 +277,7 @@ void main() {
         hasLength(navBar.destinations.length),
         reason: 'Shell route count must match navigation destination count',
       );
-      expect(tabPaths, ['/machines', '/sessions', '/code', '/settings']);
-    });
-
-    testWidgets('tapping Machines navigates to /machines', (tester) async {
-      await pumpLargeAuthApp(tester);
-
-      await tester.tap(find.text('Machines'));
-      await tester.pumpAndSettle();
-
-      final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 0);
+      expect(tabPaths, ['/sessions', '/code', '/settings']);
     });
 
     testWidgets('tapping Sessions navigates to /sessions', (tester) async {
@@ -232,7 +294,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 1);
+      expect(navBar.selectedIndex, 0);
     });
 
     testWidgets('tapping Code navigates to /code', (tester) async {
@@ -242,39 +304,22 @@ void main() {
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 2);
+      expect(navBar.selectedIndex, 1);
     });
 
     testWidgets('tapping Settings navigates to /settings', (tester) async {
       await pumpLargeAuthApp(tester);
 
-      await tester.tap(find.text('Settings'));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Settings'),
+        ),
+      );
       await tester.pumpAndSettle();
 
       final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-      expect(navBar.selectedIndex, 3);
-    });
-
-    testWidgets('navigating left slides incoming page from the left', (
-      tester,
-    ) async {
-      await pumpLargeAuthApp(tester);
-
-      // Navigate from Sessions (index 1) to Machines (index 0) — going left.
-      await tester.tap(find.text('Machines'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 150));
-
-      final dxValues = tester
-          .widgetList<SlideTransition>(find.byType(SlideTransition))
-          .map((s) => s.position.value.dx)
-          .where((dx) => dx != 0.0)
-          .toList();
-      expect(dxValues, isNotEmpty);
-      // Incoming page enters from the left (negative dx).
-      expect(dxValues, everyElement(isNegative));
-
-      await tester.pumpAndSettle();
+      expect(navBar.selectedIndex, 2);
     });
 
     testWidgets('navigating right slides incoming page from the right', (
@@ -282,7 +327,7 @@ void main() {
     ) async {
       await pumpLargeAuthApp(tester);
 
-      // Navigate from Sessions (index 1) to Code (index 2) — going right.
+      // Navigate from Sessions (index 0) to Code (index 1) — going right.
       await tester.tap(find.text('Code'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 150));
@@ -304,13 +349,16 @@ void main() {
     ) async {
       await pumpLargeAuthApp(tester);
 
-      // Step 1: Sessions (1) → Machines (0).
-      await tester.tap(find.text('Machines'));
+      // Step 1: Sessions (0) → Settings (2).
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Settings'),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      // Step 2: Machines (0) → Code (2) — going right.
-      // Machines was entered with a real transition, so its exit animation
-      // (if the Navigator reverses it) should go to the left.
+      // Step 2: Settings (2) → Code (1) — going left.
       await tester.tap(find.text('Code'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 150));
@@ -321,8 +369,8 @@ void main() {
           .where((dx) => dx != 0.0)
           .toList();
       expect(dxValues, isNotEmpty);
-      // Incoming Code page enters from the right (positive dx).
-      expect(dxValues, contains(isPositive));
+      // Incoming Code page enters from the left (negative dx).
+      expect(dxValues, contains(isNegative));
 
       await tester.pumpAndSettle();
     });

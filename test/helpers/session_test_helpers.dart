@@ -13,6 +13,8 @@ SessionSummary makeTestSession({
   int messageCount = 5,
   double totalCostUsd = 0.0123,
   String lastMessagePreview = 'Hello world',
+  String workingDirectory = '',
+  String worktreeId = '',
   int? updatedAtSeconds,
 }) {
   final session = SessionSummary(
@@ -23,6 +25,8 @@ SessionSummary makeTestSession({
     messageCount: messageCount,
     totalCostUsd: totalCostUsd,
     lastMessagePreview: lastMessagePreview,
+    workingDirectory: workingDirectory,
+    worktreeId: worktreeId,
   );
   if (updatedAtSeconds != null) {
     session.updatedAt = Timestamp(seconds: Int64(updatedAtSeconds));

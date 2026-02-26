@@ -14,11 +14,13 @@ class MachineCard extends StatelessWidget {
     required this.machine,
     super.key,
     this.onTap,
+    this.onLongPress,
     this.isSelected = false,
   });
 
   final MachineInfo machine;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool isSelected;
 
   @override
@@ -28,6 +30,7 @@ class MachineCard extends StatelessWidget {
 
     return TappableCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       isSelected: isSelected,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grpc/grpc.dart';
-import 'package:integration_test/integration_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:riverpod/misc.dart' show Override;
 
@@ -99,7 +98,6 @@ void simulateAppForeground(WidgetTester tester) {
 }
 
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   late MockAgentServiceClient mockClient;
   late StreamController<pb.AgentEvent> eventController;
@@ -267,18 +265,19 @@ void main() {
         eventController.addError(const GrpcError.unavailable('initial'));
         await tester.pump();
 
-        // Wait for all 5 reconnection attempts to exhaust.
-        // Backoff durations: 500ms + 1s + 3s + 10s + 30s = 44.5s.
-        // Use runAsync so real timers fire outside the test frame scheduler.
-        await tester.runAsync(() async {
-          // Poll until all reconnection attempts complete.
-          for (var i = 0; i < 100; i++) {
-            await Future<void>.delayed(const Duration(milliseconds: 500));
-            final s = container.read(conversationProvider(null)).value;
-            if (s is ConversationError) break;
-          }
-        });
-        await tester.pump();
+        // Advance fake time through all 5 reconnection backoff durations:
+        // 500ms, 1s, 3s, 10s, 30s. Each attempt immediately errors, so we
+        // just need to advance past the backoff timer for each.
+        const backoffs = [
+          Duration(milliseconds: 600),
+          Duration(seconds: 2),
+          Duration(seconds: 4),
+          Duration(seconds: 11),
+          Duration(seconds: 31),
+        ];
+        for (final backoff in backoffs) {
+          await tester.pump(backoff);
+        }
 
         // Should have made exactly 5 reconnection attempts
         // (converseCallCount = 1 initial + 5 reconnects = 6).

@@ -34,33 +34,21 @@ class ConversationScreen extends ConsumerStatefulWidget {
 class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   final _scrollController = ScrollController();
   bool _isUserScrolledUp = false;
-  bool _hasAutoStarted = false;
-  bool _hasResumed = false;
+  bool _hasStarted = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
 
-    // Auto-resume existing sessions without requiring user to press Start.
-    // For new sessions (null sessionId), also auto-start if worktrees are
-    // already available.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (widget.sessionId != null) {
-        _resumeConversation();
-      } else {
-        _tryAutoStart();
-      }
+      _autoStart();
     });
   }
 
   @override
   void dispose() {
-    // Close the conversation stream so the daemon session is released.
-    // This prevents stale streams from blocking subsequent resume
-    // attempts. Use Object catch: StateError (an Error, not Exception)
-    // is thrown when ref is accessed after the widget is unmounted.
     try {
       ref.read(conversationProvider(widget.sessionId).notifier).close();
     } on Object catch (_) {
@@ -72,44 +60,24 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     super.dispose();
   }
 
-  /// Attempts to auto-start a new conversation if worktrees are available.
+  /// Starts the conversation if a working directory is available.
   ///
-  /// Only fires when the current state is [ConversationInitial] and a valid
-  /// working directory can be resolved. Called from initState (for worktrees
-  /// already loaded) and from the worktrees listener (for late-arriving data).
-  void _tryAutoStart() {
-    if (!mounted || _hasAutoStarted) return;
+  /// For new sessions, `workingDirectory` is passed explicitly from the
+  /// worktree picker dialog. For resumed sessions, it resolves from the
+  /// first available worktree.
+  void _autoStart() {
+    if (!mounted || _hasStarted) return;
     final asyncState = ref.read(conversationProvider(widget.sessionId));
     if (asyncState.value is! ConversationInitial) return;
-    final workingDirectory =
-        widget.workingDirectory ?? _resolveWorkingDirectory();
-    if (workingDirectory == null) return;
-    _hasAutoStarted = true;
-    _startConversation();
-  }
 
-  /// Resumes an existing session.
-  ///
-  /// Only fires when the current state is [ConversationInitial], preventing
-  /// duplicate resume attempts when the state has already transitioned.
-  /// If worktrees haven't loaded yet, returns early; the worktrees listener
-  /// in [build] will retry once worktree data arrives.
-  void _resumeConversation() {
-    if (!mounted || _hasResumed) return;
-    final asyncState = ref.read(conversationProvider(widget.sessionId));
-    if (asyncState.value is! ConversationInitial) return;
-    final workingDirectory = _resolveWorkingDirectory();
-    if (workingDirectory == null) {
-      debugPrint(
-        '[ConversationScreen] Resume deferred: worktrees not loaded yet',
-      );
-      return;
-    }
-    _hasResumed = true;
+    final dir = widget.workingDirectory ?? _resolveWorkingDirectory();
+    if (dir == null) return;
+
+    _hasStarted = true;
     unawaited(
       ref
           .read(conversationProvider(widget.sessionId).notifier)
-          .startConversation(workingDirectory: workingDirectory),
+          .startConversation(workingDirectory: dir),
     );
   }
 
@@ -165,21 +133,15 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncState = ref.watch(conversationProvider(widget.sessionId));
-    // Auto-start new conversations when worktrees data arrives, and
-    // auto-scroll when new messages arrive and user hasn't scrolled up.
+
+    // When worktrees load after initState and state is still initial,
+    // trigger auto-start via post-frame callback.
     ref
       ..listen(
         worktreesProvider,
         (_, _) {
-          // When worktrees load after initState and state is still initial,
-          // trigger auto-start or resume via post-frame callback to avoid
-          // build-phase state mutations.
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (widget.sessionId == null && !_hasAutoStarted) {
-              _tryAutoStart();
-            } else if (widget.sessionId != null) {
-              _resumeConversation();
-            }
+            _autoStart();
           });
         },
       )
@@ -222,7 +184,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   String? _resolveWorkingDirectory() {
     final worktrees = ref.read(worktreesProvider).value;
     if (worktrees != null && worktrees.isNotEmpty) {
-      // Use the first worktree's path as the default working directory.
       final path = worktrees.first.path;
       if (path.isNotEmpty) return path;
     }
@@ -230,9 +191,8 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
   }
 
   void _startConversation() {
-    final workingDirectory =
-        widget.workingDirectory ?? _resolveWorkingDirectory();
-    if (workingDirectory == null) {
+    final dir = widget.workingDirectory ?? _resolveWorkingDirectory();
+    if (dir == null) {
       debugPrint('[ConversationScreen] Cannot start: no working directory');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -241,13 +201,10 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
       );
       return;
     }
-    debugPrint(
-      '[ConversationScreen] Starting with dir: $workingDirectory',
-    );
     unawaited(
       ref
           .read(conversationProvider(widget.sessionId).notifier)
-          .startConversation(workingDirectory: workingDirectory),
+          .startConversation(workingDirectory: dir),
     );
   }
 
@@ -311,9 +268,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
               );
             }
 
-            // Verify a valid working directory can be resolved. If all
-            // worktree paths are empty, auto-start will silently fail and
-            // the spinner would hang indefinitely.
             final dir =
                 widget.workingDirectory ?? _resolveWorkingDirectory();
             if (dir == null) {
@@ -423,7 +377,6 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final messages = selectedId == null
         ? active.messages
         : active.messages.where((msg) {
-            // UserChatMessages have no parentToolUseId — always show them.
             if (msg is UserChatMessage) return true;
             return _parentToolUseId(msg) == selectedId;
           }).toList();
@@ -701,8 +654,6 @@ class _AppBarTitle extends ConsumerWidget {
     return machineName;
   }
 
-  /// Resolves the active worktree name from [workingDirectory] if available,
-  /// falling back to the first worktree's name.
   String? _resolveWorktreeName(List<WorktreeDetail>? worktrees) {
     if (worktrees == null || worktrees.isEmpty) return null;
     if (workingDirectory != null) {

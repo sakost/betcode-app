@@ -1,12 +1,17 @@
+import 'package:betcode_app/core/app_version.dart';
 import 'package:betcode_app/core/auth/auth.dart';
 import 'package:betcode_app/core/grpc/connection_state.dart';
 import 'package:betcode_app/core/grpc/grpc_providers.dart';
+import 'package:betcode_app/features/machines/notifiers/machines_providers.dart';
 import 'package:betcode_app/features/settings/notifiers/settings_providers.dart';
-import 'package:betcode_app/features/settings/widgets/mcp_server_card.dart';
 import 'package:betcode_app/generated/betcode/v1/config.pb.dart';
+import 'package:betcode_app/generated/betcode/v1/machine.pb.dart';
+import 'package:betcode_app/shared/theme/app_colors.dart';
 import 'package:betcode_app/shared/widgets/connection_indicator.dart';
+import 'package:betcode_app/shared/widgets/status_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -20,11 +25,12 @@ class SettingsScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(settingsProvider.notifier).refresh();
-          await ref.read(mcpServersProvider.notifier).refresh();
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
+            const _MachineRow(),
+            const Divider(),
             const _RelayConnectionSection(),
             ...settingsAsync.when(
               loading: () => [
@@ -53,8 +59,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Connect to a relay to view session, permission, '
-                        'and MCP server settings.',
+                        'Connect to a relay to view permission settings.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -72,9 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
               data: (settings) => [
-                _SessionSettingsSection(settings: settings),
                 _PermissionSettingsSection(settings: settings),
-                _McpServersSection(),
               ],
             ),
             const _AboutSection(),
@@ -82,6 +85,50 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Tappable row showing selected machine name and status, navigates to detail.
+class _MachineRow extends ConsumerWidget {
+  const _MachineRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedId = ref.watch(selectedMachineIdProvider);
+    final machinesAsync = ref.watch(machinesProvider);
+    final machine = machinesAsync.value?.cast<MachineInfo?>().firstWhere(
+      (m) => m?.machineId == selectedId,
+      orElse: () => null,
+    );
+
+    final machineName = machine?.name.isNotEmpty ?? false
+        ? machine!.name
+        : selectedId ?? 'No machine';
+
+    return ListTile(
+      leading: const Icon(Icons.computer),
+      title: const Text('Machine'),
+      subtitle: Row(
+        children: [
+          Flexible(child: Text(machineName, overflow: TextOverflow.ellipsis)),
+          if (machine != null) ...[
+            const SizedBox(width: 8),
+            _buildStatusBadge(machine.status),
+          ],
+        ],
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => context.go('/settings/machine'),
+    );
+  }
+
+  StatusBadge _buildStatusBadge(MachineStatus status) {
+    final (color, label) = switch (status) {
+      MachineStatus.MACHINE_STATUS_ONLINE => (AppColors.online, 'Online'),
+      MachineStatus.MACHINE_STATUS_OFFLINE => (AppColors.offline, 'Offline'),
+      _ => (AppColors.agentIdle, 'Unknown'),
+    };
+    return StatusBadge(color: color, label: label);
   }
 }
 
@@ -138,44 +185,6 @@ class _RelayConnectionSection extends ConsumerWidget {
   }
 }
 
-class _SessionSettingsSection extends StatelessWidget {
-  const _SessionSettingsSection({required this.settings});
-
-  final Settings settings;
-
-  @override
-  Widget build(BuildContext context) {
-    final session = settings.sessions;
-
-    return ExpansionTile(
-      title: const Text('Session Settings'),
-      leading: const Icon(Icons.chat),
-      initiallyExpanded: true,
-      children: [
-        ListTile(
-          title: const Text('Default Model'),
-          trailing: Text(
-            session.defaultModel.isNotEmpty ? session.defaultModel : 'Not set',
-          ),
-        ),
-        ListTile(
-          title: const Text('Auto-Compact'),
-          trailing: Text(session.autoCompact ? 'Enabled' : 'Disabled'),
-        ),
-        if (session.autoCompact)
-          ListTile(
-            title: const Text('Auto-Compact Threshold'),
-            trailing: Text('${session.autoCompactThreshold}'),
-          ),
-        ListTile(
-          title: const Text('Max Messages per Session'),
-          trailing: Text('${session.maxMessagesPerSession}'),
-        ),
-      ],
-    );
-  }
-}
-
 class _PermissionSettingsSection extends StatelessWidget {
   const _PermissionSettingsSection({required this.settings});
 
@@ -211,57 +220,23 @@ class _PermissionSettingsSection extends StatelessWidget {
   }
 }
 
-class _McpServersSection extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final serversAsync = ref.watch(mcpServersProvider);
-
-    return ExpansionTile(
-      title: const Text('MCP Servers'),
-      leading: const Icon(Icons.dns),
-      initiallyExpanded: true,
-      children: [
-        serversAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, _) => Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              error.toString(),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-          data: (servers) {
-            if (servers.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No MCP servers configured'),
-              );
-            }
-            return Column(
-              children: servers
-                  .map((server) => McpServerCard(server: server))
-                  .toList(),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _AboutSection extends StatelessWidget {
+class _AboutSection extends ConsumerWidget {
   const _AboutSection();
 
   @override
-  Widget build(BuildContext context) {
-    return const ExpansionTile(
-      title: Text('About'),
-      leading: Icon(Icons.info),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final versionAsync = ref.watch(appVersionProvider);
+    final versionText = versionAsync.when(
+      data: (v) => v,
+      loading: () => '...',
+      error: (_, _) => 'Unknown',
+    );
+
+    return ExpansionTile(
+      title: const Text('About'),
+      leading: const Icon(Icons.info),
       children: [
-        ListTile(title: Text('App Version'), trailing: Text('1.0.0-dev')),
+        ListTile(title: const Text('App Version'), trailing: Text(versionText)),
       ],
     );
   }
